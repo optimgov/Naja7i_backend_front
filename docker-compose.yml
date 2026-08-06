@@ -1,0 +1,21 @@
+# Naja7i backend front-office — environnement de développement local
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: naja7i
+      POSTGRES_USER: naja7i
+      POSTGRES_PASSWORD: naja7i_dev
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U naja7i"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+volumes:
+  pgdata:

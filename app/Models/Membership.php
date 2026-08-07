@@ -8,14 +8,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Table ISOLÉE par tenant (matrice §1.4) : porte le trait BelongsToTenant.
- * C'est le seul lien user × tenant × rôle du système.
+ * Table ISOLÉE par tenant. Seul lien user × tenant × rôle du système.
+ *
+ * PAS-1.1 : `tenant_id` a été RETIRÉ de $fillable (BLOC-1). Le trait
+ * BelongsToTenant le pose lui-même et refuse toute valeur divergente.
+ * Les clés étrangères internes sont masquées à la sérialisation.
  */
 class Membership extends Model
 {
     use BelongsToTenant, HasPublicUuid;
 
-    protected $fillable = ['tenant_id', 'user_id', 'role_id'];
+    protected $fillable = ['user_id', 'role_id'];
+
+    protected $hidden = ['tenant_id', 'user_id', 'role_id'];
 
     public function tenant(): BelongsTo
     {

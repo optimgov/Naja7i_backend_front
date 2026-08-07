@@ -37,7 +37,7 @@ return new class extends Migration
             ['code' => 'editeur',     'label_fr' => 'Éditeur',             'label_ar' => 'ناشر',           'is_staff' => true,  'created_at' => now(), 'updated_at' => now()],
             ['code' => 'support',     'label_fr' => 'Support',             'label_ar' => 'الدعم',          'is_staff' => true,  'created_at' => now(), 'updated_at' => now()],
             ['code' => 'finance',     'label_fr' => 'Finance',             'label_ar' => 'المالية',        'is_staff' => true,  'created_at' => now(), 'updated_at' => now()],
-            ['code' => 'super_admin', 'label_fr' => 'Super administrateur','label_ar' => 'مدير عام',       'is_staff' => true,  'created_at' => now(), 'updated_at' => now()],
+            ['code' => 'super_admin', 'label_fr' => 'Super administrateur', 'label_ar' => 'مدير عام',       'is_staff' => true,  'created_at' => now(), 'updated_at' => now()],
         ]);
 
         Schema::create('memberships', function (Blueprint $table) {

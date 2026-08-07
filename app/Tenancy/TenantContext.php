@@ -3,50 +3,85 @@
 namespace App\Tenancy;
 
 use App\Models\Tenant;
-use RuntimeException;
+use App\Tenancy\Exceptions\NoTenantResolvedException;
 
 /**
- * Source unique de vérité du tenant courant pour la requête en cours.
+ * BLOC-2 (PAS-1.1) — Le contexte n'est PLUS une propriété statique.
  *
- * Aucune requête sur une table isolée ne doit s'exécuter sans tenant résolu :
- * le scope BelongsToTenant lève une exception si le contexte est vide, plutôt
- * que de retourner silencieusement les données de tous les tenants.
+ * Pourquoi : sous Octane, l'application reste en mémoire entre deux requêtes,
+ * et un worker de queue traite des jobs successifs dans le même processus.
+ * Une propriété statique survit d'un cycle à l'autre, ce qui transforme la
+ * garantie « aucun tenant résolu = exception » en « réutilisation silencieuse
+ * du tenant précédent ». C'est la fuite la plus dangereuse possible : elle ne
+ * produit ni erreur, ni alerte, ni trace.
+ *
+ * Ce service est enregistré en binding SCOPED (AppServiceProvider) : le
+ * conteneur le réinitialise à chaque cycle de requête et à chaque job.
+ * Il ne doit jamais être injecté en singleton ni stocké statiquement.
  */
-final class TenantContext
+class TenantContext
 {
     public const PLATFORM_TENANT_ID = 1;
 
-    private static ?Tenant $current = null;
+    private ?Tenant $current = null;
 
-    public static function set(Tenant $tenant): void
+    public function set(Tenant $tenant): void
     {
-        self::$current = $tenant;
+        $this->current = $tenant;
     }
 
-    public static function current(): Tenant
+    public function current(): Tenant
     {
-        if (self::$current === null) {
-            throw new RuntimeException(
-                'Aucun tenant résolu pour cette requête. Le middleware ResolveTenant est-il appliqué ?'
+        if ($this->current === null) {
+            throw new NoTenantResolvedException(
+                'Aucun tenant résolu pour ce cycle d\'exécution. '
+                .'Requête HTTP : le middleware ResolveTenant est-il appliqué ? '
+                .'Job de queue : le job utilise-t-il le trait InteractsWithTenant ?'
             );
         }
 
-        return self::$current;
+        return $this->current;
     }
 
-    public static function id(): int
+    public function id(): int
     {
-        return self::current()->id;
+        return $this->current()->id;
     }
 
-    public static function isResolved(): bool
+    public function isResolved(): bool
     {
-        return self::$current !== null;
+        return $this->current !== null;
     }
 
-    /** Réservé aux tests et aux commandes console ciblées. */
-    public static function clear(): void
+    public function isPlatform(): bool
     {
-        self::$current = null;
+        return $this->isResolved() && $this->current->id === self::PLATFORM_TENANT_ID;
+    }
+
+    public function forget(): void
+    {
+        $this->current = null;
+    }
+
+    /**
+     * Exécute un callback sous un tenant donné, puis restaure l'état précédent
+     * — y compris si le callback lève une exception. Réservé aux commandes
+     * console et aux jobs ; jamais utilisé dans un contrôleur.
+     *
+     * @template T
+     *
+     * @param  callable():T  $callback
+     * @return T
+     */
+    public function runFor(Tenant $tenant, callable $callback): mixed
+    {
+        $previous = $this->current;
+        $this->current = $tenant;
+
+        try {
+            return $callback();
+        } finally {
+            $this->current = $previous;
+        }
     }
 }

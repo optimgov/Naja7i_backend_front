@@ -7,10 +7,10 @@ use App\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use RuntimeException;
 
 /**
- * Compte GLOBAL : pas de tenant_id (matrice §1.4).
- * Le rattachement aux tenants passe par memberships.
+ * Compte GLOBAL : pas de tenant_id. Le rattachement passe par memberships.
  */
 class User extends Authenticatable
 {
@@ -25,7 +25,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'phone_verified_at' => 'datetime',
-            'password'          => 'hashed',
+            'password' => 'hashed',
         ];
     }
 
@@ -37,7 +37,7 @@ class User extends Authenticatable
     /** Vérifie un rôle dans le tenant COURANT — jamais globalement. */
     public function hasRole(string $roleCode): bool
     {
-        return $this->memberships() // scope tenant appliqué par BelongsToTenant
+        return $this->memberships()
             ->whereHas('role', fn ($q) => $q->where('code', $roleCode))
             ->exists();
     }
@@ -49,12 +49,33 @@ class User extends Authenticatable
             ->exists();
     }
 
-    /** Inscrit ce user comme candidat B2C sur le tenant plateforme. */
+    /**
+     * Inscrit ce user comme candidat B2C sur le tenant plateforme.
+     *
+     * PAS-1.1 (BLOC-1) — La version précédente était contradictoire : elle
+     * fournissait tenant_id = 1 en dur alors que le scope global filtrait sur
+     * le tenant courant. Sous un tenant centre, la recherche ne trouvait rien
+     * (tenant_id = centre ET tenant_id = 1), puis la création insérait quand
+     * même une appartenance plateforme invisible au contexte — avec, à la
+     * seconde tentative, une violation d'unicité incompréhensible.
+     *
+     * Désormais : la méthode EXIGE que le contexte courant soit la plateforme.
+     * Elle ne fournit plus de tenant_id : le trait le pose.
+     */
     public function grantCandidateRole(): Membership
     {
+        $context = app(TenantContext::class);
+
+        if (! $context->isPlatform()) {
+            throw new RuntimeException(
+                'grantCandidateRole() ne peut être appelée que sous le tenant plateforme. '
+                .'Contexte courant : tenant #'.$context->id().'. '
+                .'Pour rattacher un candidat à un centre partenaire, utilisez le service d\'adhésion B2B.'
+            );
+        }
+
         return $this->memberships()->firstOrCreate([
-            'tenant_id' => TenantContext::PLATFORM_TENANT_ID,
-            'role_id'   => Role::where('code', 'candidat')->value('id'),
+            'role_id' => Role::where('code', 'candidat')->value('id'),
         ]);
     }
 }

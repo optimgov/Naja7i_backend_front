@@ -3,15 +3,22 @@
 namespace App\Models\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
-use Ramsey\Uuid\Uuid;
+use Illuminate\Support\Str;
 
 /**
- * Convention d'identifiants (backlog NAJA7i, correction n°1) :
+ * Convention d'identifiants (ADR-0002) :
  *  - `id` bigint : clé interne, jointures, JAMAIS exposée par l'API.
- *  - `uuid` UUIDv7 : identifiant public, ordonné dans le temps,
- *    utilisé dans toutes les URL et payloads.
+ *  - `uuid` UUIDv7 : identifiant public, ordonné dans le temps.
  *
- * Le route model binding résout par `uuid` par défaut.
+ * PAS-1.1 (P6) : on utilise Str::uuid7() de Laravel plutôt que Ramsey en
+ * direct — la dépendance n'était pas déclarée dans composer.json et le
+ * projet s'appuyait sur une dépendance transitive.
+ *
+ * ATTENTION : makeHidden('id') ne protège QUE la sérialisation standard du
+ * modèle. Il ne protège ni les tableaux construits à la main, ni le query
+ * builder, ni les clés étrangères d'une relation sérialisée. La garantie
+ * réelle vient des API Resources en liste blanche + du test contractuel
+ * récursif (PAS-2).
  */
 trait HasPublicUuid
 {
@@ -19,7 +26,7 @@ trait HasPublicUuid
     {
         static::creating(function (Model $model) {
             if ($model->getAttribute('uuid') === null) {
-                $model->setAttribute('uuid', Uuid::uuid7()->toString());
+                $model->setAttribute('uuid', (string) Str::uuid7());
             }
         });
     }
@@ -31,7 +38,6 @@ trait HasPublicUuid
 
     public function initializeHasPublicUuid(): void
     {
-        // L'id interne ne sort jamais dans une sérialisation.
         $this->makeHidden(['id']);
     }
 }

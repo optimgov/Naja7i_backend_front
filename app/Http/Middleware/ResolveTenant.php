@@ -11,25 +11,32 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Résout le tenant courant AVANT toute logique métier.
  *
- * Au lancement (B2C uniquement), la résolution est triviale : tout le trafic
- * candidat appartient au tenant plateforme. La résolution par organisation
- * (sous-domaine ou en-tête, pour les centres partenaires) sera ajoutée au
- * moment de l'activation B2B — gate formel du plan v1.3, avec la RLS.
+ * PAS-1.1 : le contexte est désormais résolu depuis le conteneur (binding
+ * scoped), plus depuis une propriété statique. Le `finally` libère le contexte
+ * en fin de cycle — ceinture et bretelles avec la réinitialisation du
+ * conteneur, notamment sous Octane.
  *
- * Ce middleware existe dès le Pas 1 précisément pour que TOUT le code métier
- * s'écrive dès maintenant contre TenantContext, et qu'aucun refactoring ne
- * soit nécessaire quand la résolution deviendra dynamique.
+ * Au lancement (B2C), la résolution est triviale : tout le trafic candidat
+ * appartient au tenant plateforme. La résolution par organisation (sous-domaine
+ * ou en-tête) arrivera au gate « premier partenaire B2B », en même temps que la
+ * Row-Level Security.
  */
 class ResolveTenant
 {
+    public function __construct(private readonly TenantContext $context) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $tenant = Tenant::query()
             ->where('kind', 'platform')
             ->firstOrFail();
 
-        TenantContext::set($tenant);
+        $this->context->set($tenant);
 
-        return $next($request);
+        try {
+            return $next($request);
+        } finally {
+            $this->context->forget();
+        }
     }
 }

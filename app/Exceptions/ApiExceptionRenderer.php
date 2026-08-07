@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -56,7 +55,13 @@ final class ApiExceptionRenderer
                 'AUTH_FORBIDDEN', __('errors.forbidden'), 403
             ),
 
-            $e instanceof TokenMismatchException => ApiError::make(
+            // On teste le CODE 419, pas TokenMismatchException : Laravel
+            // convertit celle-ci en HttpException avant d'appeler les
+            // callbacks de rendu. Un `instanceof TokenMismatchException` ici
+            // ne se déclencherait jamais — la vérification manuelle du PAS-3
+            // l'a montré, la session expirée sortait en « HTTP_ERROR » avec le
+            // message anglais du framework.
+            $e instanceof HttpExceptionInterface && $e->getStatusCode() === 419 => ApiError::make(
                 'CSRF_TOKEN_MISMATCH', __('errors.csrf_mismatch'), 419
             ),
 
@@ -71,11 +76,16 @@ final class ApiExceptionRenderer
                 $e
             ),
 
+            // Le message de l'exception n'est PAS repris tel quel : ces
+            // exceptions viennent du framework et portent un texte anglais
+            // écrit pour le développeur, pas pour le candidat. Il part dans
+            // `details`, et seulement quand le mode debug est actif.
             $e instanceof HttpExceptionInterface => self::withHeaders(
                 ApiError::make(
                     'HTTP_ERROR',
-                    $e->getMessage() !== '' ? $e->getMessage() : __('errors.internal'),
-                    $e->getStatusCode()
+                    __('errors.internal'),
+                    $e->getStatusCode(),
+                    config('app.debug') && $e->getMessage() !== '' ? ['reason' => $e->getMessage()] : []
                 ),
                 $e
             ),

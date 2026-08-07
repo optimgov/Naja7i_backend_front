@@ -17,5 +17,12 @@ services:
     image: redis:7
     ports: ["6379:6379"]
 
+  # Boîte aux lettres de développement. 1025 = SMTP, 8025 = interface web.
+  # Aucun e-mail ne sort de la machine : on lit ce que le candidat recevrait,
+  # sans jamais écrire à une vraie adresse depuis un jeu de données de test.
+  mailpit:
+    image: axllent/mailpit
+    ports: ["1025:1025", "8025:8025"]
+
 volumes:
   pgdata:

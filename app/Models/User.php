@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
+use App\Notifications\ResetPasswordNotification;
+use App\Services\EmailVerificationService;
 use App\Tenancy\TenantContext;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -50,6 +52,32 @@ class User extends Authenticatable implements MustVerifyEmail
     public function legalEvents(): HasMany
     {
         return $this->hasMany(LegalEvent::class);
+    }
+
+    /** Jetons opaques de vérification d'e-mail, actifs ou consommés (PAS-3). */
+    public function verificationTokens(): HasMany
+    {
+        return $this->hasMany(VerificationToken::class);
+    }
+
+    /**
+     * PAS-3 — On remplace la notification de Laravel, qui bâtit une URL signée
+     * vers l'API. Le lien doit mener au FRONTEND et porter un jeton opaque
+     * (ADR-0008 §4). C'est ce que fait le service, qui émet aussi le jeton et
+     * invalide le précédent.
+     *
+     * Cette méthode est le point d'entrée de l'événement `Registered` : c'est
+     * par elle que l'inscription du PAS-2 déclenche un envoi réel.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        app(EmailVerificationService::class)->send($this);
+    }
+
+    /** Idem pour le mot de passe oublié : lien vers le frontend, pas vers l'API. */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 
     /** Vérifie un rôle dans le tenant COURANT — jamais globalement. */

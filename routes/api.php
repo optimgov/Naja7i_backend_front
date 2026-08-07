@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\LegalController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,12 +19,22 @@ Route::prefix('v1')->group(function () {
     // --- Public -----------------------------------------------------------
     Route::get('legal/documents', [LegalController::class, 'documents']);
 
-    // Le lien reçu par e-mail est cliqué dans un navigateur qui ne porte
-    // aucune session : c'est la signature de l'URL qui authentifie, pas le
-    // cookie. L'identifiant public (uuid) y figure, jamais la clé interne.
-    Route::get('auth/email/verify/{uuid}/{hash}', [AuthController::class, 'verifyEmail'])
-        ->middleware(['signed', 'throttle:6,1'])
-        ->name('verification.verify');
+    // Vérification d'e-mail et mot de passe oublié : routes PUBLIQUES. Le
+    // candidat clique le lien depuis son application de messagerie, souvent
+    // dans un autre navigateur, donc sans session ouverte. Leur sécurité vient
+    // du jeton opaque, pas de la session — et pas non plus d'une URL signée,
+    // dont la signature ne survivrait pas au relais de Nitro (ADR-0008 §4).
+    Route::post('auth/email/verify', [EmailVerificationController::class, 'verify'])
+        ->middleware('throttle:10,1');
+
+    Route::post('auth/email/resend', [EmailVerificationController::class, 'resend'])
+        ->middleware('throttle:6,1');
+
+    Route::post('auth/password/request', [PasswordResetController::class, 'request'])
+        ->middleware('throttle:6,1');
+
+    Route::post('auth/password/reset', [PasswordResetController::class, 'reset'])
+        ->middleware('throttle:10,1');
 
     Route::middleware('guest')->group(function () {
         Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:6,1');
@@ -33,12 +45,6 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
-
-        // Renvoi du lien de vérification : l'adresse de cet endpoint est
-        // annoncée par EnsureEmailIsVerified dans chacun de ses refus.
-        Route::post('auth/email/resend', [AuthController::class, 'resendVerificationEmail'])
-            ->middleware('throttle:3,1');
-
         Route::get('me/legal', [LegalController::class, 'myEvents']);
         Route::patch('me/legal/marketing', [LegalController::class, 'updateMarketing']);
 

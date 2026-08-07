@@ -10,5 +10,11 @@ return [
     'privacy_required' => 'Vous devez confirmer avoir pris connaissance de la politique de confidentialité.',
     'legal_not_revocable' => "Les conditions générales et la politique de confidentialité ne se retirent pas ici. Pour cesser d'utiliser le service, demandez la suppression de votre compte.",
     'email_not_verified' => 'Confirmez votre adresse e-mail pour continuer. Un lien vous a été envoyé.',
-    'verification_link_invalid' => "Ce lien de vérification n'est plus valide. Demandez-en un nouveau.",
+
+    // --- PAS-3 : vérification d'e-mail et mot de passe oublié ---
+    'verification_token_invalid' => "Ce lien de confirmation n'est plus valable. Demandez-en un nouveau.",
+    'verification_link_sent' => "Si cette adresse correspond à un compte non confirmé, un lien vient d'être envoyé.",
+    'reset_link_sent' => "Si cette adresse correspond à un compte, un lien de réinitialisation vient d'être envoyé.",
+    'reset_token_invalid' => "Ce lien de réinitialisation n'est plus valable. Demandez-en un nouveau.",
+    'password_updated' => 'Votre mot de passe a été mis à jour. Vous pouvez vous connecter.',
 ];

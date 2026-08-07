@@ -67,6 +67,13 @@ jobs:
       - name: Suite de tests
         run: php artisan test
         env:
+          # PAS-3 — Aucun serveur SMTP dans le job : Mailpit n'existe qu'en
+          # développement. Le pilote `log` écrit le message dans le journal
+          # plutôt que de tenter une connexion vers 127.0.0.1:1025, qui
+          # échouerait. (phpunit.xml impose de toute façon `array` pour la
+          # suite ; cette valeur couvre les commandes artisan hors tests.)
+          MAIL_MAILER: log
+
           # PAS-2 — Le contrôle anti-fuite du mot de passe interroge
           # api.pwnedpasswords.com. En intégration continue, cet aller-retour
           # rend la suite lente et dépendante d'un tiers : une panne chez lui

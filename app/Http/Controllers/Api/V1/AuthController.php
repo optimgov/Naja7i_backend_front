@@ -12,7 +12,6 @@ use App\Services\LoginThrottle;
 use App\Services\RegistrationService;
 use App\Support\ApiError;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -128,51 +127,16 @@ class AuthController extends Controller
         return response()->json(null, 204);
     }
 
-    /**
-     * Confirmation d'adresse depuis le lien reçu par e-mail.
-     *
-     * La comparaison de l'empreinte se fait en temps constant : sans cela, une
-     * signature valide mais une empreinte fausse laisseraient deviner l'adresse
-     * associée à un uuid, octet par octet.
-     */
-    public function verifyEmail(Request $request, string $uuid, string $hash): JsonResponse
-    {
-        $user = User::where('uuid', $uuid)->first();
-
-        if ($user === null || ! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
-            return ApiError::make(
-                'AUTH_VERIFICATION_LINK_INVALID',
-                __('auth.verification_link_invalid'),
-                403
-            );
-        }
-
-        // Idempotent : recliquer sur le lien ne doit pas produire une erreur.
-        if (! $user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
-            event(new Verified($user));
-        }
-
-        return response()->json(['data' => ['email_verified' => true]]);
-    }
-
-    /** Renvoi du lien de vérification au candidat connecté. */
-    public function resendVerificationEmail(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        if ($user->hasVerifiedEmail()) {
-            return response()->json(['data' => ['email_verified' => true]]);
-        }
-
-        $user->sendEmailVerificationNotification();
-
-        return response()->json(null, 202);
-    }
-
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
+        // Relecture depuis la base avant sérialisation. `$request->user()`
+        // rend l'instance retenue par le garde ; elle peut avoir vieilli
+        // depuis sa résolution — e-mail confirmé dans un autre onglet, statut
+        // changé par le support. Or /me est précisément l'endpoint dont le
+        // rôle est de dire l'état COURANT du compte : servir une copie
+        // mémoire y serait une erreur, pas une optimisation. Le coût est une
+        // lecture sur clé primaire.
+        $user = $request->user()->refresh();
 
         return (new UserResource($user->load('memberships.role')))
             ->additional([
@@ -183,7 +147,14 @@ class AuthController extends Controller
                     'email_verified' => $user->hasVerifiedEmail(),
                 ],
             ])
-            ->response();
+            ->response()
+            // Code posé explicitement. Laravel le DÉDUIT sinon de
+            // `wasRecentlyCreated` sur le modèle : une lecture de profil
+            // répond alors 201 « Created » dès que l'instance servie est celle
+            // qui vient d'être insérée — ce qui arrive quand le compte reste
+            // en mémoire entre deux requêtes du même processus. Une lecture ne
+            // crée rien : elle répond 200, toujours.
+            ->setStatusCode(200);
     }
 
     /**

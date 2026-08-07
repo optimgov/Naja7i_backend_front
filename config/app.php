@@ -92,11 +92,18 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    /*
+    | Défauts en FRANÇAIS, et non en anglais : `lang/` ne contient que `fr` et
+    | `ar`. Une erreur survenant AVANT le middleware SetLocale — jeton CSRF
+    | périmé, tenant introuvable — se traduirait sinon sous une locale sans
+    | fichier, et le candidat recevrait la clé brute « errors.csrf_mismatch »
+    | au lieu d'une phrase.
+    */
+    'locale' => env('APP_LOCALE', 'fr'),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'fr'),
 
-    'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+    'faker_locale' => env('APP_FAKER_LOCALE', 'fr_FR'),
 
     /*
     |--------------------------------------------------------------------------

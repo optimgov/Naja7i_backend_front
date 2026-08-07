@@ -21,6 +21,14 @@
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <!--
+            Le hasher testé doit être celui de la production : argon2id. Le
+            laisser dépendre du .env local ferait passer les tests sous bcrypt
+            chez l'un, sous argon2id en intégration continue chez l'autre —
+            or c'est précisément la troncature à 72 octets de bcrypt que
+            test_un_mot_de_passe_unicode_est_accepte cherche à écarter.
+        -->
+        <env name="HASH_DRIVER" value="argon2id"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <!--

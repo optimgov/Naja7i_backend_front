@@ -66,3 +66,14 @@ jobs:
 
       - name: Suite de tests
         run: php artisan test
+        env:
+          # PAS-2 — Le contrôle anti-fuite du mot de passe interroge
+          # api.pwnedpasswords.com. En intégration continue, cet aller-retour
+          # rend la suite lente et dépendante d'un tiers : une panne chez lui
+          # ferait rougir un dépôt sain. On le désactive ICI ET SEULEMENT ICI.
+          # Jamais en local — le développeur doit voir la règle s'appliquer —
+          # et jamais en production, où elle est la principale défense contre
+          # la réutilisation d'un mot de passe déjà divulgué (ADR-0007).
+          # Une variable d'environnement du système l'emporte sur le .env et
+          # sur phpunit.xml : la valeur ci-dessous gagne bien.
+          PASSWORD_CHECK_COMPROMISED: 'false'

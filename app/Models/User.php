@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
 use App\Tenancy\TenantContext;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -11,8 +12,13 @@ use RuntimeException;
 
 /**
  * Compte GLOBAL : pas de tenant_id. Le rattachement passe par memberships.
+ *
+ * PAS-2 : `MustVerifyEmail` déclenche l'envoi du lien de vérification sur
+ * l'événement Registered. Le blocage effectif, lui, est piloté par le
+ * middleware EnsureEmailIsVerified et le réglage naja7i.email_verification_gate
+ * — l'interface ne fait que rendre le compte « vérifiable ».
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasPublicUuid, Notifiable;
 
@@ -32,6 +38,18 @@ class User extends Authenticatable
     public function memberships(): HasMany
     {
         return $this->hasMany(Membership::class);
+    }
+
+    /** Méthodes de connexion du compte : mot de passe, Google, Facebook (PAS-2). */
+    public function identities(): HasMany
+    {
+        return $this->hasMany(Identity::class);
+    }
+
+    /** Actes juridiques accomplis par le candidat. Historique, jamais modifié. */
+    public function legalEvents(): HasMany
+    {
+        return $this->hasMany(LegalEvent::class);
     }
 
     /** Vérifie un rôle dans le tenant COURANT — jamais globalement. */

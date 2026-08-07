@@ -56,6 +56,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | URL du frontend
+    |--------------------------------------------------------------------------
+    |
+    | Racine du BFF Nitro, seul client de cette API. Les liens envoyés par
+    | e-mail (vérification d'adresse, plus tard réinitialisation de mot de
+    | passe) pointent vers lui : le candidat clique dans un navigateur, qui doit
+    | atterrir sur une page, pas sur du JSON.
+    |
+    */
+
+    'frontend_url' => rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

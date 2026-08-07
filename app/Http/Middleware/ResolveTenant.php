@@ -31,12 +31,14 @@ class ResolveTenant
             ->where('kind', 'platform')
             ->firstOrFail();
 
-        $this->context->set($tenant);
-
-        try {
-            return $next($request);
-        } finally {
-            $this->context->forget();
-        }
+        // On RESTAURE le contexte précédent au lieu de le vider sèchement.
+        // En production les deux reviennent au même — aucun contexte n'existe
+        // avant le middleware, la restauration remet donc « aucun tenant » et
+        // la garantie d'isolation entre cycles est intacte. La différence
+        // apparaît quand un contexte a été posé autour de la requête (banc de
+        // test, commande console qui déclenche un appel interne) : le vider
+        // ferait échouer tout ce qui suit avec un « aucun tenant résolu »
+        // trompeur, alors que l'appelant en avait bien établi un.
+        return $this->context->runFor($tenant, fn () => $next($request));
     }
 }

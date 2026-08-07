@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/**)",
+      "Read(//private/tmp/**)",
+      "Edit(**)",
+      "Write(**)",
+      "Bash(php:*)",
+      "Bash(composer:*)",
+      "Bash(docker:*)",
+      "Bash(docker compose:*)",
+      "Bash(colima:*)",
+      "Bash(git:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(sed:*)",
+      "Bash(echo:*)",
+      "Bash(export:*)",
+      "Bash(cd:*)",
+      "Bash(psql:*)",
+      "Bash(createdb:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Read(./.env)",
+      "Write(./.env.production)"
+    ]
+  }
+}

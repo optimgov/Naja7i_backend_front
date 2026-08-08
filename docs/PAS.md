@@ -2,10 +2,13 @@
 
 | Pas | Contenu | Statut |
 |---|---|---|
-| 1 | Fondations : Laravel API-only, tenants, users, roles ×7, memberships, scope tenant, ADR 0001-0003 | livré · `c0ea420` |
-| 1.1 | Correctif de revue : isolation des écritures, TenantContext scoped, TenantBypass, CI PostgreSQL, ADR-0006 | livré · `29b9170` |
-| 2 | Authentification : Sanctum cookies BFF, actes juridiques versionnés, mot de passe 12 car., rate limiting 3 agrégats, ADR 0004/0005/0007 | livré · `be7ac28` |
-| 3 | Boucle fermée : vérification d'e-mail par jeton opaque, mot de passe oublié, notifications FR/AR, Mailpit, ADR-0008 | livré 7 août 2026 |
-| 3.1 | Correctif issu de la recette FRONT-1 (point 10) : `validation.php` FR/AR absents, les messages s'affichaient en clé brute (`validation.min.string`). Catalogue traduit en entier, libellés de champs lisibles, garde de non-régression sur tout le catalogue | livré 8 août 2026 |
-| 4 | Profil progressif par situation (bachelier, étudiant supérieur, lauréat, en poste) | à venir |
-| 5 | Catalogue public : portails, familles, concours, sessions, spécialités | à venir — dépend des décisions D02/D03 |
+| 1 | Fondations : tenants, users, rôles, memberships, scope d'isolation | `c0ea420` |
+| 1.1 | Correctif : isolation des écritures, contexte scoped, bypass journalisé, CI | `29b9170` |
+| 2 | Authentification : Sanctum cookies BFF, actes juridiques versionnés | `be7ac28` |
+| 3 | Boucle fermée : vérification e-mail, mot de passe oublié, notifications FR/AR | `bc89fef` |
+| 3.1 | Correctif : messages de validation traduits, garde structurelle | `89edadb` |
+| — | Méthode, ADR 0009 à 0013 : gouvernance, RBAC fin, droits d'accès, extensibilité, taxonomie, vocabulaire | `c48a11d` |
+| 4 | Catalogue public : filières, familles, spécialités, sessions, taxonomie en arbre | livré 8 août 2026 |
+| 4.1 | Correctif d'après les descriptifs officiels CRMEF novembre 2025 : parcours, onze spécialités secondaires, trois épreuves séparées (coef. 8/12/20) avec leurs matrices, carte de couverture des 32 descriptifs | livré 8 août 2026 |
+| 5 | Profil du candidat : situation, concours visé, objectif | à venir |
+| 6 | Banque de questions : versions, justifications, sources | à venir |

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CatalogueController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
@@ -18,6 +19,26 @@ Route::prefix('v1')->group(function () {
 
     // --- Public -----------------------------------------------------------
     Route::get('legal/documents', [LegalController::class, 'documents']);
+
+    /*
+     * Catalogue public (PAS-4) : aucune authentification, aucun tenant requis
+     * pour lire. Ce sont ces routes qui alimentent les pages indexables par
+     * Google — le levier d'acquisition du plan à 90 jours.
+     */
+    Route::prefix('catalogue')->group(function () {
+        Route::get('/', [CatalogueController::class, 'index']);
+        Route::get('calendrier', [CatalogueController::class, 'calendar']);
+
+        Route::get('filieres/{slug}', [CatalogueController::class, 'filiere']);
+
+        Route::get('familles/{slug}', [CatalogueController::class, 'family']);
+        Route::get('familles/{slug}/competences', [CatalogueController::class, 'competencies']);
+
+        // PAS-4.1 — Entrée de référence du référentiel : une matrice par
+        // épreuve, chacune avec ses coefficients et ses poids (ADR-0014).
+        Route::get('epreuves/{code}/competences', [CatalogueController::class, 'examCompetencies']);
+        Route::get('familles/{famille}/specialites/{specialite}', [CatalogueController::class, 'specialty']);
+    });
 
     // Vérification d'e-mail et mot de passe oublié : routes PUBLIQUES. Le
     // candidat clique le lien depuis son application de messagerie, souvent

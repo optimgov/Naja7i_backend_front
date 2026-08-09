@@ -1,8 +1,15 @@
-# DECISIONS — exécution de PAS-1
+# DECISIONS — choix pris en autonomie par Claude Code
 
-Journal des décisions prises en autonomie pendant l'exécution de
-`PAS-1_INSTRUCTIONS_CLAUDE_CODE.md`. Règle appliquée : à chaque choix, retenir
-l'option qui respecte le plus fidèlement les instructions du fichier.
+Journal des décisions prises sans arbitrage préalable d'OptimGov pendant
+l'exécution des lots. Règle appliquée : à chaque choix, retenir l'option qui
+respecte le plus fidèlement les instructions du lot, les fiches de règle et les
+ADR du dépôt (`docs/METHODE.md` §2).
+
+Ce journal n'est pas une source d'autorité : il trace ce qui a été décidé
+faute d'arbitrage, pour qu'OptimGov puisse le revoir. Une décision qui relève
+du métier ou du périmètre n'y a pas sa place — elle remonte (`METHODE` §4).
+
+## PAS-1 — fondations
 
 ## D-01 — Runtime Docker : Colima au lieu de Docker Desktop
 
@@ -107,3 +114,56 @@ n'utilise la factory ; la corriger évite un piège au Pas 2.
 
 **Note.** L'identité affichable du candidat relève du profil (Pas ultérieur),
 pas de la table `users`.
+
+## Fiches de règle
+
+## D-08 — Index des fiches aligné sur le gel de F03
+
+**Contexte.** La fiche `F03-autopsie-de-l-erreur.md` est passée en statut
+« validée — v1.1, 8 août 2026 ». `docs/regles/README.md` l'annonçait encore
+comme « brouillon — exemple de méthode », et F03 figurait toujours dans le
+tableau « Fonctions en attente de fiche ».
+
+**Décision.** Statut de la ligne mis à jour, et la ligne F03 retirée du tableau
+des fonctions en attente.
+
+**Justification.** L'étape 4 du cycle d'une fiche (`METHODE` §3) est le gel :
+« la fiche passe en statut validée avec sa date, elle fait autorité à partir de
+là ». Un index qui contredit la fiche qu'il indexe est exactement le défaut que
+`METHODE` §1 décrit — une décision prise un mardi qui disparaît le jeudi. Aucun
+contenu de la fiche n'a été touché : le statut est constaté, pas décidé ici.
+
+## D-09 — Les deux points ouverts de F03 versés à la dette
+
+**Contexte.** F03 est validée mais porte deux réserves explicitement
+non bloquantes : les huit codes de cause ne sont pas confirmés par un
+responsable pédagogique, et les formulations candidat FR/AR restent à
+finaliser. Rien dans le dépôt ne les suivait.
+
+**Décision.** Création de DET-16 (codes de cause, échéance « avant le premier
+étiquetage en volume, PAS-6 ») et DET-17 (formulations, échéance « avant
+ouverture publique »).
+
+**Justification.** `METHODE` §5 : les constats non bloquants vont dans
+`docs/DETTE.md` avec une échéance, et « une entrée de dette sans échéance n'est
+pas une dette, c'est un oubli ». Les deux échéances sont dictées par le coût de
+report, pas par une préférence : réétiqueter des questions coûte proportionnel-
+lement au volume déjà produit (donc avant PAS-6), tandis qu'un texte candidat
+provisoire ne gêne que la mise en ligne. Le contenu des réserves n'est pas
+réinterprété — il est repris de la fiche, qui fait autorité.
+
+## D-10 — Aucune implémentation de F03 engagée à ce stade
+
+**Contexte.** F03 validée décrit des conséquences techniques précises : capacité
+`corrections.cause` avec quota, compteur cumulatif par candidat, plafond
+paramétrable en configuration de concours. La tentation est d'enchaîner.
+
+**Décision.** Rien n'est codé. La fiche est gelée, l'index et la dette sont
+alignés, on s'arrête là.
+
+**Justification.** F03 dépend de la banque de questions à distracteurs étiquetés
+(PAS-6, `docs/PAS.md` : « à venir »), et les drapeaux `eligibleForDiagnostic` /
+`eligibleForSimulation` vivent dans le référentiel. Coder la fonction avant son
+pas contredirait `METHODE` §3 — « la fiche s'écrit au moment où la fonction
+sert » — et produirait du code sans le test sur PostgreSQL réel qu'exige le
+cycle de livraison (§5). Le pas en cours est un pas de documentation.

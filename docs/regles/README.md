@@ -7,7 +7,7 @@ code et les tests la citent, ils ne la réinterprètent pas.
 
 | Fiche | Fonction | Statut |
 |---|---|---|
-| `F03-autopsie-de-l-erreur.md` | Autopsie de l'erreur | brouillon — exemple de méthode |
+| `F03-autopsie-de-l-erreur.md` | Autopsie de l'erreur | **validée** — v1.1, 8 août 2026 |
 
 ## Fonctions en attente de fiche
 
@@ -17,7 +17,6 @@ Rédigées au moment où le pas qui les implémente est ouvert, pas avant.
 |---|---|---|
 | F01 | Najah Map — carte de maîtrise | Maîtrise |
 | F02 | Certitude+ — sûr / hésitant / hasard | Tentatives |
-| F03 | Autopsie de l'erreur | Banque de questions |
 | F04 | « Pourquoi pas B ? » — correction par élimination | Tentatives |
 | F05 | Question miroir — vérification du transfert | Banque de questions |
 | F06 | Ordonnance Najah — remédiation calibrée | Maîtrise |

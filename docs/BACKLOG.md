@@ -227,6 +227,8 @@ docker compose up -d                                  # PostgreSQL 16 + Redis
 php artisan migrate && php artisan test               # séquentiel
 ```
 
-La suite **n'est pas garantie parallélisable** : voir §6. L'exécuter avec
-`--parallel` produit des interblocages sur les suppressions de tables. La CI
-l'exécute en séquentiel.
+La suite **n'est pas parallélisable en l'état** : voir §6. `--parallel` ne
+démarre pas — Collision exige `brianium/paratest`, absent des dépendances. Le
+constat d'interblocage sur les suppressions de tables est antérieur et n'a pas
+pu être reproduit au PAS-9 : il reste à vérifier une fois paratest ajouté
+(DET-28). La CI exécute la suite en séquentiel.

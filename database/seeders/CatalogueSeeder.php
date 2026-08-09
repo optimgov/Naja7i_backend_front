@@ -145,7 +145,7 @@ class CatalogueSeeder extends Seeder
      * Taxonomie CRMEF à quatre niveaux (ADR-0012, décision OptimGov).
      *
      * Le niveau « domaine » est conservé par décision, mais il n'est défini
-     * dans aucun document existant (DET-16). Les domaines ci-dessous sont une
+     * dans aucun document existant (DET-27). Les domaines ci-dessous sont une
      * structure minimale de départ : ils doivent être revus par les
      * responsables pédagogiques avant toute production de contenu.
      */
@@ -160,7 +160,7 @@ class CatalogueSeeder extends Seeder
                 ['name_fr' => 'Microcompétence', 'name_ar' => 'كفاية دقيقة'],
             ],
             'min_depth_for_publication' => 3,   // microcompétence, comme l'impose le prompt experts
-            'source_note_fr' => 'Structure provisoire. Le niveau « domaine » reste à définir par les responsables pédagogiques (DET-16).',
+            'source_note_fr' => 'Structure provisoire. Le niveau « domaine » reste à définir par les responsables pédagogiques (DET-27).',
             'source_note_ar' => 'بنية مؤقتة. مستوى «المجال» يبقى في انتظار تحديده من طرف المسؤولين البيداغوجيين.',
         ]);
 

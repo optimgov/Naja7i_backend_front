@@ -2,16 +2,23 @@
 
 namespace App\Providers;
 
+use App\Contracts\AccessGrant;
+use App\Services\DatabaseAccessGrant;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
+     *
+     * PAS-8 : le droit d'accès passe par un contrat, jamais par une lecture
+     * directe d'un abonnement (ADR-0018 §3). L'implémentation actuelle lit la
+     * table `access_grants` ; le jour où la facturation arrive, seule la classe
+     * liée ici change, et aucun contrôleur ne bouge.
      */
     public function register(): void
     {
-        //
+        $this->app->bind(AccessGrant::class, DatabaseAccessGrant::class);
     }
 
     /**

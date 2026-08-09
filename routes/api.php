@@ -2,9 +2,12 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CatalogueController;
+use App\Http\Controllers\Api\V1\DemonstrationController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\LegalController;
+use App\Http\Controllers\Api\V1\ParcoursController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\ProgressionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,6 +42,15 @@ Route::prefix('v1')->group(function () {
         Route::get('epreuves/{code}/competences', [CatalogueController::class, 'examCompetencies']);
         Route::get('familles/{famille}/specialites/{specialite}', [CatalogueController::class, 'specialty']);
     });
+
+    /*
+     * PAS-8 — Démonstration publique de la fiche F03. Une question d'exemple
+     * avec sa correction complète, pour un visiteur sans compte : c'est la
+     * vitrine de ce que le produit sait faire. La réponse porte un avertissement
+     * disant que rien n'a été répondu ni enregistré (ADR-0018 §5).
+     */
+    Route::get('demonstration/correction', [DemonstrationController::class, 'correction'])
+        ->middleware('throttle:30,1');
 
     // Vérification d'e-mail et mot de passe oublié : routes PUBLIQUES. Le
     // candidat clique le lien depuis son application de messagerie, souvent
@@ -75,9 +87,24 @@ Route::prefix('v1')->group(function () {
     });
 
     // --- Session + e-mail vérifié ------------------------------------------
-    // Toutes les routes métier des pas suivants (diagnostic, entraînement,
-    // simulateur, achat) viendront dans ce groupe.
+    // Toutes les routes métier des pas suivants (entraînement, simulateur,
+    // achat) viendront dans ce groupe.
     Route::middleware(['auth:sanctum', 'verified.api'])->group(function () {
-        // Placeholder volontaire : aucune route métier au PAS-2.
+
+        // PAS-8 — Parcours de diagnostic.
+        Route::post('me/diagnostics/{examCode}', [ParcoursController::class, 'startDiagnostic'])
+            ->middleware('throttle:10,1');
+
+        Route::get('me/attempts/{uuid}', [ParcoursController::class, 'show']);
+
+        Route::put('me/attempts/{uuid}/items/{itemUuid}', [ParcoursController::class, 'answer'])
+            ->middleware('throttle:120,1');   // une réponse toutes les 30 s en rythme soutenu
+
+        Route::post('me/attempts/{uuid}/submit', [ParcoursController::class, 'submit']);
+        Route::get('me/attempts/{uuid}/correction', [ParcoursController::class, 'correction']);
+
+        // PAS-8 — Restitution : maîtrise par compétence et ordonnance.
+        Route::get('me/mastery/{examCode}', [ProgressionController::class, 'mastery']);
+        Route::get('me/plan/{examCode}', [ProgressionController::class, 'plan']);
     });
 });

@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use Tests\TestCase;
 
 /**
  * PAS-1.1 (BLOC-3) — Le garde-fou qui transforme une convention en règle.
@@ -13,6 +13,13 @@ use RecursiveIteratorIterator;
  * même : une règle est annoncée dans un document, puis contournée dans le code
  * sans que rien ne l'empêche. Ce test échoue la CI si un chemin de
  * contournement apparaît hors de la liste blanche.
+ *
+ * DET-18 : cette classe étendait `PHPUnit\Framework\TestCase` tout en appelant
+ * `base_path()`, qui exige un conteneur Laravel amorcé. Elle ne passait que par
+ * effet de bord de l'ordre d'exécution — lancée seule, parallélisée ou
+ * réordonnée, elle serait devenue verte sans rien vérifier. Une garde qui cesse
+ * de fonctionner en silence est pire que pas de garde du tout : elle rassure.
+ * D'où `Tests\TestCase`, qui amorce l'application.
  */
 class TenancyArchitectureTest extends TestCase
 {
@@ -31,9 +38,12 @@ class TenancyArchitectureTest extends TestCase
      * PAS-6 ajoute les trois tables d'activité. Contrairement au catalogue, qui
      * est commun à tous les tenants, une tentative appartient à un candidat
      * d'un tenant donné : un accès direct au query builder la sortirait du
-     * scope sans que rien ne le signale.
+     * scope sans que rien ne le signale. PAS-7 y ajoute la maîtrise, qui est
+     * l'agrégat le plus sensible : le score d'un candidat.
      */
-    private const TENANT_SCOPED_TABLES = ['memberships', 'attempts', 'attempt_items', 'responses'];
+    private const TENANT_SCOPED_TABLES = [
+        'memberships', 'attempts', 'attempt_items', 'responses', 'mastery_scores',
+    ];
 
     private const FORBIDDEN_PATTERNS = [
         'withoutGlobalScope' => 'retire un scope global sans passer par TenantBypass',

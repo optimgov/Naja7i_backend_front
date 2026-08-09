@@ -25,8 +25,15 @@ class TenancyArchitectureTest extends TestCase
         'app/Models/Concerns/BelongsToTenant.php',
     ];
 
-    /** Tables isolées : tout accès en SQL brut ou query builder est proscrit. */
-    private const TENANT_SCOPED_TABLES = ['memberships'];
+    /**
+     * Tables isolées : tout accès en SQL brut ou query builder est proscrit.
+     *
+     * PAS-6 ajoute les trois tables d'activité. Contrairement au catalogue, qui
+     * est commun à tous les tenants, une tentative appartient à un candidat
+     * d'un tenant donné : un accès direct au query builder la sortirait du
+     * scope sans que rien ne le signale.
+     */
+    private const TENANT_SCOPED_TABLES = ['memberships', 'attempts', 'attempt_items', 'responses'];
 
     private const FORBIDDEN_PATTERNS = [
         'withoutGlobalScope' => 'retire un scope global sans passer par TenantBypass',

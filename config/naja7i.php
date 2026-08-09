@@ -53,4 +53,18 @@ return [
         'per_email' => ['attempts' => 10,  'decay_seconds' => 900],
         'per_ip' => ['attempts' => 30,  'decay_seconds' => 900],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Quota gratuit de causes d'erreur révélées
+    |--------------------------------------------------------------------------
+    | Fiche F03 : un compte gratuit voit la cause de ses erreurs deux fois.
+    | Le décompte est CUMULATIF et n'est jamais remis à zéro — un compteur
+    | quotidien laisserait le candidat attendre le lendemain plutôt que
+    | s'abonner, et viderait la règle de son sens.
+    |
+    | Externalisé parce que c'est un curseur commercial, pas une constante
+    | technique : le pilote dira si deux est le bon seuil.
+    */
+    'free_cause_quota' => env('FREE_CAUSE_QUOTA', 2),
 ];

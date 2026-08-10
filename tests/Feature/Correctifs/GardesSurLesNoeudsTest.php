@@ -10,6 +10,7 @@ use App\Tenancy\TenantContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -214,27 +215,20 @@ class GardesSurLesNoeudsTest extends TestCase
      * étrangère. Ce qui attend ne peut donc être que le rendez-vous.
      */
     /**
-     * CE QUE CE TEST PROUVE, ET CE QU'IL NE PROUVE PAS.
+     * La garde RÉCLAME le verrou des appartenances — rien de plus.
      *
-     * Il prouve que la garde RÉCLAME le verrou des appartenances : sans le
-     * `PERFORM ... FOR UPDATE`, il vire au rouge. Éprouvé par mutation.
+     * Ce test établit un fait d'ordonnancement, pas une propriété de sécurité :
+     * sans le `PERFORM ... FOR UPDATE`, il vire au rouge, donc le verrou est
+     * bien pris, et il est pris sur l'enfant après le parent — l'ordre
+     * parent-puis-enfants tenu partout, qui évite les interblocages.
      *
-     * Il ne prouve pas que ce verrou ferme une escalade. Sous mutation, la
-     * garde refuse encore — mais par son exception métier au lieu d'attendre,
-     * car l'appartenance posée ici est VALIDÉE, donc visible d'un simple
-     * `count()`. Seule la temporalité change, pas l'issue.
-     *
-     * Et dans le cas que le nom évoque — une attribution réellement EN COURS,
-     * non validée —, `SELECT ... FOR UPDATE` ne peut rien voir : MVCC masque
-     * les lignes non validées. Vérifié en base : l'entrelacement est refusé par
-     * attente avec ET sans ce verrou. Ce qui sérialise là est le rendez-vous
-     * sur la ligne `roles` posé au PAS-13 — le trigger d'appartenance la prend
-     * en `FOR UPDATE`, et `UPDATE roles` l'exige en exclusivité.
-     *
-     * Le verrou de ce lot reste une défense de profondeur cohérente avec
-     * l'ordre parent-puis-enfants ; il n'est pas ce qui porte l'invariant.
+     * L'invariant, lui, est porté ailleurs et vérifié par
+     * `test_aucun_entrelacement_ne_produit_un_role_back_office_distribue()`.
+     * Ce verrou est une défense de profondeur assumée (ADR-0024) : le
+     * rendez-vous sur la ligne `roles` posé au PAS-13 suffit déjà, dans les
+     * deux ordres.
      */
-    public function test_la_garde_de_role_attend_une_attribution_en_cours(): void
+    public function test_la_garde_de_role_reclame_le_verrou_des_appartenances(): void
     {
         $role = Role::create(['code' => 'a-distribuer', 'label_fr' => 'À distribuer', 'label_ar' => 'للتوزيع']);
 
@@ -250,7 +244,7 @@ class GardesSurLesNoeudsTest extends TestCase
 
         try {
             DB::statement('UPDATE roles SET is_staff = true WHERE id = ?', [$role->id]);
-            $this->fail('La garde n\'a pas réclamé le verrou des appartenances.');
+            $this->fail('La garde a traversé sans réclamer le verrou des appartenances.');
         } catch (QueryException $e) {
             $this->assertStringContainsString('lock timeout', strtolower($e->getMessage()));
         } finally {
@@ -260,11 +254,11 @@ class GardesSurLesNoeudsTest extends TestCase
     }
 
     /**
-     * Symétrique, pour la garde de permission — et même réserve que ci-dessus :
-     * sous mutation, la garde refuse encore par son exception métier. Le test
-     * établit que le verrou est réclamé, non qu'il ferme une escalade.
+     * Symétrique : la garde de permission réclame le verrou des rôles, dans le
+     * même ordre. Même portée que ci-dessus — un fait d'ordonnancement, pas la
+     * preuve qu'une escalade est fermée.
      */
-    public function test_la_garde_de_permission_attend_une_mutation_de_role_en_cours(): void
+    public function test_la_garde_de_permission_reclame_le_verrou_des_roles(): void
     {
         $role = $this->roleGlobalDistribue();
         $role->permissions()->attach(Permission::where('code', 'catalogue.view')->value('id'));
@@ -278,13 +272,116 @@ class GardesSurLesNoeudsTest extends TestCase
 
         try {
             DB::statement("UPDATE permissions SET platform_only = true WHERE code = 'catalogue.view'");
-            $this->fail('La garde n\'a pas réclamé le verrou des rôles.');
+            $this->fail('La garde a traversé sans réclamer le verrou des rôles.');
         } catch (QueryException $e) {
             $this->assertStringContainsString('lock timeout', strtolower($e->getMessage()));
         } finally {
             DB::statement("SET lock_timeout = '0'");
             $seconde->rollBack();
         }
+    }
+
+    // ===================================================================
+    // L'INVARIANT, éprouvé sur un entrelacement réel
+    // ===================================================================
+
+    /**
+     * Aucun entrelacement ne produit un rôle back-office porteur d'une
+     * appartenance hors plateforme.
+     *
+     * C'est l'invariant que le lot défend, et il ne se prouve pas par un test
+     * séquentiel : il faut que les deux écritures se croisent réellement, sur
+     * deux sessions PostgreSQL, dans les deux ordres.
+     *
+     * Ce qui les sérialise est le rendez-vous sur la ligne `roles` établi au
+     * PAS-13 — le trigger d'appartenance la prend en `FOR UPDATE`, et
+     * `UPDATE roles` l'exige en exclusivité. Le verrou des appartenances posé
+     * par ce lot n'y contribue pas : `SELECT ... FOR UPDATE` ne voit pas une
+     * ligne non validée, MVCC la masquant. Vérifié en base sur deux sessions,
+     * l'entrelacement ci-dessous est refusé avec ET sans ce verrou.
+     *
+     * Le test porte donc sur l'ISSUE, jamais sur le mécanisme : quel que soit
+     * l'ordre, et que le refus vienne d'une attente ou d'une exception, l'état
+     * final ne contient pas l'escalade.
+     */
+    public function test_aucun_entrelacement_ne_produit_un_role_back_office_distribue(): void
+    {
+        // --- Ordre A : l'attribution commence, la mutation tente de passer ---
+        $role = Role::create([
+            'code' => 'entrelacement-a', 'label_fr' => 'Entrelacement A', 'label_ar' => 'تشابك',
+        ]);
+
+        $seconde = DB::connection('pgsql_concurrent');
+        $seconde->beginTransaction();
+        $seconde->statement("SET lock_timeout = '0'");
+        $seconde->table('memberships')->insert([
+            'uuid' => (string) Str::uuid7(),
+            'tenant_id' => $this->organisme->id,
+            'user_id' => $this->utilisateur->id,
+            'role_id' => $role->id,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        DB::statement("SET lock_timeout = '500ms'");
+
+        $passee = false;
+
+        try {
+            DB::statement('UPDATE roles SET is_staff = true WHERE id = ?', [$role->id]);
+            $passee = true;
+        } catch (QueryException) {
+            // Attente ou refus métier : les deux conviennent, seule l'issue compte.
+        } finally {
+            DB::statement("SET lock_timeout = '0'");
+        }
+
+        // L'attribution aboutit : c'est le pire cas pour l'invariant.
+        $seconde->commit();
+
+        $this->assertFalse($passee, 'La mutation ne doit pas passer pendant une attribution en cours.');
+        $this->assertAucuneEscalade();
+
+        // --- Ordre B : la mutation est acquise, l'attribution arrive après ---
+        $roleB = Role::create([
+            'code' => 'entrelacement-b', 'label_fr' => 'Entrelacement B', 'label_ar' => 'تشابك',
+        ]);
+
+        // Aucune appartenance : devenir back-office est légitime ici.
+        DB::statement('UPDATE roles SET is_staff = true WHERE id = ?', [$roleB->id]);
+        $this->assertTrue((bool) $roleB->fresh()->is_staff);
+
+        $refusee = false;
+
+        try {
+            app(TenantContext::class)->set($this->organisme);
+            $this->utilisateur->memberships()->create(['role_id' => $roleB->id]);
+        } catch (QueryException) {
+            $refusee = true;
+        } finally {
+            app(TenantContext::class)->set($this->plateforme);
+        }
+
+        $this->assertTrue($refusee, 'Un rôle back-office ne s\'attribue pas dans un organisme.');
+        $this->assertAucuneEscalade();
+    }
+
+    /**
+     * L'invariant lui-même, formulé en SQL : aucun rôle de plateforme marqué
+     * back-office ne porte d'appartenance hors du tenant plateforme.
+     */
+    private function assertAucuneEscalade(): void
+    {
+        $violations = DB::selectOne(
+            'SELECT count(*) AS n
+             FROM memberships m
+             JOIN roles r ON r.id = m.role_id
+             WHERE r.is_staff AND r.tenant_id IS NULL AND m.tenant_id <> 1'
+        )->n;
+
+        $this->assertSame(
+            0, (int) $violations,
+            'Un rôle back-office de plateforme porte une appartenance hors plateforme.'
+        );
     }
 
     // ===================================================================

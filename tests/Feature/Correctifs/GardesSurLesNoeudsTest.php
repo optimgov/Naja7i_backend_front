@@ -289,9 +289,20 @@ class GardesSurLesNoeudsTest extends TestCase
      * Aucun entrelacement ne produit un rôle back-office porteur d'une
      * appartenance hors plateforme.
      *
-     * C'est l'invariant que le lot défend, et il ne se prouve pas par un test
-     * séquentiel : il faut que les deux écritures se croisent réellement, sur
-     * deux sessions PostgreSQL, dans les deux ordres.
+     * C'est l'invariant que le lot défend. Il est éprouvé sur deux situations
+     * de nature DIFFÉRENTE, et le docblock du PAS-14.1 les confondait en
+     * disant « dans les deux ordres » :
+     *
+     *  - ORDRE A — concurrence réelle. Une attribution non validée est
+     *    maintenue ouverte sur une seconde session PostgreSQL pendant que la
+     *    mutation du rôle est tentée. Les deux écritures se croisent, et c'est
+     *    là que la sérialisation se prouve.
+     *  - ORDRE B — séquence, pas concurrence. La mutation est déjà ACQUISE et
+     *    validée ; l'attribution arrive après, sur un état stable. Aucun
+     *    entrelacement n'y est vérifié, seulement que la garde d'appartenance
+     *    refuse ce qu'elle doit refuser.
+     *
+     * Les deux comptent, mais seul l'ordre A porte la preuve de concurrence.
      *
      * Ce qui les sérialise est le rendez-vous sur la ligne `roles` établi au
      * PAS-13 — le trigger d'appartenance la prend en `FOR UPDATE`, et
@@ -306,7 +317,7 @@ class GardesSurLesNoeudsTest extends TestCase
      */
     public function test_aucun_entrelacement_ne_produit_un_role_back_office_distribue(): void
     {
-        // --- Ordre A : l'attribution commence, la mutation tente de passer ---
+        // --- ORDRE A : concurrence réelle — l'attribution reste ouverte ---
         $role = Role::create([
             'code' => 'entrelacement-a', 'label_fr' => 'Entrelacement A', 'label_ar' => 'تشابك',
         ]);
@@ -341,7 +352,7 @@ class GardesSurLesNoeudsTest extends TestCase
         $this->assertFalse($passee, 'La mutation ne doit pas passer pendant une attribution en cours.');
         $this->assertAucuneEscalade();
 
-        // --- Ordre B : la mutation est acquise, l'attribution arrive après ---
+        // --- ORDRE B : séquence — la mutation est acquise et validée ---
         $roleB = Role::create([
             'code' => 'entrelacement-b', 'label_fr' => 'Entrelacement B', 'label_ar' => 'تشابك',
         ]);

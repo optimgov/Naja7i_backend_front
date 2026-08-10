@@ -24,6 +24,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 11 | Correctifs de revue 2 : garde d'appartenance, publication contrôlée en base, gel complet, quota atomique, première action protégée par permission | `82a4a77` |
 | — | SHA du PAS-11 au journal et au backlog | `74aeec3` |
 | 12 | Correctifs de contre-revue : sortie de l'état publié bornée au retrait, sources gelées, permission réservée refusée sur un rôle distribué, verrou de tentative | `83f79ff` |
+| — | SHA du PAS-12 au journal et au backlog | `9f98ec9` |
+| 13 | Sérialisation des invariants : verrou parent avant lecture du statut, déplacement d'enfant contrôlé sur les deux parents, état retiré gelé comme publié | `985a318` |
 
 ## Lots frontend
 

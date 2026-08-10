@@ -133,6 +133,20 @@ corrompue par un autre chemin ; `answer()` réclame le verrou de la tentative
 avant de relire son état, prouvé par un entrelacement réel sur une seconde
 connexion PostgreSQL — un test séquentiel ne prouve rien sur une course.
 
+### PAS-13 — Sérialisation des invariants · `985a318`
+**Acceptation :** le statut du parent est lu sous verrou, jamais en lecture
+optimiste ; un enfant déplacé est contrôlé sur ses DEUX parents, l'ancien comme
+le nouveau ; l'état `retired` est gelé au même titre que `published` — une
+correction déjà servie ne se réécrit pas davantage après retrait ; les triggers
+d'appartenance et d'attachement de permission se donnent rendez-vous sur la
+ligne `roles`, ce qui sérialise deux chemins qui pouvaient auparavant se croiser.
+
+**Épreuve :** les quatre gardes sont éprouvées par mutation, chacune couverte
+par exactement un test qui vire au rouge sans son verrou. Deux des tests livrés
+ne discriminaient pas — l'un mesurait une autre garde, l'autre une clé
+étrangère — et ont été doublés de tests isolants (`FOR NO KEY UPDATE`,
+verrouillage d'enfant sans déclenchement de trigger).
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

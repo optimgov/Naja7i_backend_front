@@ -174,6 +174,21 @@ tomber le seul test d'invariant. Le critère 3 est rempli : le test de
 concurrence prouve l'entrelacement recherché et n'observe pas un verrou
 incident.
 
+### PAS-14.2 — Le sens du changement de portée · `e367c61`
+**Origine :** contre-revue PAS-14.1, un bloquant.
+**Nature :** inversion de sens, pas trou de couverture. La garde du PAS-14
+contrôlait `organisme → global` alors que l'état interdit — un rôle d'organisme
+portant une permission réservée à la plateforme — se crée par `global →
+organisme`. Les deux sens sont désormais contrôlés, le second parce qu'il rend
+le rôle attribuable partout.
+
+**Épreuve :** neutraliser la condition fait tomber les trois tests du sens
+dangereux. Le test d'invariant a été corrigé pour échouer EN NOMMANT l'état :
+son assertion de chemin le précédait et court-circuitait la requête d'état,
+PHPUnit s'arrêtant à la première assertion en défaut. Il tombait pour la bonne
+cause en la rapportant par le mauvais symptôme — le motif relevé aux PAS-13 et
+PAS-14, cette fois dans l'ordre des assertions.
+
 > **Lignée correctrice ouverte au PAS-10.** PAS-10, PAS-11, PAS-12 et PAS-13
 > forment une même lignée thématique — les invariants imposés par la base — et
 > elle doit se clore au PAS-14. Elle dépasse le plafond de deux rounds du §8 :

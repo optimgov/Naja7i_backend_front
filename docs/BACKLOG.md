@@ -157,11 +157,22 @@ sens inverse — lever une réservation — reste ouvert, conformément au quatr
 critère de sortie du §8.
 
 **Épreuve :** sept mutations, les deux verrous et les cinq conditions prises
-séparément, toutes détectées. Réserve consignée dans le fichier de test : les
-deux tests de verrou établissent que le verrou est réclamé, non qu'il ferme une
-escalade — sous mutation la garde refuse encore, par son exception métier. La
-sérialisation de l'entrelacement « attribution en cours » vient du rendez-vous
-sur la ligne `roles` posé au PAS-13, vérifié sur deux sessions.
+séparément, toutes détectées.
+
+### PAS-14.1 — Critère 3 du §8 porté par un test d'entrelacement · `168f870`
+**Origine :** revue PAS-14, arbitrage d'OptimGov.
+**Acceptation :** les deux tests de verrou sont ramenés à ce qu'ils établissent
+— le verrou est réclamé, l'ordre parent-puis-enfants est tenu — et ne
+revendiquent plus de fermer une escalade. L'invariant a son propre test, sur
+deux sessions et dans les deux ordres, qui vérifie l'ISSUE et non le mécanisme :
+aucun rôle back-office de plateforme ne porte d'appartenance hors plateforme.
+
+**Contre-preuve, deux mutations disjointes :** retirer le verrou du PAS-14 fait
+tomber le seul test de verrou, l'invariant restant vert — c'est une défense de
+profondeur assumée ; retirer le rendez-vous du PAS-13 sur la ligne `roles` fait
+tomber le seul test d'invariant. Le critère 3 est rempli : le test de
+concurrence prouve l'entrelacement recherché et n'observe pas un verrou
+incident.
 
 > **Lignée correctrice ouverte au PAS-10.** PAS-10, PAS-11, PAS-12 et PAS-13
 > forment une même lignée thématique — les invariants imposés par la base — et

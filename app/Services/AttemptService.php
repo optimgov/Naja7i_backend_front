@@ -14,19 +14,26 @@ use RuntimeException;
 /**
  * Cycle de vie d'une tentative.
  *
- * REVUE PAS-6 BLOC-2 — deux séquences « lire puis écrire » sans verrou :
+ * CONTRE-REVUE BLOC-1 — la course réponse/soumission était toujours ouverte,
+ * après deux tentatives de correction.
  *
- *  - `answer()` faisait `doesntExist()` puis `updateOrCreate()`. Deux requêtes
- *    concurrentes sur le même item pouvaient toutes deux conclure à l'absence :
- *    l'une échouait sur l'unicité, ou `answered_count` était incrémenté deux
- *    fois pour une seule réponse.
- * Corrigé par verrouillage de ligne et par incrément conditionnel : la base
- * arbitre, l'application compte les lignes affectées.
+ * Ce qui n'allait pas : `answer()` lisait l'état de la tentative AVANT la
+ * transaction, puis ne verrouillait que l'item. `submit()` verrouillait la
+ * tentative. Les deux ne se disputaient donc jamais la même ligne :
  *
- * PAS-11 — le décompte des causes révélées a quitté ce service pour
- * `CauseRevealService` : la revue PAS-10 BLOC-3 a montré que l'atomicité y
- * portait sur la réponse alors que la ressource rare est le quota. Les deux
- * sujets n'avaient pas à cohabiter dans la même classe.
+ *     A lit « in_progress »
+ *     B verrouille la tentative, corrige, clôt
+ *     A entre en transaction, verrouille l'item, écrit
+ *     → une réponse existe après une correction qui l'ignore
+ *
+ * Et le test censé le couvrir était séquentiel : il soumettait entièrement
+ * avant d'appeler `answer()`. Il vérifiait « une tentative close refuse une
+ * réponse », pas l'entrelacement.
+ *
+ * Correction : `answer()` verrouille et RELIT la tentative en tête de
+ * transaction, puis vérifie son état sous verrou. L'ordre de verrouillage est
+ * identique dans les deux méthodes — tentative, puis items — pour qu'aucun
+ * interblocage ne remplace la course.
  */
 final class AttemptService
 {
@@ -93,11 +100,11 @@ final class AttemptService
     }
 
     /**
-     * Enregistre une réponse, de façon idempotente même sous concurrence.
+     * Enregistre une réponse.
      *
-     * L'item est verrouillé pour la durée de la transaction : deux requêtes
-     * simultanées se sérialisent, la seconde voit la réponse de la première et
-     * la met à jour au lieu d'en créer une seconde.
+     * Le contrôle préalable hors transaction est conservé pour produire un
+     * message immédiat dans le cas courant — mais il ne DÉCIDE rien : la seule
+     * vérification qui fait foi est celle effectuée sous verrou.
      */
     public function answer(
         AttemptItem $item,
@@ -106,20 +113,32 @@ final class AttemptService
         ?int $elapsedMs = null,
         ?string $clientReportedAt = null,
     ): Response {
-        $attempt = $item->attempt;
-
-        if (! $attempt->isOpen()) {
-            throw new RuntimeException('Cette tentative est close : aucune réponse ne peut plus être enregistrée.');
-        }
-
         if ($option !== null && $option->question_id !== $item->question_id) {
             throw new RuntimeException('L\'option choisie n\'appartient pas à la question présentée.');
         }
 
-        return DB::transaction(function () use ($item, $option, $confidence, $elapsedMs, $clientReportedAt, $attempt) {
-            // Verrou de ligne : sérialise les écritures concurrentes sur cet item.
-            AttemptItem::where('id', $item->id)->lockForUpdate()->first();
+        return DB::transaction(function () use ($item, $option, $confidence, $elapsedMs, $clientReportedAt) {
+            // 1. La tentative d'abord — même ordre que submit(), pas d'interblocage.
+            $attempt = Attempt::where('id', $item->attempt_id)->lockForUpdate()->first();
 
+            if ($attempt === null) {
+                throw new RuntimeException('Tentative introuvable.');
+            }
+
+            // 2. L'état est relu sous verrou : une soumission concurrente est
+            //    désormais visible, et elle gagne.
+            if ($attempt->status !== 'in_progress') {
+                throw new RuntimeException(
+                    'Cette tentative est close : aucune réponse ne peut plus être enregistrée.'
+                );
+            }
+
+            if ($attempt->hasExpired()) {
+                throw new RuntimeException('Cette tentative a expiré.');
+            }
+
+            // 3. Puis l'item.
+            $verrouille = AttemptItem::where('id', $item->id)->lockForUpdate()->first();
             $existante = Response::where('attempt_item_id', $item->id)->lockForUpdate()->first();
 
             $response = Response::updateOrCreate(
@@ -133,36 +152,39 @@ final class AttemptService
                 ]
             );
 
-            // L'incrément n'a lieu que si la réponse est réellement nouvelle,
-            // constaté sous verrou et non par une lecture préalable.
             if ($existante === null) {
                 Attempt::where('id', $attempt->id)->increment('answered_count');
             }
 
-            if ($item->presented_at === null) {
-                $item->update(['presented_at' => now()]);
+            if ($verrouille !== null && $verrouille->presented_at === null) {
+                AttemptItem::where('id', $item->id)->update(['presented_at' => now()]);
             }
 
             return $response;
         });
     }
 
+    /**
+     * Clôt la tentative et fige les corrections.
+     * Même ordre de verrouillage que `answer()` : tentative, puis items.
+     */
     public function submit(Attempt $attempt): Attempt
     {
-        if ($attempt->status !== 'in_progress') {
-            return $attempt;
-        }
-
         return DB::transaction(function () use ($attempt) {
             $verrouillee = Attempt::where('id', $attempt->id)->lockForUpdate()->first();
 
-            if ($verrouillee->status !== 'in_progress') {
-                return $verrouillee;   // une soumission concurrente a gagné
+            if ($verrouillee === null || $verrouillee->status !== 'in_progress') {
+                return $verrouillee ?? $attempt;   // rejeu, ou soumission concurrente
             }
 
             $justes = 0;
 
-            foreach ($verrouillee->items()->with(['response.selectedOption'])->get() as $item) {
+            $items = $verrouillee->items()
+                ->lockForUpdate()
+                ->with(['response.selectedOption'])
+                ->get();
+
+            foreach ($items as $item) {
                 $response = $item->response;
 
                 if ($response === null) {

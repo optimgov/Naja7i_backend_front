@@ -3,6 +3,31 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+/*
+ * Définie une fois, utilisée deux fois. `pgsql_concurrent` doit rester le strict
+ * jumeau de `pgsql` : deux blocs recopiés divergeraient au premier changement
+ * d'hôte ou de mot de passe, et les tests de concurrence se mettraient à
+ * interroger une autre base sans que rien ne le signale.
+ *
+ * On ne peut pas s'appuyer sur `config('database.connections.pgsql')` ici : ce
+ * fichier est évalué POUR construire cette configuration, elle n'existe pas
+ * encore au moment où il s'exécute.
+ */
+$pgsql = [
+    'driver' => 'pgsql',
+    'url' => env('DB_URL'),
+    'host' => env('DB_HOST', '127.0.0.1'),
+    'port' => env('DB_PORT', '5432'),
+    'database' => env('DB_DATABASE', 'laravel'),
+    'username' => env('DB_USERNAME', 'root'),
+    'password' => env('DB_PASSWORD', ''),
+    'charset' => env('DB_CHARSET', 'utf8'),
+    'prefix' => '',
+    'prefix_indexes' => true,
+    'search_path' => 'public',
+    'sslmode' => env('DB_SSLMODE', 'prefer'),
+];
+
 return [
 
     /*
@@ -84,20 +109,20 @@ return [
             ]) : [],
         ],
 
-        'pgsql' => [
-            'driver' => 'pgsql',
-            'url' => env('DB_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
-            'charset' => env('DB_CHARSET', 'utf8'),
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
-        ],
+        'pgsql' => $pgsql,
+
+        /*
+         * Seconde connexion, réservée aux TESTS DE CONCURRENCE.
+         *
+         * Une transaction ne s'entrelace pas avec elle-même : prouver qu'un
+         * verrou est réclamé exige une session distincte, qui le détienne
+         * pendant que la première tente d'écrire. Sans elle, un test de course
+         * ne prouve rien — il vérifie seulement que deux appels séquentiels se
+         * comportent comme deux appels séquentiels.
+         *
+         * Aucun code applicatif ne doit l'utiliser.
+         */
+        'pgsql_concurrent' => array_merge($pgsql, ['name' => 'pgsql_concurrent']),
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',

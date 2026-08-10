@@ -28,6 +28,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -322,7 +323,7 @@ class CorrectifsRevue2Test extends TestCase
     // PAS-10 BLOC-2 — le gel couvre toutes les colonnes
     // ===================================================================
 
-    /** @dataProvider colonnesGelees */
+    #[DataProvider('colonnesGelees')]
     public function test_chaque_colonne_d_une_question_publiee_est_gelee(string $colonne, string $sql): void
     {
         $question = $this->questionPubliee();

@@ -147,6 +147,16 @@ ne discriminaient pas — l'un mesurait une autre garde, l'autre une clé
 étrangère — et ont été doublés de tests isolants (`FOR NO KEY UPDATE`,
 verrouillage d'enfant sans déclenchement de trigger).
 
+> **Lignée correctrice ouverte au PAS-10.** PAS-10, PAS-11, PAS-12 et PAS-13
+> forment une même lignée thématique — les invariants imposés par la base — et
+> elle doit se clore au PAS-14. Elle dépasse le plafond de deux rounds du §8 :
+> **chaque round a été arbitré explicitement par OptimGov**, comme le prévoit ce
+> plafond. Le fait est inscrit ici pour n'avoir pas à être déduit du journal.
+>
+> Le plafond porte sur un pas ; les cinq critères de sortie du §8 portent sur
+> cette lignée. Conformément au §2, PAS-14 n'est pas listé ci-dessus tant qu'il
+> n'a pas de SHA.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
@@ -254,6 +264,62 @@ arbitrée et inscrite ici, **son absence n'est pas un échec d'audit**.
 
 **Limites :** cinq bloquants maximum par pas. Deux rounds de correction
 maximum, puis arbitrage humain.
+
+### Critères de sortie d'un sous-cycle
+
+Un sous-cycle de correction est clos lorsque les invariants qui l'ont ouvert
+sont couverts par une règle générale exécutable, et non par une accumulation de
+correctifs ponctuels.
+
+Cette règle d'arrêt n'est pas celle des limites ci-dessus, et les deux ne se
+contredisent pas : elles mesurent des unités différentes. **Le plafond de deux
+rounds s'applique à un pas donné** — au-delà, OptimGov arbitre. **Les cinq
+critères de sortie s'appliquent à une lignée thématique**, qui peut traverser
+plusieurs pas.
+
+Les critères de sortie sont les suivants :
+
+1. la règle générale est formulée dans l'ADR concerné et son périmètre est
+   explicite ;
+2. chaque garde critique possède un test discriminant : retirer ou neutraliser
+   la garde fait échouer au moins un test précis pour la raison visée ;
+3. les tests de concurrence prouvent l'entrelacement recherché et n'observent
+   pas un verrou incident produit par une clé étrangère ou une autre garde ;
+4. une mutation qui ne peut que **réduire** les privilèges reste autorisée, sauf
+   invariant métier contraire explicitement documenté et testé ;
+5. après clôture, une nouvelle variante théorique du même motif ne suffit pas à
+   rouvrir le sous-cycle : elle est évaluée selon le critère de risque
+   ci-dessous.
+
+La clôture d'un sous-cycle est **prononcée par OptimGov**, sur constat que les
+cinq critères sont remplis. L'architecte et l'audit externe établissent ce
+constat ; ils ne le prononcent pas (`METHODE.md` §4).
+
+**Réouverture d'un sous-cycle clos.** Un scénario ne rouvre le sous-cycle que
+s'il réunit simultanément les trois conditions suivantes :
+
+- **Acteur existant :** l'acteur capable d'exécuter le scénario existe dans
+  l'état actuel du système ;
+- **Chemin atteignable :** le scénario est réalisable sans privilège
+  d'administration de base de données ;
+- **Dommage identifiable :** la réussite du scénario produit un dommage concret
+  et identifiable sur les données, les droits, la confidentialité, l'intégrité
+  du parcours ou un engagement métier.
+
+À défaut de réunir ces trois conditions, le constat **ne rouvre pas** le
+sous-cycle. Il est inscrit au registre de dette avec une **échéance explicite**,
+liée au moment où l'hypothèse deviendra atteignable ou au jalon où son risque
+devra être réévalué.
+
+**Portée du critère de privilège.** Ce critère régit la RÉOUVERTURE d'un
+sous-cycle, non le maintien ni la couverture des défenses déjà en place. Une
+défense de profondeur reste légitime et testée même si le scénario qu'elle
+couvre ne rouvre pas un sous-cycle : c'est le cas du contrôle porté par
+`PermissionResolver`, éprouvé au PAS-12 en désactivant réellement les triggers,
+et de la position d'ADR-0021 selon laquelle « la base garantit qu'aucun chemin
+ne l'esquive ». Constater qu'un scénario exige un privilège d'administration de
+base répond à la question « faut-il rouvrir ? », jamais à « faut-il retirer
+cette garde ? ».
 
 **Ce qui ne constitue pas un constat recevable :**
 

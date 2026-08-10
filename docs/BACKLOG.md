@@ -147,6 +147,22 @@ ne discriminaient pas — l'un mesurait une autre garde, l'autre une clé
 étrangère — et ont été doublés de tests isolants (`FOR NO KEY UPDATE`,
 verrouillage d'enfant sans déclenchement de trigger).
 
+### PAS-14 — Gardes sur les nœuds du graphe d'autorisation · `c628b2b`
+**Acceptation :** les gardes des PAS-9 à 13 portaient sur les ARÊTES du graphe
+d'autorisation — `memberships`, `permission_role` ; celles-ci ferment ses NŒUDS
+— `roles`, `permissions` — dont muter un attribut après distribution
+contournait les précédentes. La portée d'un rôle distribué est figée ; `is_staff`
+et `platform_only` ne se posent plus après distribution hors plateforme ; le
+sens inverse — lever une réservation — reste ouvert, conformément au quatrième
+critère de sortie du §8.
+
+**Épreuve :** sept mutations, les deux verrous et les cinq conditions prises
+séparément, toutes détectées. Réserve consignée dans le fichier de test : les
+deux tests de verrou établissent que le verrou est réclamé, non qu'il ferme une
+escalade — sous mutation la garde refuse encore, par son exception métier. La
+sérialisation de l'entrelacement « attribution en cours » vient du rendez-vous
+sur la ligne `roles` posé au PAS-13, vérifié sur deux sessions.
+
 > **Lignée correctrice ouverte au PAS-10.** PAS-10, PAS-11, PAS-12 et PAS-13
 > forment une même lignée thématique — les invariants imposés par la base — et
 > elle doit se clore au PAS-14. Elle dépasse le plafond de deux rounds du §8 :

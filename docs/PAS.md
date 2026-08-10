@@ -26,6 +26,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 12 | Correctifs de contre-revue : sortie de l'état publié bornée au retrait, sources gelées, permission réservée refusée sur un rôle distribué, verrou de tentative | `83f79ff` |
 | — | SHA du PAS-12 au journal et au backlog | `9f98ec9` |
 | 13 | Sérialisation des invariants : verrou parent avant lecture du statut, déplacement d'enfant contrôlé sur les deux parents, état retiré gelé comme publié | `985a318` |
+| — | SHA du PAS-13, puis critères de sortie de sous-cycle au backlog | `d78be7b`, `de8ce18` |
+| 14 | Gardes sur les nœuds du graphe d'autorisation : portée d'un rôle distribué immuable, is_staff et platform_only figés après distribution | `c628b2b` |
 
 ## Lots frontend
 

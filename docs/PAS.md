@@ -21,7 +21,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | Backlog et grille d'audit (NAJA7I-BACKLOG-002) | `d643f96` |
 | 9 | Permissions fines : référentiel, rôles par organisme, garde en base | `229ac7a` |
 | 10 | Correctifs de revue : unicités tenant-aware, actes en ajout seul, contenu gelé | `cf88cc6` |
-| 11 | Correctifs de revue 2 : garde d'appartenance, publication contrôlée en base, gel complet, quota atomique, première action protégée par permission | *en cours* |
+| 11 | Correctifs de revue 2 : garde d'appartenance, publication contrôlée en base, gel complet, quota atomique, première action protégée par permission | `82a4a77` |
 
 ## Lots frontend
 

@@ -115,7 +115,7 @@ architecturale cherchant les CHEMINS d'accès bas niveau et non les noms de
 tables — `DB::table($variable)` et `DB::connection()->table(...)` sont désormais
 détectés.
 
-### PAS-11 — Correctifs de revue 2 · *SHA au commit suivant*
+### PAS-11 — Correctifs de revue 2 · `82a4a77`
 **Acceptation :** un rôle de back-office de plateforme n'est jamais attribuable
 dans un organisme ; la publication est contrôlée en base quel que soit le
 chemin d'écriture ; le gel d'une question publiée procède par liste blanche, donc

@@ -5,11 +5,18 @@ namespace App\Models;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use RuntimeException;
 
 /**
- * Trace d'un acte juridique. JAMAIS modifiée ni supprimée : un retrait de
- * consentement marketing crée un événement `marketing_withdrawn`, il n'efface
- * pas l'octroi antérieur. La suite d'événements EST la preuve.
+ * Trace d'un acte juridique — strictement en ajout seul.
+ *
+ * REVUE PAS-2 BLOC-2 : la classe annonçait « jamais modifiée ni supprimée »
+ * dans sa documentation, et n'en empêchait rien. Deux garde-fous désormais :
+ * un trigger PostgreSQL qui refuse UPDATE et DELETE quel que soit le chemin,
+ * et ces gardes applicatives qui produisent un message compréhensible avant
+ * même d'atteindre la base.
+ *
+ * Une preuve juridique altérable n'est pas une preuve.
  */
 class LegalEvent extends Model
 {
@@ -33,6 +40,21 @@ class LegalEvent extends Model
     protected function casts(): array
     {
         return ['occurred_at' => 'datetime'];
+    }
+
+    public static function booted(): void
+    {
+        static::updating(function () {
+            throw new RuntimeException(
+                'Un acte juridique ne se modifie pas. Un changement d\'avis crée un nouvel acte (ADR-0005).'
+            );
+        });
+
+        static::deleting(function () {
+            throw new RuntimeException(
+                'Un acte juridique ne se supprime pas : il constitue la preuve opposable (ADR-0005).'
+            );
+        });
     }
 
     public function user(): BelongsTo

@@ -210,6 +210,12 @@ class ParcoursController extends Controller
                 $etat = $this->attempts->canRevealCause($user, $premium);
 
                 if ($etat['allowed']) {
+                    /* Le service rend `true` quand il vient de consommer une
+                     * unité, `false` quand une consultation concurrente l'avait
+                     * déjà consommée pour cette réponse. Dans les deux cas la
+                     * cause est payée, donc visible — mais elle n'est décomptée
+                     * qu'une fois, et c'est l'UPDATE conditionnel en base qui
+                     * l'arbitre, jamais ce contrôleur. */
                     $this->attempts->markCauseRevealed($user, $response);
                     $visible = true;
                 }

@@ -8,12 +8,16 @@ use App\Models\User;
 use Illuminate\Http\Request;
 
 /**
- * Enregistrement et lecture des actes juridiques.
+ * Actes juridiques.
  *
- * Le point central (BLOC-4) : l'état courant se calcule TOUJOURS par rapport
- * au document actuellement publié. Une acceptation de la v1 ne satisfait pas
- * la v2 — c'est précisément le défaut de la conception initiale, qui lisait
- * « la dernière ligne par type ».
+ * REVUE PAS-2 BLOC-1 — l'état courant était recherché par type et version,
+ * sans comparer la LOCALE ni l'identifiant du document. Un candidat ayant
+ * accepté les CGU françaises satisfaisait donc les CGU arabes de même version :
+ * la plateforme affirmait qu'il avait accompli un acte sur un texte qu'il
+ * n'avait jamais reçu.
+ *
+ * La comparaison porte désormais sur `legal_document_id` — le document exact,
+ * pas une version homonyme dans une autre langue.
  */
 final class LegalConsentService
 {
@@ -39,44 +43,38 @@ final class LegalConsentService
     }
 
     /**
-     * L'utilisateur a-t-il accompli l'acte requis sur la version ACTUELLEMENT
-     * publiée ? Une nouvelle version fait automatiquement repasser à false.
+     * L'acte a-t-il été accompli sur le DOCUMENT EXACT en vigueur — bon type,
+     * bonne version, bonne langue ?
      */
     public function hasAcceptedCurrent(User $user, string $kind, string $locale = 'fr'): bool
     {
-        $current = LegalDocument::current($kind, $locale);
+        $document = LegalDocument::current($kind, $locale);
 
-        $last = LegalEvent::where('user_id', $user->id)
-            ->whereHas('document', fn ($q) => $q->where('kind', $kind)->where('version', $current->version))
+        $dernier = LegalEvent::where('user_id', $user->id)
+            ->where('legal_document_id', $document->id)   // le document, pas sa version
             ->orderByDesc('occurred_at')
+            ->orderByDesc('id')                            // départage deux actes du même instant
             ->first();
 
-        if ($last === null) {
+        if ($dernier === null) {
             return false;
         }
 
-        // Pour le marketing, le dernier acte peut être un retrait.
-        return $last->action !== LegalEvent::MARKETING_WITHDRAWN;
+        return $dernier->action !== LegalEvent::MARKETING_WITHDRAWN;
     }
 
-    /**
-     * Actes juridiques que l'utilisateur doit encore accomplir sur les versions
-     * publiées. Alimente le blocage applicatif lorsqu'une nouvelle version des
-     * CGU ou de la politique est mise en ligne.
-     *
-     * @return list<string> kinds en attente
-     */
+    /** @return list<string> */
     public function pendingActions(User $user, string $locale = 'fr'): array
     {
-        $pending = [];
+        $enAttente = [];
 
         foreach ([LegalDocument::KIND_TERMS, LegalDocument::KIND_PRIVACY] as $kind) {
             if (! $this->hasAcceptedCurrent($user, $kind, $locale)) {
-                $pending[] = $kind;
+                $enAttente[] = $kind;
             }
         }
 
-        return $pending;
+        return $enAttente;
     }
 
     private function record(
@@ -100,14 +98,6 @@ final class LegalConsentService
         ]);
     }
 
-    /**
-     * IP tronquée : /24 en IPv4, /48 en IPv6.
-     *
-     * L'IP est une donnée personnelle. La preuve principale est le couple
-     * utilisateur + document + version + empreinte + horodatage ; l'IP n'est
-     * qu'un élément complémentaire. Conserver l'adresse complète sans nécessité
-     * démontrée irait contre le principe de minimisation.
-     */
     private function truncateIp(?string $ip): ?string
     {
         if ($ip === null) {
@@ -121,18 +111,12 @@ final class LegalConsentService
         }
 
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-            $blocks = explode(':', $ip);
-
-            return implode(':', array_slice($blocks, 0, 3)).'::';
+            return implode(':', array_slice(explode(':', $ip), 0, 3)).'::';
         }
 
         return null;
     }
 
-    /**
-     * HMAC et non hash nu : un user-agent a une diversité faible, un simple
-     * SHA-256 se recalculerait par dictionnaire en quelques secondes.
-     */
     private function hmacUserAgent(?string $userAgent): ?string
     {
         if ($userAgent === null || $userAgent === '') {

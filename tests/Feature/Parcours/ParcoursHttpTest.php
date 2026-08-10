@@ -12,6 +12,7 @@ use App\Models\Remediation;
 use App\Models\Source;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\QuestionTransitionService;
 use App\Tenancy\TenantContext;
 use Database\Seeders\CatalogueSeeder;
 use Database\Seeders\Crmef2025Seeder;
@@ -78,14 +79,15 @@ class ParcoursHttpTest extends TestCase
             ]);
 
             for ($i = 1; $i <= $parSousDomaine; $i++) {
+                /* Champs de transition non assignables (REVUE PAS-5 BLOC-1) :
+                 * la question naît brouillon et gagne sa publication par le
+                 * service, seul chemin ouvert. */
                 $question = Question::create([
                     'exam_id' => $this->epreuve->id, 'competency_node_id' => $noeud->id,
                     'locale' => 'fr', 'sibling_group' => (string) Str::uuid7(),
                     'stem' => "Énoncé {$i} — {$noeud->code}",
                     'explanation' => 'JUSTIFICATION_GENERALE_SECRETE',
                     'remediation_id' => $remediation->id,
-                    'status' => 'pedagogically_validated', 'validator_id' => $valideur->id,
-                    'published_at' => now(),
                 ]);
 
                 foreach ([
@@ -101,7 +103,12 @@ class ParcoursHttpTest extends TestCase
                 }
 
                 $question->contentSources()->attach($source->id, ['verification' => 'verified']);
-                $question->update(['eligible_for_diagnostic' => true, 'status' => 'published']);
+
+                $transitions = app(QuestionTransitionService::class);
+                $transitions->submitForReview($question);
+                $transitions->markReviewed($question, $valideur);
+                $transitions->validate($question, $valideur);
+                $transitions->publish($question, forDiagnostic: true);
             }
         }
     }

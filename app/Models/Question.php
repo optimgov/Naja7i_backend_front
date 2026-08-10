@@ -12,36 +12,65 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Une question de la banque.
  *
- * MONOLINGUE par conception : la version française et la version arabe d'une
- * même notion sont deux contenus éditoriaux distincts, liés par
- * `sibling_group`. Le référentiel CRMEF l'impose pour l'épreuve de sciences de
- * l'éducation, où le candidat compose dans la langue de son choix.
+ * REVUE PAS-5 BLOC-1 — les champs de TRANSITION ÉDITORIALE sortent de
+ * `$fillable` : `status`, `published_at`, `retired_at`, `validator_id`,
+ * `reviewer_id`, `version`, `supersedes_id` et les deux drapeaux
+ * d'éligibilité. Ils étaient assignables en masse, ce qui permettait de créer
+ * une question directement en `published` sans qu'aucun contrôle éditorial ne
+ * s'exécute.
+ *
+ * Ces champs se modifient désormais par `QuestionTransitionService`, chemin
+ * unique et transactionnel. La même discipline que `tenant_id` sur les tables
+ * isolées, pour la même raison.
  */
 class Question extends Model
 {
     use HasPublicUuid;
 
-    /** Statuts éditoriaux, du brouillon au retrait. */
     public const STATUSES = [
         'draft', 'a_verifier', 'reviewed', 'pedagogically_validated', 'published', 'retired',
     ];
 
-    /** Seul ce statut autorise une présentation au candidat. */
     public const PUBLISHABLE = 'published';
 
+    /** Contenu éditorial seulement. Les transitions passent par le service. */
     protected $fillable = [
         'exam_id', 'competency_node_id', 'locale', 'sibling_group',
         'stem', 'explanation', 'difficulty', 'cognitive_level',
-        'version', 'supersedes_id', 'mirror_question_id', 'remediation_id',
-        'delayed_review_days', 'eligible_for_diagnostic', 'eligible_for_simulation',
-        'author_id', 'reviewer_id', 'validator_id',
-        'status', 'kind', 'authoring', 'published_at', 'retired_at',
+        'mirror_question_id', 'remediation_id', 'delayed_review_days',
+        'author_id', 'kind', 'authoring',
     ];
 
     protected $hidden = [
         'id', 'exam_id', 'competency_node_id', 'supersedes_id',
         'mirror_question_id', 'remediation_id',
         'author_id', 'reviewer_id', 'validator_id',
+    ];
+
+    /**
+     * État initial porté par le modèle, et pas seulement par la colonne.
+     *
+     * Les champs de transition sont hors de `$fillable` — une question ne peut
+     * pas naître publiée. Mais sans défaut déclaré ici, l'instance rendue par
+     * `create()` ignore le `DEFAULT 'draft'` de PostgreSQL et porte `null` :
+     * `QuestionTransitionService`, qui lit `status` pour arbitrer la transition
+     * suivante, n'avait alors rien à lire.
+     *
+     * Plus grave, `QuestionIntegrityChecker` teste `kind === 'qcm_single'` pour
+     * exiger quatre options. Sur un `kind` nul, ce contrôle ne s'exécutait pas
+     * du tout : une question à deux options aurait passé la publication sans
+     * que rien ne le signale.
+     *
+     * Déclarer ces défauts ne rouvre rien : `$attributes` n'est pas un chemin
+     * d'assignation de masse, seulement l'état d'un objet neuf.
+     */
+    protected $attributes = [
+        'status' => 'draft',
+        'kind' => 'qcm_single',
+        'authoring' => 'human',
+        'version' => 1,
+        'eligible_for_diagnostic' => false,
+        'eligible_for_simulation' => false,
     ];
 
     protected function casts(): array
@@ -94,7 +123,6 @@ class Question extends Model
             ->where('questions.published_at', '<=', now());
     }
 
-    /** Utilisable dans un diagnostic : publiée ET explicitement éligible. */
     public function scopeForDiagnostic(Builder $query): Builder
     {
         return $query->published()->where('questions.eligible_for_diagnostic', true);
@@ -115,11 +143,13 @@ class Question extends Model
         return $this->options->where('is_correct', false);
     }
 
-    /** Au moins une source de contenu vérifiée ? */
     public function hasVerifiedContentSource(): bool
     {
-        return $this->contentSources()
-            ->wherePivot('verification', 'verified')
-            ->exists();
+        return $this->contentSources()->wherePivot('verification', 'verified')->exists();
+    }
+
+    public function isFrozen(): bool
+    {
+        return $this->status === self::PUBLISHABLE;
     }
 }

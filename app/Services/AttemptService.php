@@ -15,25 +15,23 @@ use RuntimeException;
 /**
  * Cycle de vie d'une tentative.
  *
- * Trois garanties, chacune adressant une panne réelle :
+ * REVUE PAS-6 BLOC-2 — deux séquences « lire puis écrire » sans verrou :
  *
- *  - Un double envoi n'ouvre pas deux tentatives (clé d'idempotence).
- *  - Une réponse est écrite immédiatement, seule, et ne dépend pas de la
- *    soumission finale. Un réseau qui coupe en plein examen ne fait perdre que
- *    la question en cours.
- *  - Le temps est décidé par le serveur. L'heure du client est conservée pour
- *    diagnostic, jamais pour arbitrer.
+ *  - `answer()` faisait `doesntExist()` puis `updateOrCreate()`. Deux requêtes
+ *    concurrentes sur le même item pouvaient toutes deux conclure à l'absence :
+ *    l'une échouait sur l'unicité, ou `answered_count` était incrémenté deux
+ *    fois pour une seule réponse.
+ *  - `markCauseRevealed()` testait `cause_revealed` avant la transaction. Deux
+ *    consultations simultanées de la même correction pouvaient consommer deux
+ *    unités du quota gratuit pour une seule cause.
+ *
+ * Corrigé par verrouillage de ligne et par incrément conditionnel : la base
+ * arbitre, l'application compte les lignes affectées.
  */
 final class AttemptService
 {
     public function __construct(private readonly DiagnosticComposer $composer) {}
 
-    /**
-     * Ouvre un diagnostic, ou retourne celui déjà ouvert.
-     *
-     * Deux niveaux d'idempotence : la clé fournie par le client, et l'index
-     * unique « une seule tentative de diagnostic en cours par épreuve ».
-     */
     public function startDiagnostic(
         User $user,
         Exam $exam,
@@ -47,7 +45,7 @@ final class AttemptService
             ->first();
 
         if ($existante !== null) {
-            return $existante;   // rejeu : on rend la même, on n'en crée pas une seconde
+            return $existante;
         }
 
         $enCours = Attempt::where('user_id', $user->id)
@@ -57,7 +55,7 @@ final class AttemptService
             ->first();
 
         if ($enCours !== null && ! $enCours->hasExpired()) {
-            return $enCours;     // on reprend, on ne recommence pas
+            return $enCours;
         }
 
         $questions = $this->composer->compose($exam, $locale, $total);
@@ -85,8 +83,6 @@ final class AttemptService
                 AttemptItem::create([
                     'attempt_id' => $attempt->id,
                     'question_id' => $question->id,
-                    // Copié, pas lu : re-rattacher la question plus tard ne
-                    // doit pas réécrire l'historique du candidat.
                     'competency_node_id' => $question->competency_node_id,
                     'position' => $i + 1,
                 ]);
@@ -97,9 +93,11 @@ final class AttemptService
     }
 
     /**
-     * Enregistre une réponse. Écrite seule, immédiatement.
-     * Rejouable : renvoyer la même réponse ne crée pas de doublon et ne
-     * change rien ; changer d'avis met à jour tant que la tentative est ouverte.
+     * Enregistre une réponse, de façon idempotente même sous concurrence.
+     *
+     * L'item est verrouillé pour la durée de la transaction : deux requêtes
+     * simultanées se sérialisent, la seconde voit la réponse de la première et
+     * la met à jour au lieu d'en créer une seconde.
      */
     public function answer(
         AttemptItem $item,
@@ -119,21 +117,26 @@ final class AttemptService
         }
 
         return DB::transaction(function () use ($item, $option, $confidence, $elapsedMs, $clientReportedAt, $attempt) {
-            $nouvelle = $item->response()->doesntExist();
+            // Verrou de ligne : sérialise les écritures concurrentes sur cet item.
+            AttemptItem::where('id', $item->id)->lockForUpdate()->first();
+
+            $existante = Response::where('attempt_item_id', $item->id)->lockForUpdate()->first();
 
             $response = Response::updateOrCreate(
                 ['attempt_item_id' => $item->id],
                 [
                     'selected_option_id' => $option?->id,
                     'confidence' => $confidence,
-                    'answered_at' => now(),             // horloge serveur
-                    'client_reported_at' => $clientReportedAt, // conservée, non autoritative
+                    'answered_at' => now(),
+                    'client_reported_at' => $clientReportedAt,
                     'elapsed_ms' => $elapsedMs,
                 ]
             );
 
-            if ($nouvelle) {
-                $attempt->increment('answered_count');
+            // L'incrément n'a lieu que si la réponse est réellement nouvelle,
+            // constaté sous verrou et non par une lecture préalable.
+            if ($existante === null) {
+                Attempt::where('id', $attempt->id)->increment('answered_count');
             }
 
             if ($item->presented_at === null) {
@@ -144,22 +147,22 @@ final class AttemptService
         });
     }
 
-    /**
-     * Clôt la tentative et fige les corrections.
-     *
-     * La correction n'est calculée qu'ICI, jamais pendant : le candidat ne
-     * doit pas pouvoir déduire la bonne réponse de la réaction du serveur.
-     */
     public function submit(Attempt $attempt): Attempt
     {
         if ($attempt->status !== 'in_progress') {
-            return $attempt;   // rejeu de soumission : sans effet
+            return $attempt;
         }
 
         return DB::transaction(function () use ($attempt) {
+            $verrouillee = Attempt::where('id', $attempt->id)->lockForUpdate()->first();
+
+            if ($verrouillee->status !== 'in_progress') {
+                return $verrouillee;   // une soumission concurrente a gagné
+            }
+
             $justes = 0;
 
-            foreach ($attempt->items()->with(['response.selectedOption'])->get() as $item) {
+            foreach ($verrouillee->items()->with(['response.selectedOption'])->get() as $item) {
                 $response = $item->response;
 
                 if ($response === null) {
@@ -174,22 +177,17 @@ final class AttemptService
                 }
             }
 
-            $attempt->update([
-                'status' => $attempt->hasExpired() ? 'expired' : 'submitted',
+            $verrouillee->update([
+                'status' => $verrouillee->hasExpired() ? 'expired' : 'submitted',
                 'submitted_at' => now(),
                 'correct_count' => $justes,
             ]);
 
-            return $attempt->fresh();
+            return $verrouillee->fresh();
         });
     }
 
-    /**
-     * Le candidat peut-il voir la cause de cette erreur ?
-     * Fiche F03 : deux causes en compte gratuit, cumulatif, jamais réinitialisé.
-     *
-     * @return array{allowed: bool, revealed: int, quota: int}
-     */
+    /** @return array{allowed: bool, revealed: int, quota: int} */
     public function canRevealCause(User $user, bool $hasPremiumAccess): array
     {
         $quota = (int) config('naja7i.free_cause_quota', 2);
@@ -206,22 +204,36 @@ final class AttemptService
         ];
     }
 
-    /** Consomme une unité du quota. Idempotent par réponse. */
-    public function markCauseRevealed(User $user, Response $response): void
+    /**
+     * Consomme une unité du quota, une seule fois par réponse.
+     *
+     * L'UPDATE conditionnel est l'arbitre : il n'affecte une ligne que si la
+     * cause n'avait pas encore été révélée. Deux consultations simultanées de
+     * la même correction ne peuvent donc décompter qu'une unité.
+     *
+     * @return bool true si une unité a réellement été consommée
+     */
+    public function markCauseRevealed(User $user, Response $response): bool
     {
-        if ($response->cause_revealed) {
-            return;   // déjà décomptée : revoir sa correction ne recoûte rien
-        }
+        return DB::transaction(function () use ($user, $response) {
+            $affectees = Response::where('id', $response->id)
+                ->where('cause_revealed', false)
+                ->update(['cause_revealed' => true]);
 
-        DB::transaction(function () use ($user, $response) {
-            $response->update(['cause_revealed' => true]);
+            if ($affectees !== 1) {
+                return false;   // déjà décomptée, ici ou par une requête concurrente
+            }
 
             $compteur = CauseRevealCounter::firstOrCreate(['user_id' => $user->id]);
-            $compteur->increment('revealed_total');
-            $compteur->update([
+
+            CauseRevealCounter::where('id', $compteur->id)->update([
+                'revealed_total' => DB::raw('revealed_total + 1'),
                 'first_revealed_at' => $compteur->first_revealed_at ?? now(),
                 'last_revealed_at' => now(),
+                'updated_at' => now(),
             ]);
+
+            return true;
         });
     }
 }

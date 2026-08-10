@@ -15,6 +15,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AttemptService;
 use App\Services\DiagnosticComposer;
+use App\Services\QuestionTransitionService;
 use App\Tenancy\TenantContext;
 use Database\Seeders\CatalogueSeeder;
 use Database\Seeders\Crmef2025Seeder;
@@ -69,15 +70,15 @@ class TentativesTest extends TestCase
             ]);
 
             for ($i = 1; $i <= $parSousDomaine; $i++) {
+                /* Les champs de transition ne sont plus assignables en masse
+                 * (REVUE PAS-5 BLOC-1) : la question naît en brouillon et gagne
+                 * sa publication par le service, seul chemin autorisé. */
                 $question = Question::create([
                     'exam_id' => $this->epreuve->id, 'competency_node_id' => $noeud->id,
                     'locale' => 'fr', 'sibling_group' => (string) Str::uuid7(),
                     'stem' => "Question {$i} sur {$noeud->code} ?",
                     'explanation' => 'Justification de la bonne réponse.',
                     'remediation_id' => $remediation->id,
-                    'status' => 'pedagogically_validated',
-                    'validator_id' => $valideur->id,
-                    'published_at' => now(),
                 ]);
 
                 $options = [
@@ -96,9 +97,30 @@ class TentativesTest extends TestCase
                 }
 
                 $question->contentSources()->attach($this->source->id, ['verification' => 'verified']);
-                $question->update(['eligible_for_diagnostic' => true, 'status' => 'published']);
+
+                $this->publier($question, $valideur);
             }
         }
+    }
+
+    /**
+     * Conduit une question du brouillon à la publication éligible au
+     * diagnostic, par le seul chemin désormais ouvert.
+     *
+     * Le fixture emprunte exactement le parcours qu'un rédacteur suivra : c'est
+     * ce qui fait que les contrôles éditoriaux — quatre options, cause sur
+     * chaque distracteur, source vérifiée, valideur distinct de l'auteur — sont
+     * réellement opposés à ces questions de test, et non contournés.
+     */
+    private function publier(Question $question, User $valideur): Question
+    {
+        $transitions = app(QuestionTransitionService::class);
+
+        $transitions->submitForReview($question);
+        $transitions->markReviewed($question, $valideur);
+        $transitions->validate($question, $valideur);
+
+        return $transitions->publish($question, forDiagnostic: true);
     }
 
     private function service(): AttemptService

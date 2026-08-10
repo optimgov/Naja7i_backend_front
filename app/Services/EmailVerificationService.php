@@ -9,17 +9,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Émission et consommation des jetons de vérification d'e-mail.
+ * Émission et consommation des jetons de vérification.
+ *
+ * REVUE PAS-3 BLOC-1 — la consommation était lue puis écrite en deux temps.
+ * Deux requêtes simultanées observaient toutes deux `consumed_at IS NULL` et
+ * réussissaient. La garantie « usage unique » tombait précisément dans le seul
+ * cas où elle compte : la concurrence.
+ *
+ * Elle repose désormais sur un UPDATE conditionnel unique. La base arbitre ;
+ * l'application se contente de compter les lignes affectées.
  */
 final class EmailVerificationService
 {
     private const TTL_HOURS = 24;
 
-    /**
-     * Émet un jeton neuf et envoie le message. Les jetons antérieurs encore
-     * valides sont invalidés : un seul lien actif à la fois, sinon un lien
-     * intercepté reste utilisable après que le candidat en a redemandé un.
-     */
     public function send(User $user): void
     {
         $plain = Str::random(64);
@@ -42,31 +45,36 @@ final class EmailVerificationService
     }
 
     /**
-     * Consomme un jeton et marque l'e-mail vérifié.
-     * Retourne l'utilisateur, ou null si le jeton est invalide, expiré ou déjà
-     * consommé — un seul cas de retour pour les trois, afin de ne pas indiquer
-     * à un attaquant laquelle des trois situations il a rencontrée.
+     * Consomme un jeton, ou rend null.
+     *
+     * Un seul appelant peut gagner : l'UPDATE conditionnel n'affecte une ligne
+     * que si elle était encore libre et valide. Le perdant reçoit exactement le
+     * même refus qu'un jeton inconnu — jeton invalide, expiré ou déjà consommé
+     * ne se distinguent pas, pour ne rien apprendre à un attaquant.
      */
     public function consume(string $plainToken): ?User
     {
-        $token = VerificationToken::where('token_hash', hash('sha256', $plainToken))
-            ->where('purpose', VerificationToken::PURPOSE_EMAIL)
-            ->first();
+        $hash = hash('sha256', $plainToken);
 
-        if ($token === null || ! $token->isUsable()) {
-            return null;
-        }
+        return DB::transaction(function () use ($hash) {
+            $affectees = VerificationToken::where('token_hash', $hash)
+                ->where('purpose', VerificationToken::PURPOSE_EMAIL)
+                ->whereNull('consumed_at')
+                ->where('expires_at', '>', now())
+                ->update(['consumed_at' => now()]);
 
-        return DB::transaction(function () use ($token) {
-            $token->update(['consumed_at' => now()]);
+            if ($affectees !== 1) {
+                return null;
+            }
 
+            $token = VerificationToken::where('token_hash', $hash)->firstOrFail();
             $user = $token->user;
 
             if ($user->email_verified_at === null) {
-                $user->forceFill(['email_verified_at' => now()])->save();
+                $user->markEmailAsVerified();
             }
 
-            return $user;
+            return $user->fresh();
         });
     }
 }

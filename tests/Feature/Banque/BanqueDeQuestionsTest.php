@@ -84,6 +84,28 @@ class BanqueDeQuestionsTest extends TestCase
         DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
     }
 
+    /**
+     * Pose un état éditorial par le chemin d'écriture le plus direct.
+     *
+     * `status`, `published_at`, `validator_id`, `version` et les drapeaux
+     * d'éligibilité ne sont plus assignables en masse (REVUE PAS-5 BLOC-1), et
+     * c'est précisément l'objet du correctif : le chemin normal de publication
+     * passe par `QuestionTransitionService`, éprouvé par son propre jeu de
+     * tests.
+     *
+     * Les tests de ce fichier ne portent pas sur ce chemin-là. Ils portent sur
+     * les gardes de la BASE et sur le checker — donc sur ce qui doit tenir même
+     * quand l'écriture contourne le service. Poser l'état par `forceFill`, ici,
+     * n'est pas un contournement de confort : c'est le scénario que ces gardes
+     * ont pour rôle d'arbitrer.
+     */
+    private function etat(Question $question, array $attributs): Question
+    {
+        $question->forceFill($attributs)->save();
+
+        return $question->fresh(['options', 'exam.taxonomyProfile', 'node']);
+    }
+
     /** Crée une question complète, saine par défaut. */
     private function question(array $overrides = [], bool $etiqueter = true): Question
     {
@@ -96,7 +118,7 @@ class BanqueDeQuestionsTest extends TestCase
             'explanation' => 'L\'évaluation formative intervient en cours d\'apprentissage pour réguler.',
             'remediation_id' => $this->remediation->id,
             'author_id' => $this->auteur->id,
-            'status' => 'draft',
+            // `status` n'est plus assignable : le brouillon est l'état par défaut.
         ], $overrides));
 
         $options = [
@@ -173,7 +195,7 @@ class BanqueDeQuestionsTest extends TestCase
 
         $this->expectException(QueryException::class);
 
-        $question->update(['eligible_for_diagnostic' => true]);
+        $this->etat($question, ['eligible_for_diagnostic' => true]);
     }
 
     public function test_une_question_etiquetee_peut_devenir_eligible(): void
@@ -181,7 +203,7 @@ class BanqueDeQuestionsTest extends TestCase
         $question = $this->question();
         $this->auCommit();
 
-        $question->update(['eligible_for_diagnostic' => true]);
+        $this->etat($question, ['eligible_for_diagnostic' => true]);
 
         $this->assertTrue($question->fresh()->eligible_for_diagnostic);
     }
@@ -190,7 +212,7 @@ class BanqueDeQuestionsTest extends TestCase
     {
         $question = $this->question();
         $this->auCommit();
-        $question->update(['eligible_for_diagnostic' => true]);
+        $this->etat($question, ['eligible_for_diagnostic' => true]);
 
         $distracteur = $question->distractors()->first();
 
@@ -206,7 +228,7 @@ class BanqueDeQuestionsTest extends TestCase
         // diagnostic ne doit pas se déclencher à tort.
         $question = $this->question();
         $this->auCommit();
-        $question->update(['eligible_for_diagnostic' => true]);
+        $this->etat($question, ['eligible_for_diagnostic' => true]);
 
         $question->distractors()->last()->delete();
 
@@ -240,7 +262,7 @@ class BanqueDeQuestionsTest extends TestCase
 
     public function test_le_valideur_ne_peut_pas_etre_l_auteur(): void
     {
-        $question = $this->question([
+        $question = $this->etat($this->question(), [
             'status' => 'pedagogically_validated',
             'validator_id' => $this->auteur->id,
         ]);
@@ -252,11 +274,11 @@ class BanqueDeQuestionsTest extends TestCase
 
     public function test_une_question_de_diagnostic_exige_une_source_verifiee(): void
     {
-        $question = $this->question([
+        $question = $this->etat($this->question(), [
             'status' => 'pedagogically_validated',
             'validator_id' => $this->valideur->id,
+            'eligible_for_diagnostic' => true,
         ]);
-        $question->update(['eligible_for_diagnostic' => true]);
 
         $checker = app(QuestionIntegrityChecker::class);
 
@@ -274,7 +296,9 @@ class BanqueDeQuestionsTest extends TestCase
 
     public function test_une_question_non_validee_ne_peut_pas_etre_publiee(): void
     {
-        $question = $this->question(['status' => 'reviewed', 'validator_id' => $this->valideur->id]);
+        $question = $this->etat($this->question(), [
+            'status' => 'reviewed', 'validator_id' => $this->valideur->id,
+        ]);
 
         $this->assertFalse(app(QuestionIntegrityChecker::class)->canBePublished($question));
     }
@@ -285,13 +309,13 @@ class BanqueDeQuestionsTest extends TestCase
     {
         $brouillon = $this->question();
 
-        $publiee = $this->question([
+        $publiee = $this->etat($this->question(), [
             'status' => 'published', 'published_at' => now(),
             'validator_id' => $this->valideur->id,
+            'eligible_for_diagnostic' => true,
         ]);
-        $publiee->update(['eligible_for_diagnostic' => true]);
 
-        $publieeNonEligible = $this->question([
+        $publieeNonEligible = $this->etat($this->question(), [
             'status' => 'published', 'published_at' => now(),
             'validator_id' => $this->valideur->id,
         ]);
@@ -305,15 +329,15 @@ class BanqueDeQuestionsTest extends TestCase
 
     public function test_une_question_retiree_disparait_des_portees(): void
     {
-        $question = $this->question([
+        $question = $this->etat($this->question(), [
             'status' => 'published', 'published_at' => now(),
             'validator_id' => $this->valideur->id,
+            'eligible_for_simulation' => true,
         ]);
-        $question->update(['eligible_for_simulation' => true]);
 
         $this->assertSame(1, Question::forSimulation()->count());
 
-        $question->update(['retired_at' => now(), 'status' => 'retired']);
+        $this->etat($question, ['retired_at' => now(), 'status' => 'retired']);
 
         $this->assertSame(0, Question::forSimulation()->count());
     }
@@ -346,17 +370,17 @@ class BanqueDeQuestionsTest extends TestCase
 
     public function test_une_correction_cree_une_version_sans_effacer_l_ancienne(): void
     {
-        $v1 = $this->question([
+        $v1 = $this->etat($this->question(), [
             'status' => 'published', 'published_at' => now(),
             'validator_id' => $this->valideur->id,
         ]);
 
-        $v2 = $this->question([
+        $v2 = $this->etat($this->question(), [
             'version' => 2, 'supersedes_id' => $v1->id,
             'status' => 'published', 'published_at' => now(),
             'validator_id' => $this->valideur->id,
         ]);
-        $v1->update(['status' => 'retired', 'retired_at' => now()]);
+        $this->etat($v1, ['status' => 'retired', 'retired_at' => now()]);
 
         $this->assertNotNull(Question::find($v1->id), 'L\'ancienne version reste consultable.');
         $this->assertSame($v1->id, $v2->supersedes_id);

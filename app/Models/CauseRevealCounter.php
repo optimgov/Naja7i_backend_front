@@ -16,9 +16,21 @@ class CauseRevealCounter extends Model
 
     protected $hidden = ['id', 'user_id'];
 
+    /**
+     * Le zéro initial est porté par le modèle, pas seulement par la colonne.
+     *
+     * `firstOrCreate(['user_id' => …])` insère la ligne sans `revealed_total` :
+     * la valeur par défaut de PostgreSQL s'applique en base, mais l'instance
+     * retournée ne la connaît pas et rend `null`. Un candidat qui n'a encore
+     * rien révélé voyait donc son quota consommé annoncé comme indéterminé au
+     * lieu de zéro, à la toute première consultation — et à elle seule.
+     */
+    protected $attributes = ['revealed_total' => 0];
+
     protected function casts(): array
     {
         return [
+            'revealed_total' => 'integer',
             'first_revealed_at' => 'datetime',
             'last_revealed_at' => 'datetime',
         ];

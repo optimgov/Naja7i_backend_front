@@ -123,6 +123,16 @@ couvre les colonnes futures ; le quota de causes est réservé avant marquage, l
 ressource rare étant le quota et non la réponse ; première action protégée par
 une permission déclarée sur la route.
 
+### PAS-12 — Correctifs de contre-revue · `83f79ff`
+**Acceptation :** une question publiée ne sort de son état que par le retrait,
+la garde raisonnant sur l'ÉTAT visé et non sur la transition empruntée
+(ADR-0022) ; les sources d'une question publiée sont gelées, elles fondent la
+correction déjà servie ; une permission réservée est refusée sur un rôle déjà
+distribué hors plateforme, et le résolveur la refuse encore si la table a été
+corrompue par un autre chemin ; `answer()` réclame le verrou de la tentative
+avant de relire son état, prouvé par un entrelacement réel sur une seconde
+connexion PostgreSQL — un test séquentiel ne prouve rien sur une course.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

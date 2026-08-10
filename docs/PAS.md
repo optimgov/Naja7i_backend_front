@@ -22,6 +22,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 9 | Permissions fines : référentiel, rôles par organisme, garde en base | `229ac7a` |
 | 10 | Correctifs de revue : unicités tenant-aware, actes en ajout seul, contenu gelé | `cf88cc6` |
 | 11 | Correctifs de revue 2 : garde d'appartenance, publication contrôlée en base, gel complet, quota atomique, première action protégée par permission | `82a4a77` |
+| — | SHA du PAS-11 au journal et au backlog | `74aeec3` |
+| 12 | Correctifs de contre-revue : sortie de l'état publié bornée au retrait, sources gelées, permission réservée refusée sur un rôle distribué, verrou de tentative | `83f79ff` |
 
 ## Lots frontend
 

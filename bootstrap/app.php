@@ -4,6 +4,7 @@ use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureBffRequestsAreStateful;
 use App\Http\Middleware\EnsureEmailIsVerified;
+use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -38,7 +39,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // la préférence du compte via $request->user().
         $middleware->api(append: [ResolveTenant::class, SetLocale::class]);
 
-        $middleware->alias(['verified.api' => EnsureEmailIsVerified::class]);
+        /* `permission:<code>` porte l'autorisation fine de l'ADR-0009. Elle est
+         * déclarée sur la ROUTE et non dans la méthode : une action protégée
+         * doit l'être avant que le contrôleur ne s'exécute, et le contrôle
+         * reste lisible depuis la table des routes. */
+        $middleware->alias([
+            'verified.api' => EnsureEmailIsVerified::class,
+            'permission' => RequirePermission::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Toute erreur d'une requête JSON sort au format ErrorResponse, avec

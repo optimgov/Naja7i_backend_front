@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\ParcoursController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ProgressionController;
+use App\Http\Controllers\Api\V1\QuestionAdminController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -106,5 +107,21 @@ Route::prefix('v1')->group(function () {
         // PAS-8 — Restitution : maîtrise par compétence et ordonnance.
         Route::get('me/mastery/{examCode}', [ProgressionController::class, 'mastery']);
         Route::get('me/plan/{examCode}', [ProgressionController::class, 'plan']);
+    });
+
+    /*
+     * PAS-11 — Première surface administrative.
+     *
+     * L'autorisation est portée par le middleware de permission, déclarée sur
+     * la route : l'action est refusée avant que le contrôleur ne s'exécute, et
+     * le contrôle reste lisible depuis `route:list`. Aucun `if` d'autorisation
+     * dans les méthodes — c'est ce qui a manqué à l'ADR-0009 pendant neuf pas.
+     */
+    Route::middleware(['auth:sanctum', 'verified.api'])->prefix('admin')->group(function () {
+        Route::post('questions/{uuid}/publish', [QuestionAdminController::class, 'publish'])
+            ->middleware('permission:questions.publish');
+
+        Route::post('questions/{uuid}/retire', [QuestionAdminController::class, 'retire'])
+            ->middleware('permission:questions.retire');
     });
 });

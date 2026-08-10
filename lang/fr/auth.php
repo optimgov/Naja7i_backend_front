@@ -17,4 +17,7 @@ return [
     'reset_link_sent' => "Si cette adresse correspond à un compte, un lien de réinitialisation vient d'être envoyé.",
     'reset_token_invalid' => "Ce lien de réinitialisation n'est plus valable. Demandez-en un nouveau.",
     'password_updated' => 'Votre mot de passe a été mis à jour. Vous pouvez vous connecter.',
+
+    // PAS-11 — refus d'autorisation fine (ADR-0009).
+    'permission_denied' => "Vous n'avez pas la permission nécessaire pour cette action.",
 ];

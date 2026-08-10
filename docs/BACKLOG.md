@@ -94,11 +94,34 @@ pondérée par les poids officiels ; Certitude+ ; quota de causes cumulatif.
 suffisante ; pondération par la certitude ; agrégation par poids officiels ;
 ordonnance motivée ; **aucune probabilité de réussite**, testé.
 
-### PAS-8 — Surface HTTP du parcours · *en cours*
+### PAS-8 — Surface HTTP du parcours · `b58c2d6`
 **Acceptation :** deux ressources séparées (présentation / correction) ; aucune
 fuite de `rationale`, `cause` ou `is_correct` pendant la tentative ; contrat
 `AccessGrant` seul point d'autorisation produit ; démonstration publique
 marquée `is_example` ; 404 jamais 403 entre candidats.
+
+### PAS-9 — Permissions fines appliquées · `229ac7a`
+**Acceptation :** référentiel de 19 permissions en données, pas en code ; rôles
+définissables par organisme, codes uniques par portée ; une permission réservée
+à la plateforme n'est jamais attachable à un rôle d'organisme, garde en base ;
+résolution sans cache au-delà de la requête. Exécute l'ADR-0009, décidé au
+PAS-2 et resté inappliqué — l'écart G10 le plus visible du dépôt.
+
+### PAS-10 — Correctifs de revue · `cf88cc6`
+**Acceptation :** unicités portant le tenant ; actes juridiques en ajout seul ;
+contenu publié gelé ; transitions éditoriales par service unique, les champs de
+transition hors de `$fillable` ; consommation atomique des jetons ; garde
+architecturale cherchant les CHEMINS d'accès bas niveau et non les noms de
+tables — `DB::table($variable)` et `DB::connection()->table(...)` sont désormais
+détectés.
+
+### PAS-11 — Correctifs de revue 2 · *SHA au commit suivant*
+**Acceptation :** un rôle de back-office de plateforme n'est jamais attribuable
+dans un organisme ; la publication est contrôlée en base quel que soit le
+chemin d'écriture ; le gel d'une question publiée procède par liste blanche, donc
+couvre les colonnes futures ; le quota de causes est réservé avant marquage, la
+ressource rare étant le quota et non la réponse ; première action protégée par
+une permission déclarée sur la route.
 
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
@@ -152,11 +175,15 @@ correctifs PAS-1.1 et PAS-3.1.
 Ces points sont **déjà identifiés**, tracés au registre, et ordonnancés. Les
 signaler à nouveau est du bruit ; les hiérarchiser autrement est un apport.
 
+**Fermés depuis la dernière révision :** les permissions fines de l'ADR-0009
+sont appliquées (PAS-9) et la garde architecturale ne se contourne plus par un
+nom de table dynamique ni par `DB::connection()` (PAS-10, vérifié en rejouant
+l'ancienne garde contre les deux contournements).
+
 | Constat | Registre | Statut |
 |---|---|---|
-| **Permissions fines de l'ADR-0009 non implémentées** — le code reste sur `hasRole()` / `isStaff()` | À ouvrir | **Écart réel entre ADR et code — G10** |
 | Frontend sans tests automatisés ni CI applicative | À ouvrir | **Écart réel** |
-| Suite de tests non sûre en exécution parallèle (deadlock sur `DROP TABLE`) | À ouvrir | **Écart réel** |
+| Suite de tests non parallélisable : `--parallel` ne démarre pas, paratest absent | DET-28 | Quand la durée le justifiera |
 | Textes juridiques provisoires en base | DET-07 | Bloque l'ouverture publique |
 | Qualification juridique non validée par un juriste | DET-08 | Bloque l'ouverture publique |
 | Fournisseur d'e-mail non choisi | DET-09 | Bloque le pilote |

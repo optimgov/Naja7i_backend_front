@@ -18,6 +18,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\VerificationToken;
 use App\Services\AttemptService;
+use App\Services\CauseRevealService;
 use App\Services\EmailVerificationService;
 use App\Services\LegalConsentService;
 use App\Services\QuestionTransitionService;
@@ -365,30 +366,41 @@ class CorrectifsRevueTest extends TestCase
     // PAS-6 BLOC-2 — quota et réponse idempotents
     // ===================================================================
 
+    /*
+     * PAS-11 : ces deux contrôles ont changé de service et de vocabulaire.
+     * `reveal()` répond à « la cause est-elle visible ? », là où
+     * `markCauseRevealed()` répondait à « viens-tu de consommer une unité ? ».
+     * L'invariant vérifié, lui, est inchangé : une cause ne coûte qu'une unité.
+     */
     public function test_reveler_deux_fois_la_meme_cause_ne_consomme_qu_une_unite(): void
     {
         $response = $this->reponseFausse();
-        $service = app(AttemptService::class);
+        $service = app(CauseRevealService::class);
 
-        $this->assertTrue($service->markCauseRevealed($this->candidat, $response));
-        $this->assertFalse(
-            $service->markCauseRevealed($this->candidat, $response->fresh()),
-            'Le second appel ne doit rien consommer.'
+        $this->assertTrue($service->reveal($this->candidat, $response, false));
+        $this->assertTrue(
+            $service->reveal($this->candidat, $response->fresh(), false),
+            'La cause reste visible au second appel.'
         );
 
-        $this->assertSame(1, $service->canRevealCause($this->candidat, false)['revealed']);
+        $this->assertSame(
+            1, $service->status($this->candidat, false)['revealed'],
+            'Le second appel ne doit rien consommer.'
+        );
     }
 
     public function test_le_decompte_repose_sur_l_etat_de_la_ligne_et_non_sur_une_lecture(): void
     {
         $response = $this->reponseFausse();
-        $service = app(AttemptService::class);
+        $service = app(CauseRevealService::class);
 
         // Simule le gagnant d'une course concurrente.
         Response::where('id', $response->id)->update(['cause_revealed' => true]);
 
-        $this->assertFalse($service->markCauseRevealed($this->candidat, $response));
-        $this->assertSame(0, $service->canRevealCause($this->candidat, false)['revealed']);
+        // La cause est payée par le gagnant : elle est visible, et le perdant
+        // ne décompte rien.
+        $this->assertTrue($service->reveal($this->candidat, $response->fresh(), false));
+        $this->assertSame(0, $service->status($this->candidat, false)['revealed']);
     }
 
     public function test_repondre_deux_fois_n_incremente_le_compteur_qu_une_fois(): void

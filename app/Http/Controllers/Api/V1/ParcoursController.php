@@ -11,6 +11,7 @@ use App\Models\AttemptItem;
 use App\Models\Exam;
 use App\Models\QuestionOption;
 use App\Services\AttemptService;
+use App\Services\CauseRevealService;
 use App\Services\DiagnosticComposer;
 use App\Services\MasteryCalculator;
 use App\Support\ApiError;
@@ -36,6 +37,7 @@ class ParcoursController extends Controller
         private readonly DiagnosticComposer $composer,
         private readonly MasteryCalculator $mastery,
         private readonly AccessGrant $access,
+        private readonly CauseRevealService $reveals,
     ) {}
 
     /** Ouvre un diagnostic, ou rend celui déjà en cours. */
@@ -197,34 +199,23 @@ class ParcoursController extends Controller
             ->get();
 
         $corrections = $items->map(function (AttemptItem $item) use ($user, $premium) {
-            $response = $item->response;
-            $fausse = $response?->is_correct === false;
+            $fausse = $item->response?->is_correct === false;
 
-            $visible = false;
-
-            if (! $fausse) {
-                $visible = true;   // rien à débloquer sur une bonne réponse
-            } elseif ($response->cause_revealed) {
-                $visible = true;   // déjà décomptée
-            } else {
-                $etat = $this->attempts->canRevealCause($user, $premium);
-
-                if ($etat['allowed']) {
-                    /* Le service rend `true` quand il vient de consommer une
-                     * unité, `false` quand une consultation concurrente l'avait
-                     * déjà consommée pour cette réponse. Dans les deux cas la
-                     * cause est payée, donc visible — mais elle n'est décomptée
-                     * qu'une fois, et c'est l'UPDATE conditionnel en base qui
-                     * l'arbitre, jamais ce contrôleur. */
-                    $this->attempts->markCauseRevealed($user, $response);
-                    $visible = true;
-                }
-            }
+            /* Une bonne réponse — ou une question restée sans réponse — n'a
+             * aucune cause à débloquer. Sinon le service arbitre SEUL : il rend
+             * `true` si la cause est visible (déjà révélée, ou unité de quota
+             * réservée) et `false` si le quota est épuisé.
+             *
+             * Le contrôleur ne consulte plus le plafond avant d'agir. C'est
+             * exactement ce contrôle en deux temps — lire l'état, puis écrire —
+             * qui laissait deux requêtes concurrentes révéler deux causes avec
+             * une seule unité restante (REVUE PAS-10 BLOC-3). */
+            $visible = ! $fausse || $this->reveals->reveal($user, $item->response, $premium);
 
             return (new CorrectionResource($item, $visible))->resolve();
         });
 
-        $etat = $this->attempts->canRevealCause($user, $premium);
+        $etat = $this->reveals->status($user, $premium);
 
         return response()->json([
             'data' => $corrections,

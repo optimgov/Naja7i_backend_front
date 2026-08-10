@@ -14,6 +14,7 @@ use App\Models\Source;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AttemptService;
+use App\Services\CauseRevealService;
 use App\Services\DiagnosticComposer;
 use App\Services\QuestionTransitionService;
 use App\Tenancy\TenantContext;
@@ -295,6 +296,15 @@ class TentativesTest extends TestCase
         $this->assertTrue($items[2]->fresh()->response->isConfidentError());
     }
 
+    /**
+     * Le décompte des causes a quitté AttemptService au PAS-11 : l'atomicité y
+     * portait sur la réponse, alors que la ressource rare est le quota.
+     */
+    private function causes(): CauseRevealService
+    {
+        return app(CauseRevealService::class);
+    }
+
     // --- Quota de causes (fiche F03) ---------------------------------------
 
     public function test_le_compte_gratuit_voit_deux_causes_puis_l_invitation(): void
@@ -306,15 +316,15 @@ class TentativesTest extends TestCase
         }
         $this->service()->submit($attempt);
 
-        $service = $this->service();
+        $causes = $this->causes();
 
-        $this->assertTrue($service->canRevealCause($this->candidat, false)['allowed']);
-        $service->markCauseRevealed($this->candidat, $attempt->items[0]->fresh()->response);
+        $this->assertTrue($causes->status($this->candidat, false)['allowed']);
+        $this->assertTrue($causes->reveal($this->candidat, $attempt->items[0]->fresh()->response, false));
 
-        $this->assertTrue($service->canRevealCause($this->candidat, false)['allowed']);
-        $service->markCauseRevealed($this->candidat, $attempt->items[1]->fresh()->response);
+        $this->assertTrue($causes->status($this->candidat, false)['allowed']);
+        $this->assertTrue($causes->reveal($this->candidat, $attempt->items[1]->fresh()->response, false));
 
-        $etat = $service->canRevealCause($this->candidat, false);
+        $etat = $causes->status($this->candidat, false);
         $this->assertFalse($etat['allowed'], 'La troisième cause doit être derrière l\'abonnement.');
         $this->assertSame(2, $etat['revealed']);
     }
@@ -328,10 +338,13 @@ class TentativesTest extends TestCase
 
         $response = $item->fresh()->response;
 
-        $this->service()->markCauseRevealed($this->candidat, $response);
-        $this->service()->markCauseRevealed($this->candidat, $response->fresh());
+        $this->assertTrue($this->causes()->reveal($this->candidat, $response, false));
+        $this->assertTrue(
+            $this->causes()->reveal($this->candidat, $response->fresh(), false),
+            'Revoir une cause déjà payée reste autorisé.'
+        );
 
-        $this->assertSame(1, $this->service()->canRevealCause($this->candidat, false)['revealed']);
+        $this->assertSame(1, $this->causes()->status($this->candidat, false)['revealed']);
     }
 
     public function test_le_quota_ne_se_remet_pas_a_zero_avec_le_temps(): void
@@ -341,16 +354,16 @@ class TentativesTest extends TestCase
         $this->service()->answer($item, $item->question->distractors()->first(), 'guess');
         $this->service()->submit($attempt);
 
-        $this->service()->markCauseRevealed($this->candidat, $item->fresh()->response);
+        $this->causes()->reveal($this->candidat, $item->fresh()->response, false);
 
         $this->travel(40)->days();
 
-        $this->assertSame(1, $this->service()->canRevealCause($this->candidat, false)['revealed']);
+        $this->assertSame(1, $this->causes()->status($this->candidat, false)['revealed']);
     }
 
     public function test_un_abonne_n_est_pas_plafonne(): void
     {
-        $etat = $this->service()->canRevealCause($this->candidat, true);
+        $etat = $this->causes()->status($this->candidat, true);
 
         $this->assertTrue($etat['allowed']);
         $this->assertSame(0, $etat['quota']);

@@ -11,6 +11,7 @@ use App\Models\Source;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\QuestionIntegrityChecker;
+use App\Services\QuestionTransitionService;
 use App\Tenancy\TenantContext;
 use Database\Seeders\CatalogueSeeder;
 use Database\Seeders\Crmef2025Seeder;
@@ -104,6 +105,34 @@ class BanqueDeQuestionsTest extends TestCase
         $question->forceFill($attributs)->save();
 
         return $question->fresh(['options', 'exam.taxonomyProfile', 'node']);
+    }
+
+    /**
+     * Publie une question par le seul chemin désormais ouvert.
+     *
+     * PAS-11 : la publication est contrôlée EN BASE, quel que soit le chemin
+     * d'écriture — un `forceFill` vers `published` depuis un brouillon est
+     * refusé par le trigger, et c'est le correctif. Ces trois tests portent sur
+     * les portées d'usage et le versionnement : ils ont besoin de questions
+     * réellement publiées, donc du parcours éditorial complet.
+     */
+    private function publier(Question $question, bool $diagnostic = false, bool $simulation = false): Question
+    {
+        $transitions = app(QuestionTransitionService::class);
+
+        if ($diagnostic || $simulation) {
+            // Exigée par les contrôles de publication dès qu'une question sert
+            // au diagnostic ou à la simulation.
+            $question->contentSources()->syncWithoutDetaching([
+                $this->source->id => ['verification' => 'verified'],
+            ]);
+        }
+
+        $transitions->submitForReview($question);
+        $transitions->markReviewed($question, $this->valideur);
+        $transitions->validate($question, $this->valideur);
+
+        return $transitions->publish($question, forDiagnostic: $diagnostic, forSimulation: $simulation);
     }
 
     /** Crée une question complète, saine par défaut. */
@@ -309,16 +338,8 @@ class BanqueDeQuestionsTest extends TestCase
     {
         $brouillon = $this->question();
 
-        $publiee = $this->etat($this->question(), [
-            'status' => 'published', 'published_at' => now(),
-            'validator_id' => $this->valideur->id,
-            'eligible_for_diagnostic' => true,
-        ]);
-
-        $publieeNonEligible = $this->etat($this->question(), [
-            'status' => 'published', 'published_at' => now(),
-            'validator_id' => $this->valideur->id,
-        ]);
+        $publiee = $this->publier($this->question(), diagnostic: true);
+        $publieeNonEligible = $this->publier($this->question());
 
         $identifiants = Question::forDiagnostic()->pluck('uuid');
 
@@ -329,15 +350,11 @@ class BanqueDeQuestionsTest extends TestCase
 
     public function test_une_question_retiree_disparait_des_portees(): void
     {
-        $question = $this->etat($this->question(), [
-            'status' => 'published', 'published_at' => now(),
-            'validator_id' => $this->valideur->id,
-            'eligible_for_simulation' => true,
-        ]);
+        $question = $this->publier($this->question(), simulation: true);
 
         $this->assertSame(1, Question::forSimulation()->count());
 
-        $this->etat($question, ['retired_at' => now(), 'status' => 'retired']);
+        app(QuestionTransitionService::class)->retire($question);
 
         $this->assertSame(0, Question::forSimulation()->count());
     }
@@ -370,17 +387,14 @@ class BanqueDeQuestionsTest extends TestCase
 
     public function test_une_correction_cree_une_version_sans_effacer_l_ancienne(): void
     {
-        $v1 = $this->etat($this->question(), [
-            'status' => 'published', 'published_at' => now(),
-            'validator_id' => $this->valideur->id,
-        ]);
+        $transitions = app(QuestionTransitionService::class);
 
-        $v2 = $this->etat($this->question(), [
-            'version' => 2, 'supersedes_id' => $v1->id,
-            'status' => 'published', 'published_at' => now(),
-            'validator_id' => $this->valideur->id,
-        ]);
-        $this->etat($v1, ['status' => 'retired', 'retired_at' => now()]);
+        $v1 = $this->publier($this->question());
+
+        // Une question publiée ne se modifie pas : on en dérive une version.
+        $v2 = $this->publier($transitions->createRevision($v1, []));
+
+        $transitions->retire($v1);
 
         $this->assertNotNull(Question::find($v1->id), 'L\'ancienne version reste consultable.');
         $this->assertSame($v1->id, $v2->supersedes_id);

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Attempt;
 use App\Models\AttemptItem;
-use App\Models\CauseRevealCounter;
 use App\Models\Exam;
 use App\Models\QuestionOption;
 use App\Models\Response;
@@ -21,12 +20,13 @@ use RuntimeException;
  *    concurrentes sur le même item pouvaient toutes deux conclure à l'absence :
  *    l'une échouait sur l'unicité, ou `answered_count` était incrémenté deux
  *    fois pour une seule réponse.
- *  - `markCauseRevealed()` testait `cause_revealed` avant la transaction. Deux
- *    consultations simultanées de la même correction pouvaient consommer deux
- *    unités du quota gratuit pour une seule cause.
- *
  * Corrigé par verrouillage de ligne et par incrément conditionnel : la base
  * arbitre, l'application compte les lignes affectées.
+ *
+ * PAS-11 — le décompte des causes révélées a quitté ce service pour
+ * `CauseRevealService` : la revue PAS-10 BLOC-3 a montré que l'atomicité y
+ * portait sur la réponse alors que la ressource rare est le quota. Les deux
+ * sujets n'avaient pas à cohabiter dans la même classe.
  */
 final class AttemptService
 {
@@ -184,56 +184,6 @@ final class AttemptService
             ]);
 
             return $verrouillee->fresh();
-        });
-    }
-
-    /** @return array{allowed: bool, revealed: int, quota: int} */
-    public function canRevealCause(User $user, bool $hasPremiumAccess): array
-    {
-        $quota = (int) config('naja7i.free_cause_quota', 2);
-        $compteur = CauseRevealCounter::firstOrCreate(['user_id' => $user->id]);
-
-        if ($hasPremiumAccess) {
-            return ['allowed' => true, 'revealed' => $compteur->revealed_total, 'quota' => 0];
-        }
-
-        return [
-            'allowed' => $compteur->revealed_total < $quota,
-            'revealed' => $compteur->revealed_total,
-            'quota' => $quota,
-        ];
-    }
-
-    /**
-     * Consomme une unité du quota, une seule fois par réponse.
-     *
-     * L'UPDATE conditionnel est l'arbitre : il n'affecte une ligne que si la
-     * cause n'avait pas encore été révélée. Deux consultations simultanées de
-     * la même correction ne peuvent donc décompter qu'une unité.
-     *
-     * @return bool true si une unité a réellement été consommée
-     */
-    public function markCauseRevealed(User $user, Response $response): bool
-    {
-        return DB::transaction(function () use ($user, $response) {
-            $affectees = Response::where('id', $response->id)
-                ->where('cause_revealed', false)
-                ->update(['cause_revealed' => true]);
-
-            if ($affectees !== 1) {
-                return false;   // déjà décomptée, ici ou par une requête concurrente
-            }
-
-            $compteur = CauseRevealCounter::firstOrCreate(['user_id' => $user->id]);
-
-            CauseRevealCounter::where('id', $compteur->id)->update([
-                'revealed_total' => DB::raw('revealed_total + 1'),
-                'first_revealed_at' => $compteur->first_revealed_at ?? now(),
-                'last_revealed_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            return true;
         });
     }
 }

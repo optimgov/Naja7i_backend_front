@@ -104,6 +104,10 @@ Route::prefix('v1')->group(function () {
         Route::post('me/attempts/{uuid}/submit', [ParcoursController::class, 'submit']);
         Route::get('me/attempts/{uuid}/correction', [ParcoursController::class, 'correction']);
 
+        // Entraînement ciblé : ce que l'ordonnance recommande devient cliquable.
+        Route::post('me/training/{examCode}', [ParcoursController::class, 'startTraining'])
+            ->middleware('throttle:10,1');
+
         // PAS-8 — Restitution : maîtrise par compétence et ordonnance.
         Route::get('me/mastery/{examCode}', [ProgressionController::class, 'mastery']);
         Route::get('me/plan/{examCode}', [ProgressionController::class, 'plan']);

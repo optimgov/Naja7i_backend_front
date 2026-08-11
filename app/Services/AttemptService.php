@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\TrainingScopeTooNarrow;
 use App\Models\Attempt;
 use App\Models\AttemptItem;
 use App\Models\Exam;
@@ -37,7 +38,10 @@ use RuntimeException;
  */
 final class AttemptService
 {
-    public function __construct(private readonly DiagnosticComposer $composer) {}
+    public function __construct(
+        private readonly DiagnosticComposer $composer,
+        private readonly TrainingComposer $training,
+    ) {}
 
     public function startDiagnostic(
         User $user,
@@ -97,6 +101,110 @@ final class AttemptService
 
             return $attempt->fresh('items');
         });
+    }
+
+    /**
+     * Ouvre une session d'ENTRAÎNEMENT, ou rend celle déjà ouverte.
+     *
+     * Referme la boucle du produit : l'ordonnance recommandait quoi réviser,
+     * sans que rien ne permette de le faire. Un plan à 90 jours sans activité
+     * quotidienne n'est pas un plan.
+     *
+     * Trois différences avec `startDiagnostic`, toutes délibérées :
+     *
+     *  - AUCUN CHRONOMÈTRE. `expires_at` reste nul : l'entraînement n'est pas
+     *    une épreuve. `secondsRemaining()` rend donc null sans traitement
+     *    particulier, et la ressource le sert déjà tel quel.
+     *  - UNE SEULE SESSION OUVERTE, tous concours confondus — l'unicité du
+     *    diagnostic porte sur l'épreuve, celle-ci sur le candidat.
+     *  - SÉRIE POSSIBLEMENT INCOMPLÈTE. On ne complète jamais hors périmètre ;
+     *    l'appelant lit `item_count` et le compare à ce qu'il a demandé.
+     *
+     * @param  list<int>  $nodeIds  périmètre STRICT
+     * @return array{attempt: Attempt, creee: bool, demande: int, disponibles: int, resservies: int}
+     */
+    public function startTraining(
+        User $user,
+        Exam $exam,
+        array $nodeIds,
+        string $locale,
+        string $idempotencyKey,
+        int $total = 15,
+    ): array {
+        $existante = Attempt::where('user_id', $user->id)
+            ->where('idempotency_key', $idempotencyKey)
+            ->first();
+
+        if ($existante !== null) {
+            return $this->reprise($existante, $total);
+        }
+
+        $enCours = Attempt::where('user_id', $user->id)
+            ->where('kind', 'training')
+            ->open()
+            ->first();
+
+        if ($enCours !== null) {
+            return $this->reprise($enCours, $total);
+        }
+
+        $compose = $this->training->compose($exam, $user, $nodeIds, $locale, $total);
+        $questions = $compose['questions'];
+
+        /* En dessous du minime utile, on REFUSE. Servir deux questions sur un
+         * point faible donnerait au candidat le sentiment d'avoir travaillé. */
+        if ($questions->count() < TrainingComposer::MINIMUM_UTILE) {
+            throw new TrainingScopeTooNarrow($compose['disponibles'], $questions->count());
+        }
+
+        $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $questions) {
+            $attempt = Attempt::create([
+                'user_id' => $user->id,
+                'exam_id' => $exam->id,
+                'locale' => $locale,
+                'idempotency_key' => $idempotencyKey,
+                'kind' => 'training',
+                'status' => 'in_progress',
+                'started_at' => now(),
+                // Jamais d'échéance : ce n'est pas une épreuve.
+                'expires_at' => null,
+                'item_count' => $questions->count(),
+            ]);
+
+            foreach ($questions as $i => $question) {
+                AttemptItem::create([
+                    'attempt_id' => $attempt->id,
+                    'question_id' => $question->id,
+                    'competency_node_id' => $question->competency_node_id,
+                    'position' => $i + 1,
+                ]);
+            }
+
+            return $attempt->fresh('items');
+        });
+
+        return [
+            'attempt' => $attempt,
+            /* Porté explicitement : `fresh()` rend une NOUVELLE instance, dont
+             * `wasRecentlyCreated` est faux. S'y fier ferait répondre 200 à une
+             * création, et un client ne saurait plus s'il ouvre ou reprend. */
+            'creee' => true,
+            'demande' => $total,
+            'disponibles' => $compose['disponibles'],
+            'resservies' => $compose['resservies'],
+        ];
+    }
+
+    /** Reprise d'une session ouverte : on rend l'existante, on n'en compose pas une seconde. */
+    private function reprise(Attempt $attempt, int $demande): array
+    {
+        return [
+            'attempt' => $attempt->load('items'),
+            'creee' => false,
+            'demande' => $demande,
+            'disponibles' => $attempt->item_count,
+            'resservies' => 0,
+        ];
     }
 
     /**

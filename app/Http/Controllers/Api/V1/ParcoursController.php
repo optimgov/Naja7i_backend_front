@@ -3,17 +3,21 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\AccessGrant;
+use App\Exceptions\TrainingScopeTooNarrow;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AttemptResource;
 use App\Http\Resources\CorrectionResource;
 use App\Models\Attempt;
 use App\Models\AttemptItem;
+use App\Models\CompetencyNode;
 use App\Models\Exam;
 use App\Models\QuestionOption;
 use App\Services\AttemptService;
 use App\Services\CauseRevealService;
 use App\Services\DiagnosticComposer;
 use App\Services\MasteryCalculator;
+use App\Services\RemediationPlanner;
+use App\Services\TrainingComposer;
 use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,6 +42,8 @@ class ParcoursController extends Controller
         private readonly MasteryCalculator $mastery,
         private readonly AccessGrant $access,
         private readonly CauseRevealService $reveals,
+        private readonly RemediationPlanner $planner,
+        private readonly TrainingComposer $trainingComposer,
     ) {}
 
     /** Ouvre un diagnostic, ou rend celui déjà en cours. */
@@ -79,6 +85,101 @@ class ParcoursController extends Controller
         return (new AttemptResource($attempt->load(['exam', 'items.question.options', 'items.response'])))
             ->response()
             ->setStatusCode(201);
+    }
+
+    /**
+     * Ouvre une session d'entraînement ciblée, ou rend celle déjà ouverte.
+     *
+     * Sans `node_uuid`, le périmètre vient de l'ORDONNANCE : c'est ce qui
+     * referme la boucle. Le candidat passe son diagnostic, reçoit une liste de
+     * priorités, et s'entraîne dessus sans avoir à la retranscrire lui-même.
+     */
+    public function startTraining(Request $request, string $examCode): JsonResponse
+    {
+        $validated = $request->validate([
+            'node_uuid' => ['sometimes', 'nullable', 'uuid'],
+            'total' => ['sometimes', 'integer', 'between:5,40'],
+        ]);
+
+        $exam = Exam::published()->where('code', $examCode)->first();
+
+        if ($exam === null) {
+            return ApiError::make('RESOURCE_NOT_FOUND', __('errors.not_found'), 404);
+        }
+
+        $user = $request->user();
+        $total = $validated['total'] ?? 15;
+
+        $noeuds = $this->perimetre($user, $exam, $validated['node_uuid'] ?? null);
+
+        if ($noeuds === []) {
+            return ApiError::make(
+                'TRAINING_SCOPE_EMPTY',
+                __('parcours.entrainement_perimetre_vide'),
+                409,
+                ['exam_code' => $exam->code]
+            );
+        }
+
+        $cle = $request->header('Idempotency-Key') ?: (string) Str::uuid7();
+
+        try {
+            $session = $this->attempts->startTraining($user, $exam, $noeuds, $user->locale, $cle, $total);
+        } catch (TrainingScopeTooNarrow $e) {
+            /* Code DISTINCT de celui du diagnostic : les deux situations se
+             * ressemblent mais n'appellent pas la même conduite. */
+            return ApiError::make(
+                'TRAINING_SCOPE_TOO_NARROW',
+                __('parcours.entrainement_perimetre_etroit'),
+                409,
+                [
+                    'exam_code' => $exam->code,
+                    'available' => $e->disponibles,
+                    'minimum' => TrainingComposer::MINIMUM_UTILE,
+                ]
+            );
+        }
+
+        $attempt = $session['attempt'];
+
+        return (new AttemptResource($attempt->load(['exam', 'items.question.options', 'items.response'])))
+            ->additional(['meta' => [
+                'requested' => $session['demande'],
+                'served' => $attempt->item_count,
+                /* On DIT qu'on a servi moins, et pourquoi : la série n'est jamais
+                 * complétée hors périmètre, elle est simplement plus courte. */
+                'short_of_scope' => $attempt->item_count < $session['demande'],
+                'available_in_scope' => $session['disponibles'],
+                // Questions déjà réussies, resservies faute de vivier neuf.
+                'already_mastered_reused' => $session['resservies'],
+            ]])
+            ->response()
+            ->setStatusCode($session['creee'] ? 201 : 200);
+    }
+
+    /**
+     * Périmètre de la session : le nœud demandé, ou les têtes de l'ordonnance.
+     *
+     * @return list<int>
+     */
+    private function perimetre($user, Exam $exam, ?string $nodeUuid): array
+    {
+        if ($nodeUuid !== null) {
+            $noeud = CompetencyNode::where('uuid', $nodeUuid)
+                ->where('exam_id', $exam->id)
+                ->first();
+
+            return $noeud === null ? [] : [$noeud->id];
+        }
+
+        /* Les trois premières priorités : assez large pour composer une série,
+         * assez étroit pour rester une session ciblée. */
+        $uuids = $this->planner->prioritize($user, $exam, 3)->pluck('node_uuid')->all();
+
+        return CompetencyNode::whereIn('uuid', $uuids)
+            ->where('exam_id', $exam->id)
+            ->pluck('id')
+            ->all();
     }
 
     /** État d'une tentative, avec ses questions — jamais leurs réponses. */

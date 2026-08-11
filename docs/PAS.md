@@ -41,6 +41,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 18 | Rendez-vous Mémoire, seconde moitié : les deux routes, la question sœur, le plafond annoncé, et DET-35 tranché — le couple avance, plus la question tracée | `23d4aa6` |
 | — | SHA du PAS-18 au journal et au backlog, DET-35 clos, DET-37 et DET-38 | `7b29607` |
 | 19 | Une cause déjà payée ne se reverrouille pas : la liste de révision tient la garantie du quota, DET-38 requalifié en défaut | `31b87e2` |
+| — | SHA du PAS-19 au journal et au backlog, DET-38 clos et requalifié | `69e184b` |
+| 20 | La suite passe de 249 s à ~117 s sans dépendance : semis une fois par processus, argon2id au coût de test — paratest écarté par la mesure | `d3320b0` |
 
 ## Lots frontend
 

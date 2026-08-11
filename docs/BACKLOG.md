@@ -336,6 +336,31 @@ sur une AUTRE question du même couple, dans la correction, ferait passer
 l'unité de quota du « par réponse » au « par couple ». C'est l'économie de F03,
 donc une décision de produit — non prise ici.
 
+### PAS-20 — Le temps de la suite, mesuré puis réduit · `d3320b0`
+**Périmètre :** `Tests\TestCase::$seed`, `phpunit.xml` (facteur de travail
+argon2id), retrait des semis de onze `setUp()`, trois assertions de
+`CataloguePublicTest` remises sur le référentiel réel.
+
+**Ce que la mesure a dit, avant toute action :** répartition PLATE — six
+classes sur vingt-six portent la moitié du temps, donc aucun point chaud — mais
+**67 % de la suite était du montage** et non des assertions. Deux causes, aucune
+dépendance : le semis du catalogue rejoué à chaque test (0,22 s × ~240 tests) et
+`argon2id` retenu au coût de PRODUCTION en test (99,9 ms par hachage, deux à
+trois comptes par test).
+
+**Résultat :** 249 s → ~117 s. Trois exécutions vertes, dont une en ordre
+aléatoire — le catalogue vivant désormais hors transaction, l'ordre habituel
+seul n'aurait rien prouvé sur l'isolation.
+
+**Paratest écarté, et c'est un résultat de mesure.** DET-28 le proposait ;
+paralléliser un montage devenu court en échange d'une dépendance et d'une
+classe de défauts serait un mauvais échange. **L'interblocage sur `DROP TABLE`
+du §6 reste non reproduit ET non vérifié** — le vérifier exige paratest.
+
+**Effet de bord tracé (DET-39) :** le catalogue de test vit hors transaction. Un
+test qui l'écrirait fuirait sur les suivants. Aucun ne le fait ; la contrainte
+est écrite parce qu'elle ne se déduit d'aucune ligne de code.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
@@ -396,7 +421,7 @@ l'ancienne garde contre les deux contournements).
 | Constat | Registre | Statut |
 |---|---|---|
 | Frontend sans tests automatisés ni CI applicative | À ouvrir | **Écart réel** |
-| Suite de tests non parallélisable : `--parallel` ne démarre pas, paratest absent | DET-28 | Quand la durée le justifiera |
+| Suite de tests non parallélisable : `--parallel` ne démarre pas, paratest absent. **Réduit au PAS-20** : la durée est passée de 249 s à ~117 s sans dépendance, la parallélisation n'est plus un besoin | DET-28 | Si la durée redevient un problème |
 | Textes juridiques provisoires en base | DET-07 | Bloque l'ouverture publique |
 | Qualification juridique non validée par un juriste | DET-08 | Bloque l'ouverture publique |
 | Fournisseur d'e-mail non choisi | DET-09 | Bloque le pilote |
@@ -523,8 +548,12 @@ docker compose up -d                                  # PostgreSQL 16 + Redis
 php artisan migrate && php artisan test               # séquentiel
 ```
 
-La suite **n'est pas parallélisable en l'état** : voir §6. `--parallel` ne
-démarre pas — Collision exige `brianium/paratest`, absent des dépendances. Le
-constat d'interblocage sur les suppressions de tables est antérieur et n'a pas
-pu être reproduit au PAS-9 : il reste à vérifier une fois paratest ajouté
-(DET-28). La CI exécute la suite en séquentiel.
+La suite tourne **en séquentiel, en ~117 s** (PAS-20). Elle n'est toujours pas
+parallélisable — Collision exige `brianium/paratest`, absent des dépendances —
+et **ce n'est plus le sujet**. Mesurée au PAS-20, la lenteur ne venait pas du
+séquentiel : 67 % du temps était du montage, dont l'essentiel tenait à deux
+causes réparables sans aucune dépendance (semis rejoué à chaque test, argon2id
+au coût de production). L'interblocage sur les suppressions de tables décrit
+au §6 reste **non reproduit et non vérifié** : le vérifier suppose d'installer
+paratest, ce que la mesure ne justifie plus. Voir DET-28. La CI exécute la
+suite en séquentiel.

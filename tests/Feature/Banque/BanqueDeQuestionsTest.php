@@ -13,8 +13,6 @@ use App\Models\User;
 use App\Services\QuestionIntegrityChecker;
 use App\Services\QuestionTransitionService;
 use App\Tenancy\TenantContext;
-use Database\Seeders\CatalogueSeeder;
-use Database\Seeders\Crmef2025Seeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -41,9 +39,6 @@ class BanqueDeQuestionsTest extends TestCase
     {
         parent::setUp();
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
-
-        $this->seed(CatalogueSeeder::class);
-        $this->seed(Crmef2025Seeder::class);
 
         $this->epreuve = Exam::where('code', 'CRMEF-SE-2025')->firstOrFail();
         $this->sousDomaine = CompetencyNode::where('code', 'SE-PSY-DEV')->firstOrFail();

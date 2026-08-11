@@ -6,7 +6,6 @@ use App\Models\CompetencyNode;
 use App\Models\ExamFamily;
 use App\Models\ExamSession;
 use App\Models\TaxonomyProfile;
-use Database\Seeders\CatalogueSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
@@ -19,7 +18,6 @@ class CataloguePublicTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(CatalogueSeeder::class);
     }
 
     // --- Accès public ------------------------------------------------------
@@ -32,22 +30,42 @@ class CataloguePublicTest extends TestCase
             ->assertJsonPath('data.0.slug', 'sciences-education');
     }
 
+    /**
+     * Seize spécialités : onze au secondaire, quatre au primaire bilingue, une
+     * au primaire amazigh.
+     *
+     * Cette classe attendait DEUX spécialités, parce qu'elle ne semait que
+     * `CatalogueSeeder`. Or `Crmef2025Seeder::purgerSpecialitesOrphelines()`
+     * SUPPRIME les entrées provisoires du PAS-4 (« francais »,
+     * « mathematiques ») que le référentiel officiel remplace — sans quoi le
+     * candidat verrait deux entrées pour la même discipline. Le test tenait
+     * donc un état intermédiaire que ni la production ni `migrate --seed` ne
+     * produisent.
+     */
     public function test_une_famille_expose_ses_specialites_et_sa_taxonomie(): void
     {
         $this->getJson('/api/v1/catalogue/familles/crmef')
             ->assertOk()
             ->assertJsonPath('data.slug', 'crmef')
-            ->assertJsonCount(2, 'data.specialties')
+            ->assertJsonCount(16, 'data.specialties')
             ->assertJsonPath('data.taxonomy.levels.0.name', 'Pilier')
             ->assertJsonPath('data.taxonomy.levels.3.name', 'Microcompétence');
     }
 
     public function test_une_specialite_est_accessible_par_son_slug(): void
     {
-        $this->getJson('/api/v1/catalogue/familles/crmef/specialites/francais')
+        // `langue-francaise` du référentiel officiel, et non le « francais »
+        // provisoire du PAS-4 que le référentiel purge.
+        $this->getJson('/api/v1/catalogue/familles/crmef/specialites/langue-francaise')
             ->assertOk()
-            ->assertJsonPath('data.slug', 'francais')
+            ->assertJsonPath('data.slug', 'langue-francaise')
             ->assertJsonPath('data.family.slug', 'crmef');
+    }
+
+    public function test_une_specialite_provisoire_du_pas_4_ne_survit_pas_au_referentiel(): void
+    {
+        $this->getJson('/api/v1/catalogue/familles/crmef/specialites/francais')
+            ->assertNotFound();
     }
 
     // --- Rien de non publié ne fuit ---------------------------------------
@@ -107,11 +125,18 @@ class CataloguePublicTest extends TestCase
 
     public function test_le_catalogue_repond_en_arabe(): void
     {
-        $this->withHeaders(['Accept-Language' => 'ar'])
+        $reponse = $this->withHeaders(['Accept-Language' => 'ar'])
             ->getJson('/api/v1/catalogue/familles/crmef')
             ->assertOk()
-            ->assertJsonPath('data.taxonomy.levels.0.name', 'ركيزة')
-            ->assertJsonPath('data.specialties.0.name', 'الفرنسية');
+            ->assertJsonPath('data.taxonomy.levels.0.name', 'ركيزة');
+
+        /* Repérée par son slug et non par son rang : l'ordre d'une liste de
+         * seize spécialités n'est pas ce que ce test défend, et s'y accrocher
+         * le ferait tomber au prochain ajout au référentiel. */
+        $langueFrancaise = collect($reponse->json('data.specialties'))
+            ->firstWhere('slug', 'langue-francaise');
+
+        $this->assertSame('اللغة الفرنسية', $langueFrancaise['name']);
     }
 
     // --- Taxonomie en arbre (ADR-0012) ------------------------------------

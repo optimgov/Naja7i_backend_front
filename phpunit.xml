@@ -29,6 +29,26 @@
             test_un_mot_de_passe_unicode_est_accepte cherche à écarter.
         -->
         <env name="HASH_DRIVER" value="argon2id"/>
+        <!--
+            MÊME ALGORITHME, FACTEUR DE TRAVAIL RÉDUIT.
+
+            Argon2id est lent PAR CONCEPTION : mesuré à 99,9 ms par hachage aux
+            réglages de production, contre 0,7 ms ici — et chaque test crée deux
+            à trois comptes. C'était le premier poste de la suite, loin devant
+            les semis.
+
+            Baisser le coût ne dénature pas ce que le commentaire ci-dessus
+            protège : la troncature à 72 octets est une propriété de l'ALGORITHME
+            bcrypt, pas de son facteur de travail. `test_un_mot_de_passe_unicode_
+            est_accepte` continue donc de vérifier exactement ce pour quoi il a
+            été écrit, sous argon2id, en 0,7 ms.
+
+            NE JAMAIS reprendre ces valeurs en production : elles rendraient une
+            empreinte cassable hors ligne. Elles vivent ici, et nulle part ailleurs.
+        -->
+        <env name="ARGON_MEMORY" value="1024"/>
+        <env name="ARGON_TIME" value="2"/>
+        <env name="ARGON_THREADS" value="1"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <!--

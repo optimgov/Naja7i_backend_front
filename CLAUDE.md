@@ -35,8 +35,15 @@ plutôt que Y parce que Z » vaut mieux qu'une question posée à mi-parcours.
   d'architecture dans `docs/adr/`.
 - Le message de commit explique **pourquoi**, pas seulement quoi. Relis les trois
   derniers pour la forme.
-- `./vendor/bin/pint` avant de commiter. Les tests tournent **en séquentiel** —
-  `--parallel` ne fonctionne pas, `paratest` est absent (DET-28).
+- `./vendor/bin/pint` avant de commiter. Les tests tournent **en séquentiel**,
+  en ~117 s — `--parallel` ne fonctionne pas, `paratest` est absent, et la
+  mesure du PAS-20 a montré que ce n'était pas le sujet (DET-28).
+- **Ne lance jamais deux exécutions de la suite en même temps.** Elles partagent
+  la base `naja7i_test` et se détruisent mutuellement : le résultat est une
+  avalanche d'échecs qui n'a rien à voir avec le code.
+- Le catalogue de test est semé **une fois par processus**, hors transaction
+  (`Tests\TestCase::$seed`). N'appelle pas `$this->seed(CatalogueSeeder::class)`
+  dans un `setUp()` : c'est déjà fait, et le rejouer coûte 0,22 s par test.
 
 ## Règles de conception non négociables
 

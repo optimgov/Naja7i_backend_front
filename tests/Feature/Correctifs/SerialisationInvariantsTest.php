@@ -14,8 +14,6 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\QuestionTransitionService;
 use App\Tenancy\TenantContext;
-use Database\Seeders\CatalogueSeeder;
-use Database\Seeders\Crmef2025Seeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
@@ -58,9 +56,6 @@ class SerialisationInvariantsTest extends TestCase
         $this->organisme = Tenant::create(['slug' => 'centre-fes', 'name' => 'Centre de Fès']);
 
         app(TenantContext::class)->set($this->plateforme);
-
-        $this->seed(CatalogueSeeder::class);
-        $this->seed(Crmef2025Seeder::class);
 
         $this->epreuve = Exam::where('code', 'CRMEF-SE-2025')->firstOrFail();
         $this->source = Source::where('code', 'SRC-CRMEF-2025-SE')->firstOrFail();

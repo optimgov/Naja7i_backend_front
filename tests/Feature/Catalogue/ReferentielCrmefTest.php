@@ -8,8 +8,6 @@ use App\Models\Exam;
 use App\Models\Source;
 use App\Models\Specialty;
 use App\Models\Track;
-use Database\Seeders\CatalogueSeeder;
-use Database\Seeders\Crmef2025Seeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -29,8 +27,6 @@ class ReferentielCrmefTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(CatalogueSeeder::class);
-        $this->seed(Crmef2025Seeder::class);
     }
 
     // --- Les poids officiels ----------------------------------------------

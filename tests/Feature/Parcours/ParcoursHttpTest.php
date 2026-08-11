@@ -14,8 +14,6 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\QuestionTransitionService;
 use App\Tenancy\TenantContext;
-use Database\Seeders\CatalogueSeeder;
-use Database\Seeders\Crmef2025Seeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -32,9 +30,6 @@ class ParcoursHttpTest extends TestCase
     {
         parent::setUp();
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
-
-        $this->seed(CatalogueSeeder::class);
-        $this->seed(Crmef2025Seeder::class);
 
         $this->epreuve = Exam::where('code', 'CRMEF-SE-2025')->firstOrFail();
         $this->candidat = $this->candidat('candidat@naja7i.ma');

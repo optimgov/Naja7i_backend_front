@@ -17,8 +17,6 @@ use App\Services\AttemptService;
 use App\Services\MasteryCalculator;
 use App\Services\RemediationPlanner;
 use App\Tenancy\TenantContext;
-use Database\Seeders\CatalogueSeeder;
-use Database\Seeders\Crmef2025Seeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -39,9 +37,6 @@ class MaitriseTest extends TestCase
     {
         parent::setUp();
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
-
-        $this->seed(CatalogueSeeder::class);
-        $this->seed(Crmef2025Seeder::class);
 
         $this->epreuve = Exam::where('code', 'CRMEF-SE-2025')->firstOrFail();
         $this->source = Source::where('code', 'SRC-CRMEF-2025-SE')->firstOrFail();

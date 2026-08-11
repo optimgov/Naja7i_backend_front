@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Exceptions\IdempotencyKeyReused;
+use App\Exceptions\MirrorNotApplicable;
+use App\Exceptions\NoMirrorAvailable;
 use App\Exceptions\NoSiblingQuestionAvailable;
 use App\Exceptions\NothingDueForReview;
 use App\Exceptions\TrainingScopeTooNarrow;
@@ -49,6 +51,7 @@ final class AttemptService
         private readonly ReviewComposer $reviews,
         private readonly MemoryScheduler $memory,
         private readonly MasteryCalculator $mastery,
+        private readonly QuestionsSoeurs $soeurs,
     ) {}
 
     /**
@@ -466,6 +469,140 @@ final class AttemptService
             'couverts' => $attempt->item_count,
             'sans_question' => 0,
             'resservies_identiques' => 0,
+        ];
+    }
+
+    /**
+     * Ouvre la QUESTION MIROIR d'un item raté, ou rend celle déjà ouverte.
+     *
+     * F05. Après une erreur corrigée, on propose une AUTRE question portant le
+     * même piège : sans elle, la correction est une lecture ; avec elle, c'est
+     * une vérification.
+     *
+     * UNE TENTATIVE D'UN SEUL ITEM, ET CE N'EST PAS UN ARTIFICE. Le miroir
+     * réemploie ainsi `answer()`, `submit()`, la correction, le recalcul de
+     * maîtrise et la planification mémoire sans une ligne de plus. Et il
+     * referme la boucle de F07 : réussir un miroir fait avancer le rendez-vous
+     * du couple, ce qui est exactement le comportement voulu — c'est le même
+     * piège évité sur un autre énoncé.
+     *
+     * LE MIROIR N'EST JAMAIS LA QUESTION DÉJÀ RÉPONDUE. La révision se rabat
+     * sur l'énoncé connu faute de mieux ; ici ce serait absurde, et
+     * `NoMirrorAvailable` le dit.
+     *
+     * @return array{attempt: Attempt, creee: bool, cause: string, question_source_uuid: string}
+     *
+     * @throws MirrorNotApplicable
+     * @throws NoMirrorAvailable
+     * @throws IdempotencyKeyReused
+     */
+    public function startMirror(User $user, AttemptItem $item, string $locale, string $idempotencyKey): array
+    {
+        $source = $item->attempt;
+
+        if ($source->submitted_at === null) {
+            throw new MirrorNotApplicable('la tentative d\'origine n\'est pas soumise');
+        }
+
+        $reponse = $item->response;
+        $cause = $reponse?->selectedOption?->cause;
+
+        /* Ni réponse juste, ni item sauté : on ne fait pas réviser ce qui n'a
+         * jamais posé problème. Une bonne réponse ne porte d'ailleurs aucune
+         * cause (contrainte du PAS-5), l'un implique l'autre. */
+        if ($reponse === null || $reponse->is_correct !== false || $cause === null) {
+            throw new MirrorNotApplicable('cet item ne porte aucune erreur diagnostiquée');
+        }
+
+        $empreinte = $this->empreinte('mirror', $source->exam_id, ['item_uuid' => $item->uuid]);
+
+        $existante = $this->rejeu($user, $idempotencyKey, $empreinte);
+
+        if ($existante !== null) {
+            return $this->repriseDeMiroir($existante, $cause, $item);
+        }
+
+        /* Un seul miroir ouvert, tous concours confondus. En ouvrir un second
+         * signifierait que le premier a été abandonné — on le reprend plutôt
+         * que d'en effacer la trace. */
+        $ouvert = fn () => Attempt::where('user_id', $user->id)
+            ->where('kind', 'mirror')
+            ->open()
+            ->first();
+
+        $enCours = $ouvert();
+
+        if ($enCours !== null) {
+            return $this->repriseDeMiroir($enCours, $cause, $item);
+        }
+
+        $exam = $source->exam;
+
+        $vivier = $this->soeurs->vivier($exam, [$item->competency_node_id], $locale);
+
+        $miroir = $this->soeurs
+            ->autresQue($vivier, $item->competency_node_id, $cause, $item->question_id)
+            ->first();
+
+        if ($miroir === null) {
+            throw new NoMirrorAvailable($cause);
+        }
+
+        try {
+            $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $miroir) {
+                $attempt = Attempt::create([
+                    'user_id' => $user->id,
+                    'exam_id' => $exam->id,
+                    'locale' => $locale,
+                    'idempotency_key' => $idempotencyKey,
+                    'idempotency_fingerprint' => $empreinte,
+                    'kind' => 'mirror',
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'last_activity_at' => now(),
+                    // Vérifier n'est pas passer une épreuve : aucun chronomètre.
+                    'expires_at' => null,
+                    'item_count' => 1,
+                ]);
+
+                AttemptItem::create([
+                    'attempt_id' => $attempt->id,
+                    'question_id' => $miroir->id,
+                    'competency_node_id' => $miroir->competency_node_id,
+                    'position' => 1,
+                ]);
+
+                return $attempt->fresh('items');
+            });
+        } catch (QueryException $e) {
+            return $this->repriseDeMiroir(
+                $this->gagnante(
+                    $e,
+                    ['attempts_single_open_mirror', 'attempts_tenant_user_idempotency_unique'],
+                    fn () => $ouvert() ?? Attempt::where('user_id', $user->id)
+                        ->where('idempotency_key', $idempotencyKey)->first(),
+                ),
+                $cause,
+                $item,
+            );
+        }
+
+        return [
+            'attempt' => $attempt,
+            'creee' => true,
+            'cause' => $cause,
+            'question_source_uuid' => $item->question->uuid,
+        ];
+    }
+
+    /** @return array{attempt: Attempt, creee: bool, cause: string, question_source_uuid: string} */
+    private function repriseDeMiroir(Attempt $attempt, string $cause, AttemptItem $item): array
+    {
+        return [
+            'attempt' => $attempt->load('items'),
+            'creee' => false,
+            'cause' => $cause,
+            'question_source_uuid' => $item->question->uuid,
         ];
     }
 

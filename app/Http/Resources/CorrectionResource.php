@@ -19,8 +19,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class CorrectionResource extends JsonResource
 {
-    public function __construct($resource, private readonly bool $causeVisible)
-    {
+    public function __construct(
+        $resource,
+        private readonly bool $causeVisible,
+        private readonly bool $miroirDisponible = false,
+    ) {
         parent::__construct($resource);
     }
 
@@ -53,6 +56,26 @@ class CorrectionResource extends JsonResource
                 'cause' => $this->causeVisible ? $option->cause : null,
             ])->values(),
             'cause_locked' => ! $this->causeVisible && $response?->is_correct === false,
+
+            /*
+             * F05 — SEULEMENT L'EXISTENCE D'UN MIROIR, jamais la question.
+             *
+             * Ni son énoncé, ni ses options, ni même son uuid. Deux raisons, et
+             * la seconde est la vraie :
+             *
+             *  - charger un miroir pour chaque item faux coûterait des requêtes
+             *    pour des questions que le candidat n'ouvrira pas ;
+             *  - faire voyager un énoncé dans une réponse de CORRECTION
+             *    mélangerait deux surfaces que ce dépôt sépare depuis le PAS-6.
+             *    `AttemptQuestionResource` et cette classe sont distinctes
+             *    précisément pour que rien ne puisse basculer l'une en l'autre.
+             *    Cette porte reste fermée.
+             *
+             * La question du miroir s'obtient en l'OUVRANT, par
+             * `POST me/mirrors/{itemUuid}`, et elle arrive alors par la
+             * ressource qui sait la servir sans rien révéler.
+             */
+            'mirror_available' => $this->miroirDisponible,
             'competency' => [
                 'code' => $this->node?->code,
                 'name' => $this->node?->localized('name'),

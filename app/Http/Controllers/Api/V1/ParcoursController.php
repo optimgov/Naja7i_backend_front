@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\AccessGrant;
 use App\Exceptions\IdempotencyKeyReused;
+use App\Exceptions\MirrorNotApplicable;
+use App\Exceptions\NoMirrorAvailable;
 use App\Exceptions\TrainingScopeTooNarrow;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AttemptResource;
@@ -16,11 +18,13 @@ use App\Models\QuestionOption;
 use App\Services\AttemptService;
 use App\Services\CauseRevealService;
 use App\Services\DiagnosticComposer;
+use App\Services\QuestionsSoeurs;
 use App\Services\RemediationPlanner;
 use App\Services\TrainingComposer;
 use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -43,6 +47,7 @@ class ParcoursController extends Controller
         private readonly CauseRevealService $reveals,
         private readonly RemediationPlanner $planner,
         private readonly TrainingComposer $trainingComposer,
+        private readonly QuestionsSoeurs $soeurs,
     ) {}
 
     /** Ouvre un diagnostic, ou rend celui déjà en cours. */
@@ -428,7 +433,13 @@ class ParcoursController extends Controller
             ->with(['question.options', 'question.remediation', 'response.selectedOption', 'node'])
             ->get();
 
-        $corrections = $items->map(function (AttemptItem $item) use ($user, $premium) {
+        /* EN UNE REQUÊTE POUR TOUTE LA SÉRIE, et non une par item faux. Le
+         * vivier des sœurs est indexé par (compétence, cause) ; le lire une
+         * fois suffit à savoir, pour chaque erreur, s'il existe un AUTRE énoncé
+         * portant le même piège. */
+        $miroirs = $this->miroirsDisponibles($attempt, $items);
+
+        $corrections = $items->map(function (AttemptItem $item) use ($user, $premium, $miroirs) {
             $fausse = $item->response?->is_correct === false;
 
             /* Une bonne réponse — ou une question restée sans réponse — n'a
@@ -442,7 +453,9 @@ class ParcoursController extends Controller
              * une seule unité restante (REVUE PAS-10 BLOC-3). */
             $visible = ! $fausse || $this->reveals->reveal($user, $item->response, $premium);
 
-            return (new CorrectionResource($item, $visible))->resolve();
+            return (new CorrectionResource(
+                $item, $visible, in_array($item->id, $miroirs, strict: true)
+            ))->resolve();
         });
 
         $etat = $this->reveals->status($user, $premium);
@@ -460,6 +473,102 @@ class ParcoursController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Ouvre la question miroir d'un item raté — F05.
+     *
+     * L'item d'un autre candidat est INTROUVABLE : le filtre par `user_id` sur
+     * la tentative fait foi, comme partout. En revanche, un item bien à soi qui
+     * ne se prête pas au miroir reçoit un 409 nommé — lui répondre
+     * « introuvable » sur sa propre correction serait mentir pour rien.
+     */
+    public function startMirror(Request $request, string $itemUuid): JsonResponse
+    {
+        $user = $request->user();
+
+        $item = AttemptItem::where('uuid', $itemUuid)
+            ->whereHas('attempt', fn ($q) => $q->where('user_id', $user->id))
+            ->with(['attempt.exam', 'question', 'response.selectedOption'])
+            ->first();
+
+        if ($item === null) {
+            return ApiError::make('RESOURCE_NOT_FOUND', __('errors.not_found'), 404);
+        }
+
+        $cle = $request->header('Idempotency-Key') ?: (string) Str::uuid7();
+
+        try {
+            $miroir = $this->attempts->startMirror($user, $item, $user->locale, $cle);
+        } catch (IdempotencyKeyReused $e) {
+            return $this->cleReutilisee($e);
+        } catch (MirrorNotApplicable $e) {
+            return ApiError::make(
+                'MIRROR_NOT_APPLICABLE',
+                __('parcours.miroir_sans_objet'),
+                409,
+                ['item_uuid' => $item->uuid]
+            );
+        } catch (NoMirrorAvailable $e) {
+            /* Code DISTINCT du précédent : ici le candidat a bien une erreur à
+             * vérifier, c'est la BANQUE qui n'a pas d'autre énoncé. Rien à
+             * faire de son côté — et le couple apparaît déjà au plan de
+             * rédaction du PAS-22, son erreur ayant créé un rendez-vous. */
+            return ApiError::make(
+                'MIRROR_NOT_AVAILABLE',
+                __('parcours.miroir_indisponible'),
+                409,
+                ['item_uuid' => $item->uuid]
+            );
+        }
+
+        $attempt = $miroir['attempt'];
+
+        return (new AttemptResource($attempt->load(['exam', 'items.question.options', 'items.response'])))
+            ->additional(['meta' => [
+                /* Le piège retendu. La cause est un champ payant, mais celle-ci
+                 * vient d'être servie en correction sur l'item d'origine : le
+                 * candidat la connaît déjà, et la taire ici l'empêcherait de
+                 * comprendre ce qu'on lui demande de vérifier. */
+                'cause' => $miroir['cause'],
+                // De quelle question ce miroir vérifie la leçon.
+                'source_question_uuid' => $miroir['question_source_uuid'],
+            ]])
+            ->response()
+            ->setStatusCode($miroir['creee'] ? 201 : 200);
+    }
+
+    /**
+     * Items faux de cette série pour lesquels une AUTRE question existe.
+     *
+     * @param  Collection<int, AttemptItem>  $items
+     * @return list<int>
+     */
+    private function miroirsDisponibles(Attempt $attempt, $items): array
+    {
+        $fautes = $items->filter(
+            fn (AttemptItem $item) => $item->response?->is_correct === false
+                && $item->response->selectedOption?->cause !== null
+        );
+
+        if ($fautes->isEmpty() || $attempt->exam === null) {
+            return [];
+        }
+
+        $vivier = $this->soeurs->vivier(
+            $attempt->exam,
+            $fautes->pluck('competency_node_id')->unique()->all(),
+            $attempt->locale,
+        );
+
+        return $fautes->filter(
+            fn (AttemptItem $item) => $this->soeurs->autresQue(
+                $vivier,
+                $item->competency_node_id,
+                $item->response->selectedOption->cause,
+                $item->question_id,
+            )->isNotEmpty()
+        )->pluck('id')->all();
     }
 
     /**

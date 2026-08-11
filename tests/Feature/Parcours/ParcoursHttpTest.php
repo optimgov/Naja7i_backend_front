@@ -252,11 +252,34 @@ class ParcoursHttpTest extends TestCase
             ->getJson("/api/v1/me/attempts/{$attempt['uuid']}/correction")
             ->assertOk();
 
-        $verrouilles = collect($correction->json('data'))->where('cause_locked', true);
+        $items = collect($correction->json('data'));
 
+        /*
+         * DEUX UNITÉS ACHÈTENT DEUX COUPLES, plus deux réponses.
+         *
+         * Le décompte était auparavant « huit verrouillées sur dix » : une
+         * unité par RÉPONSE. Depuis le PAS-26, l'unité porte sur le couple
+         * (compétence, cause) — F05 l'a imposé, la question miroir portant par
+         * construction une cause qu'on vient de payer, et la faire repayer
+         * reviendrait à vendre deux fois le même diagnostic.
+         *
+         * Le test exprime donc la RÈGLE et non un nombre : deux unités
+         * consommées, deux couples ouverts, le reste fermé. Ici toutes les
+         * erreurs portent la même cause, les couples se distinguent donc par
+         * leur compétence.
+         */
         $this->assertSame(2, $correction->json('meta.cause_quota.revealed'));
-        $this->assertCount(8, $verrouilles, 'Huit corrections sur dix doivent rester verrouillées.');
         $this->assertFalse($correction->json('meta.cause_quota.unlimited'));
+
+        $ouvertes = $items->where('cause_locked', false)->pluck('competency.code')->unique();
+        $fermees = $items->where('cause_locked', true);
+
+        $this->assertCount(2, $ouvertes, 'Deux unités ouvrent exactement deux couples.');
+        $this->assertTrue($fermees->isNotEmpty(), 'Le mur tient sur les couples non payés.');
+        $this->assertEmpty(
+            $fermees->pluck('competency.code')->unique()->intersect($ouvertes),
+            'Aucune compétence ne peut être à la fois ouverte et fermée : le couple est payé ou il ne l\'est pas.'
+        );
     }
 
     public function test_la_justification_reste_visible_meme_quand_la_cause_est_verrouillee(): void

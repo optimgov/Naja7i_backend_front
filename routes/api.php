@@ -119,6 +119,11 @@ Route::prefix('v1')->group(function () {
             // Entraînement ciblé : ce que l'ordonnance recommande devient cliquable.
             Route::post('me/training/{examCode}', [ParcoursController::class, 'startTraining'])
                 ->middleware('throttle:10,1');
+
+            /* F05 — la question miroir. À la demande, jamais servie d'office :
+             * la correction n'en annonce que l'EXISTENCE. */
+            Route::post('me/mirrors/{itemUuid}', [ParcoursController::class, 'startMirror'])
+                ->middleware('throttle:20,1');
         });
 
         Route::put('me/attempts/{uuid}/items/{itemUuid}', [ParcoursController::class, 'answer'])

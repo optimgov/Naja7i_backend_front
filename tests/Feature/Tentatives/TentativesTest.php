@@ -306,8 +306,16 @@ class TentativesTest extends TestCase
     {
         $attempt = $this->service()->startDiagnostic($this->candidat, $this->epreuve, 'fr', (string) Str::uuid7());
 
-        foreach ($attempt->items->take(3) as $item) {
-            $this->service()->answer($item, $item->question->distractors()->first(), 'hesitant');
+        /* TROIS CAUSES DISTINCTES, une par item. Depuis le PAS-26, l'unité de
+         * quota porte sur le couple (compétence, cause) : trois erreurs du même
+         * distracteur ne coûteraient qu'une unité et ce test ne verrait jamais
+         * le plafond qu'il vient éprouver. */
+        foreach ($attempt->items->take(3) as $rang => $item) {
+            $this->service()->answer(
+                $item,
+                $item->question->options->firstWhere('position', [1, 3, 4][$rang]),
+                'hesitant'
+            );
         }
         $this->service()->submit($attempt);
 

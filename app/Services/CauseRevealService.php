@@ -52,6 +52,30 @@ final class CauseRevealService
             return true;   // revoir sa correction ne recoûte rien
         }
 
+        /*
+         * UNE CAUSE DÉJÀ PAYÉE RESTE OUVERTE, MÊME SUR UN AUTRE ÉNONCÉ.
+         *
+         * Le PAS-19 avait tenu cette garantie sur la liste de révision et l'y
+         * avait bornée, en laissant ouverte la question de son extension à la
+         * correction. F05 l'a tranchée en la rendant intenable : la question
+         * miroir porte PAR CONSTRUCTION la cause que le candidat vient de voir
+         * en correction. Sans cette porte, vérifier qu'on a compris coûterait
+         * une seconde unité pour la même explication — le produit ferait payer
+         * deux fois ce qu'il présente comme un diagnostic unique.
+         *
+         * L'unité de quota porte donc sur le COUPLE (compétence, cause) et non
+         * sur la réponse. La réponse est marquée révélée sans rien consommer :
+         * l'état reste lisible d'un coup d'œil, et les lectures suivantes ne
+         * repassent pas par cette jointure.
+         */
+        if ($this->coupleDejaPaye($user, $response)) {
+            Response::where('id', $response->id)
+                ->where('cause_revealed', false)
+                ->update(['cause_revealed' => true]);
+
+            return true;
+        }
+
         return DB::transaction(function () use ($user, $response, $hasPremiumAccess) {
             CauseRevealCounter::firstOrCreate(['user_id' => $user->id]);
 
@@ -94,6 +118,32 @@ final class CauseRevealService
 
             return true;
         });
+    }
+
+    /**
+     * Ce candidat a-t-il déjà payé la cause de CE couple, sur un autre énoncé ?
+     *
+     * Une réponse sans option choisie, ou dont l'option n'a pas de cause — une
+     * bonne réponse — ne relève d'aucun couple : il n'y a rien à retrouver.
+     */
+    private function coupleDejaPaye(User $user, Response $response): bool
+    {
+        $item = $response->item;
+        $cause = $response->selectedOption?->cause;
+
+        if ($item === null || $cause === null) {
+            return false;
+        }
+
+        return Response::query()
+            ->join('attempt_items', 'attempt_items.id', '=', 'responses.attempt_item_id')
+            ->join('attempts', 'attempts.id', '=', 'attempt_items.attempt_id')
+            ->join('question_options', 'question_options.id', '=', 'responses.selected_option_id')
+            ->where('attempts.user_id', $user->id)
+            ->where('responses.cause_revealed', true)
+            ->where('attempt_items.competency_node_id', $item->competency_node_id)
+            ->where('question_options.cause', $cause)
+            ->exists();
     }
 
     /**

@@ -27,11 +27,15 @@ use Illuminate\Support\Collection;
  * pas le raisonnement. `last_question_id` sert exactement à cela, et à rien
  * d'autre depuis DET-35 : éviter la répétition, jamais apparier.
  *
- * C'est le point de branchement de F05 (question miroir) : le jour où elle
- * arrivera, seul le choix de la sœur change ici.
+ * LE SÉLECTEUR EST PARTAGÉ AVEC F05 (question miroir), depuis le PAS-26 :
+ * `QuestionsSoeurs` porte le vivier, cette classe garde sa politique de repli.
+ * Ce qui diffère entre les deux surfaces n'est pas ce qu'on cherche, mais ce
+ * qu'on fait quand on ne trouve rien.
  */
 final class ReviewComposer
 {
+    public function __construct(private readonly QuestionsSoeurs $soeurs) {}
+
     /**
      * Une question par rendez-vous échu, dédoublonnée.
      *
@@ -58,7 +62,9 @@ final class ReviewComposer
             ];
         }
 
-        $vivier = $this->vivier($exam, $rendezVous->pluck('competency_node_id')->unique()->all(), $locale);
+        $vivier = $this->soeurs->vivier(
+            $exam, $rendezVous->pluck('competency_node_id')->unique()->all(), $locale
+        );
 
         $choisies = collect();
         $couverts = 0;
@@ -66,8 +72,7 @@ final class ReviewComposer
         $identiques = 0;
 
         foreach ($rendezVous as $rdv) {
-            $candidates = $vivier
-                ->get($this->cle($rdv->competency_node_id, $rdv->cause), collect());
+            $candidates = $this->soeurs->candidates($vivier, $rdv->competency_node_id, $rdv->cause);
 
             if ($candidates->isEmpty()) {
                 /* Aucune question ne tend ce piège dans cette compétence : la
@@ -90,7 +95,7 @@ final class ReviewComposer
                 continue;   // plafond atteint : le reste est annoncé par l'appelant
             }
 
-            $soeur = $this->soeur($candidates, $rdv);
+            $soeur = $this->soeur($vivier, $candidates, $rdv);
 
             if ($soeur->id === $rdv->last_question_id) {
                 /* Faute de sœur, on ressert l'énoncé déjà vu. Ce n'est ni tu ni
@@ -125,48 +130,14 @@ final class ReviewComposer
      * `MEMORY_NO_SIBLING_QUESTION` reste réservé au cas où le couple n'a
      * AUCUNE question.
      *
+     * @param  Collection<string, Collection<int, Question>>  $vivier
      * @param  Collection<int, Question>  $candidates
      */
-    private function soeur(Collection $candidates, ReviewSchedule $rdv): Question
+    private function soeur(Collection $vivier, Collection $candidates, ReviewSchedule $rdv): Question
     {
-        return $candidates->first(fn (Question $q) => $q->id !== $rdv->last_question_id)
+        return $this->soeurs
+            ->autresQue($vivier, $rdv->competency_node_id, $rdv->cause, $rdv->last_question_id)
+            ->first()
             ?? $candidates->first();
-    }
-
-    /**
-     * Vivier indexé par (compétence, cause).
-     *
-     * Une seule requête pour toute la session : interroger la banque par
-     * rendez-vous aurait coûté vingt allers-retours sur le chemin d'ouverture.
-     *
-     * @param  list<int>  $nodeIds
-     * @return Collection<string, Collection<int, Question>>
-     */
-    private function vivier(Exam $exam, array $nodeIds, string $locale): Collection
-    {
-        $questions = Question::forDiagnostic()
-            ->where('questions.exam_id', $exam->id)
-            ->where('questions.locale', $locale)
-            ->whereIn('questions.competency_node_id', $nodeIds)
-            ->with(['options' => fn ($q) => $q->where('is_correct', false)->whereNotNull('cause')])
-            ->orderBy('questions.id')
-            ->get();
-
-        $index = collect();
-
-        foreach ($questions as $question) {
-            foreach ($question->options->pluck('cause')->unique() as $cause) {
-                $cle = $this->cle($question->competency_node_id, $cause);
-
-                $index->put($cle, ($index->get($cle) ?? collect())->push($question));
-            }
-        }
-
-        return $index;
-    }
-
-    private function cle(int $nodeId, string $cause): string
-    {
-        return $nodeId.'|'.$cause;
     }
 }

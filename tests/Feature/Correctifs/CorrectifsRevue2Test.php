@@ -559,14 +559,25 @@ class CorrectifsRevue2Test extends TestCase
     }
 
     /** @return array{0: Response, 1: Response} */
+    /**
+     * Deux erreurs de CAUSES DISTINCTES, donc deux couples distincts.
+     *
+     * Le distracteur A (`confusion_notions`) puis le C (`lecture_enonce`) :
+     * depuis le PAS-26, l'unité de quota porte sur le couple (compétence,
+     * cause), et deux erreurs du même couple ne coûtent qu'une unité. Deux
+     * réponses au même distracteur ne prouveraient donc plus rien de
+     * l'atomicité du décompte — elles emprunteraient le chemin gratuit.
+     *
+     * @return array{0: Response, 1: Response}
+     */
     private function deuxReponsesFausses(User $candidat): array
     {
         $service = app(AttemptService::class);
         $reponses = [];
 
-        foreach ([1, 2] as $i) {
+        foreach ([1, 3] as $position) {
             $item = $this->itemDeTentative($candidat);
-            $service->answer($item, $item->question->distractors()->first(), 'hesitant');
+            $service->answer($item, $item->question->options->firstWhere('position', $position), 'hesitant');
             $service->submit($item->attempt);
             $reponses[] = $item->fresh()->response;
         }

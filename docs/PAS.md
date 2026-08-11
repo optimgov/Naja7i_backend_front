@@ -37,6 +37,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | SHA du PAS-15 au journal et au backlog, DET-31 | `98ed1d6` |
 | 16 | Rendez-vous Mémoire (F07), première moitié : calendrier à casiers, paliers fixes, on planifie une erreur et non une question | `4b7ad75` |
 | 17 | L'évitement cesse de payer : une question servie et sautée est comptée, entre dans l'urgence à facteur partiel et sous son propre motif | `5a97c19` |
+| — | SHA du PAS-16 et du PAS-17 au journal et au backlog, DET-32 à DET-36 | `fc6e598` |
+| 18 | Rendez-vous Mémoire, seconde moitié : les deux routes, la question sœur, le plafond annoncé, et DET-35 tranché — le couple avance, plus la question tracée | `23d4aa6` |
 
 ## Lots frontend
 
@@ -47,6 +49,5 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 
 ## À venir
 
-Seconde moitié de F07 — routes, sélecteur de question sœur, plafond de liste,
-et l'arbitrage de DET-35 —, simulateur, profil candidat, module opportunités,
+Simulateur, question miroir (F05), profil candidat, module opportunités,
 commercial et CMI, back-office Filament. Voir `docs/BACKLOG.md`.

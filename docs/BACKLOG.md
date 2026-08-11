@@ -255,10 +255,38 @@ consécutives ; aucun rendez-vous dans la marge d'avant-épreuve ; les items san
 réponse sont exclus — F07 révise une cause diagnostiquée, une question laissée
 vide n'en a pas.
 
-**Écart connu :** le calendrier n'avance que sur la question tracée par
-`last_question_id`, l'appariement (compétence, cause) n'étant pas symétrique.
-Une session d'entraînement ne fait donc progresser aucun palier, sauf
-coïncidence — DET-35, à trancher à la seconde moitié.
+**Écart connu, clos au PAS-18 :** le calendrier n'avançait que sur la
+question tracée par `last_question_id`. DET-35 a été tranché dans le sens du
+COUPLE (compétence, cause) — voir ci-dessous.
+
+### PAS-18 — Rendez-vous Mémoire, seconde moitié (F07) · `23d4aa6`
+**Périmètre :** `GET me/memory/{examCode}/due`, `POST me/memory/{examCode}/session`,
+`MemoireController`, `ReviewComposer`, `ReviewScheduleResource`,
+`AttemptService::startReview()`, genre de tentative `review` et index unique
+partiel d'unicité de séance, `MemoryScheduler::PLAFOND_LISTE`, traductions
+FR et AR. **F07 est complet** — le §4 ne le liste plus.
+
+**Numérotation :** un pas NEUF, et non `PAS-16.1`. Le §2 réserve le suffixe au
+*correctif* d'un pas poussé, et pose que la numérotation est **historique, pas
+thématique**. Cette seconde moitié n'amende rien et arrive après le PAS-17 :
+la nommer 16.1 aurait rompu les deux règles à la fois. Le lien avec F07 se lit
+dans le titre et dans cette fiche, pas dans le numéro.
+
+**Acceptation :** rien d'échu répond 200 avec une liste vide et la prochaine
+date — « rien aujourd'hui, prochain le 14 » est une information, un 404 n'en
+est pas une ; aucun plafond silencieux — 20 servis, le reste compté et annoncé
+dans `meta` ; la séance sert une question SŒUR et non celle que le rendez-vous
+a tracée ; une question dont plusieurs distracteurs portent des causes échues
+en couvre plusieurs à la fois ; 201 à l'ouverture, 200 à la reprise, une seule
+séance ouverte par candidat ; deux codes d'erreur distincts l'un de l'autre
+comme du diagnostic et de l'entraînement — `MEMORY_NOTHING_DUE` (le candidat
+est à jour) et `MEMORY_NO_SIBLING_QUESTION` (la banque ne tend pas encore ce
+piège).
+
+**Mur payant :** la CAUSE est fermée dans la liste de révision hors abonnement,
+avec `cause_locked`, sur le précédent de `CorrectionResource`. L'exposer aurait
+offert par une autre porte le diagnostic que la correction fait payer. Le quota
+F03 n'est pas décompté sur une lecture de liste — DET-38.
 
 ### PAS-17 — L'évitement cesse de payer · `5a97c19`
 **Périmètre :** `mastery_scores.skipped_count`, `MasteryCalculator` (calcul
@@ -299,7 +327,7 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 |---|---|---|
 | Séries d'entraînement ciblées | Composition adaptative | Non ouvert |
 | Simulateur d'examen | Chronomètre, barème, rapport | Non ouvert |
-| Rappels espacés (F07), seconde moitié | Routes, sélecteur de question sœur, plafond de liste | Ouvert — première moitié livrée au PAS-16 |
+| Question miroir (F05) | Variante d'un même item par `sibling_group` | Non ouvert — le sélecteur de `ReviewComposer` est son point de branchement |
 | Profil candidat | Situation, objectif, échéance | Non ouvert |
 | Module Opportunités | Veille, annonces, alertes | Non ouvert |
 | Commercial et CMI | Offres, commandes, paiement | Non ouvert |

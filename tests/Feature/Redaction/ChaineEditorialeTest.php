@@ -387,6 +387,99 @@ class ChaineEditorialeTest extends TestCase
         );
     }
 
+    // --- Une source modifiée cesse d'être vérifiée (DET-47) --------------------
+
+    /**
+     * MESURE D'ATTENTE, ET ELLE ÉCHOUE DU BON CÔTÉ.
+     *
+     * Rien n'empêchait de modifier une source APRÈS son contrôle : la ligne
+     * attestait d'un document qui n'existait plus. Après invalidation, la
+     * publication pour diagnostic se bloque jusqu'à re-vérification — un
+     * relecteur recontrôle un texte qu'il vient de corriger, plutôt qu'une
+     * plateforme affirme avoir lu ce qu'elle n'a pas lu.
+     */
+    public function test_modifier_une_source_verifiee_annule_sa_verification(): void
+    {
+        $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify")
+            ->assertOk();
+
+        $this->assertNotNull($this->source->fresh()->verified_at);
+
+        // Le titre change : ce n'est plus le document qui a été contrôlé.
+        $this->source->fresh()->update(['title_fr' => 'Un arrêté au titre réécrit']);
+
+        $apres = $this->source->fresh();
+
+        $this->assertNull($apres->verified_at, 'La source modifiée cesse d\'être vérifiée.');
+        $this->assertNull($apres->verified_by, 'Et personne n\'en répond plus.');
+    }
+
+    /**
+     * L'invalidation RÉTROGRADE aussi les citations, et ce n'est pas accessoire.
+     *
+     * Ce que lisent `hasVerifiedContentSource()` et le trigger de publication
+     * est le PIVOT, propagé au moment du contrôle. Sans rétrogradation, la
+     * source cesserait d'être vérifiée pendant que les questions continueraient
+     * de se publier au diagnostic sur la foi d'un drapeau périmé.
+     */
+    public function test_l_invalidation_rebloque_la_publication_pour_diagnostic(): void
+    {
+        $uuid = $this->rediger()->assertCreated()->json('data.uuid');
+
+        $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify")
+            ->assertOk();
+
+        $question = Question::where('uuid', $uuid)->firstOrFail();
+        $this->menerJusquAValidation($question);
+
+        // La source est corrigée entre la validation et la publication.
+        $this->source->fresh()->update(['url' => 'https://exemple.ma/un-autre-document.pdf']);
+
+        $this->assertSame(
+            'unverified',
+            $question->fresh()->contentSources->first()->pivot->verification,
+            'La citation suit la source : sinon le défaut se déplace d\'une table.'
+        );
+
+        $reponse = $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/questions/{$uuid}/publish", ['for_diagnostic' => true]);
+
+        $reponse->assertStatus(422);
+        $this->assertStringContainsString('source de contenu vérifiée', $reponse->json('error.message'));
+
+        // Re-vérifier débloque : la mesure n'est pas une impasse.
+        $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify")
+            ->assertOk();
+
+        $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/questions/{$uuid}/publish", ['for_diagnostic' => true])
+            ->assertOk();
+    }
+
+    /**
+     * Une correction SANS portée documentaire ne désarme pas le contrôle.
+     *
+     * `location_note_*` aide à trouver le document sans le constituer.
+     * Invalider là-dessus ferait crier le garde-fou pour une note de bas de
+     * page, et un garde-fou qui crie pour rien finit désarmé.
+     */
+    public function test_une_note_de_localisation_ne_desarme_pas_le_controle(): void
+    {
+        $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify")
+            ->assertOk();
+
+        $this->source->fresh()->update(['location_note_fr' => 'Consultable au SCD, salle 2.']);
+
+        $this->assertNotNull(
+            $this->source->fresh()->verified_at,
+            'La liste des colonnes porteuses de sens est délibérée, pas exhaustive par défaut.'
+        );
+    }
+
     // --- Autorisation ----------------------------------------------------------
 
     public function test_sans_permission_la_redaction_est_refusee(): void

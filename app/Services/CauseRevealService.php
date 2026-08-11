@@ -96,6 +96,42 @@ final class CauseRevealService
         });
     }
 
+    /**
+     * Couples (compétence, cause) dont ce candidat a DÉJÀ payé la révélation.
+     *
+     * `ParcoursController::correction()` engage le produit : « le quota est
+     * décompté une seule fois par réponse, revenir sur sa correction ne recoûte
+     * rien », et `CauseRevealCounter` n'est jamais remis à zéro pour cette
+     * raison. Une cause payée qui réapparaît fermée trois jours plus tard dans
+     * la liste de révision rompt cette promesse — le candidat a déjà donné.
+     *
+     * La révélation est portée par une RÉPONSE ; un rendez-vous porte un
+     * COUPLE. Le pont est la jointure ci-dessous : la compétence vient de
+     * l'item servi, la cause du distracteur choisi.
+     *
+     * UNE SEULE REQUÊTE, et un ensemble en retour. Interroger ligne par ligne
+     * aurait coûté vingt lectures pour afficher une liste de vingt — c'était
+     * l'objection qui avait fait renoncer, elle ne tient pas.
+     *
+     * @return array<string, true> clés « nodeId|cause »
+     */
+    public function revealedCouples(User $user): array
+    {
+        return Response::query()
+            ->join('attempt_items', 'attempt_items.id', '=', 'responses.attempt_item_id')
+            ->join('attempts', 'attempts.id', '=', 'attempt_items.attempt_id')
+            ->join('question_options', 'question_options.id', '=', 'responses.selected_option_id')
+            ->where('attempts.user_id', $user->id)
+            ->where('responses.cause_revealed', true)
+            ->whereNotNull('question_options.cause')
+            ->distinct()
+            ->selectRaw("attempt_items.competency_node_id || '|' || question_options.cause AS couple")
+            ->pluck('couple')
+            ->flip()
+            ->map(fn () => true)
+            ->all();
+    }
+
     private function quota(): int
     {
         return (int) config('naja7i.free_cause_quota', 2);

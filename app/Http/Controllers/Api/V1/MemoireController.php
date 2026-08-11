@@ -10,6 +10,7 @@ use App\Http\Resources\AttemptResource;
 use App\Http\Resources\ReviewScheduleResource;
 use App\Models\Exam;
 use App\Services\AttemptService;
+use App\Services\CauseRevealService;
 use App\Services\MemoryScheduler;
 use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
@@ -38,6 +39,7 @@ class MemoireController extends Controller
         private readonly MemoryScheduler $memory,
         private readonly AttemptService $attempts,
         private readonly AccessGrant $access,
+        private readonly CauseRevealService $reveals,
     ) {}
 
     /**
@@ -61,12 +63,22 @@ class MemoireController extends Controller
         $echus = $this->memory->dueCount($user, $exam->id);
         $rendezVous = $echus === 0 ? collect() : $this->memory->due($user, $exam->id);
 
-        $causeVisible = $this->access->allows($user, AccessGrant::CAUSE_REVEAL);
+        $premium = $this->access->allows($user, AccessGrant::CAUSE_REVEAL);
+
+        /* Une cause DÉJÀ PAYÉE reste ouverte, ici comme ailleurs : le produit
+         * promet que revenir sur sa correction ne recoûte rien, et le compteur
+         * n'est jamais remis à zéro pour cette raison. Rien n'est décompté à la
+         * lecture d'une liste — on lit ce qui a déjà été acquis, on n'achète
+         * pas. Ce qui n'a jamais été révélé reste fermé hors abonnement. */
+        $deja = $premium ? [] : $this->reveals->revealedCouples($user);
         $prochaine = $this->memory->prochaineEcheance($user, $exam->id);
 
         return response()->json([
             'data' => $rendezVous
-                ->map(fn ($rdv) => (new ReviewScheduleResource($rdv, $causeVisible))->resolve())
+                ->map(fn ($rdv) => (new ReviewScheduleResource(
+                    $rdv,
+                    $premium || isset($deja[$rdv->competency_node_id.'|'.$rdv->cause]),
+                ))->resolve())
                 ->values(),
             'meta' => [
                 'exam_code' => $exam->code,

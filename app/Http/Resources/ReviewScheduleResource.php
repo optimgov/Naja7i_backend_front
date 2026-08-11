@@ -20,6 +20,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * brûlerait sans qu'il ait rien demandé. Le décompte reste où il a un sens :
  * sur une correction, item par item.
  *
+ * MAIS UNE CAUSE DÉJÀ PAYÉE RESTE OUVERTE. Le produit promet que revenir sur sa
+ * correction ne recoûte rien, et `CauseRevealCounter` n'est jamais remis à zéro
+ * pour cette raison même. La retrouver fermée trois jours plus tard dans sa
+ * liste de révision serait une promesse rompue, pas un mur payant. L'appelant
+ * croise donc les rendez-vous avec les couples déjà révélés
+ * (`CauseRevealService::revealedCouples`) — on lit un acquis, on n'achète pas.
+ *
  * Ce qui reste visible suffit à agir : la compétence, depuis quand c'est dû, et
  * si l'erreur avait été commise AVEC certitude — ce dernier point étant celui
  * que le candidat ne réviserait jamais de lui-même.

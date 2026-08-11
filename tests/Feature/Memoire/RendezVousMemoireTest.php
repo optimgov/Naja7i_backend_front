@@ -5,6 +5,7 @@ namespace Tests\Feature\Memoire;
 use App\Contracts\AccessGrant;
 use App\Models\AccessGrantRecord;
 use App\Models\Attempt;
+use App\Models\CauseRevealCounter;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
 use App\Models\ExamSession;
@@ -500,6 +501,60 @@ class RendezVousMemoireTest extends TestCase
 
         $this->assertNotNull($abonne['cause']);
         $this->assertFalse($abonne['cause_locked']);
+    }
+
+    /**
+     * La garantie que le produit donne déjà, tenue jusque dans la liste.
+     *
+     * `ParcoursController::correction()` promet que le quota est décompté une
+     * seule fois et que revenir sur sa correction ne recoûte rien. Une cause
+     * payée qui réapparaît fermée trois jours plus tard n'est pas un mur
+     * payant, c'est une promesse rompue.
+     */
+    public function test_une_cause_deja_revelee_reste_ouverte_dans_la_liste(): void
+    {
+        $this->peupler(6);
+        $clos = $this->passer([[false, 'hesitant'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure']]);
+
+        // La correction révèle la cause, et consomme une unité de quota.
+        $correction = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/attempts/{$clos->uuid}/correction");
+
+        $correction->assertOk();
+        $this->assertSame(1, $correction->json('meta.cause_quota.revealed'));
+
+        $compteurApres = CauseRevealCounter::where('user_id', $this->candidat->id)->value('revealed_total');
+
+        $this->rdv()->update(['due_on' => now(config('naja7i.timezone_candidat'))->toDateString()]);
+
+        $ligne = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/memory/{$this->epreuve->code}/due")
+            ->json('data.0');
+
+        $this->assertSame('confusion_notions', $ligne['cause'], 'Le candidat a déjà donné pour cette cause.');
+        $this->assertFalse($ligne['cause_locked']);
+
+        $this->assertSame(
+            $compteurApres,
+            CauseRevealCounter::where('user_id', $this->candidat->id)->value('revealed_total'),
+            "Lire une liste n'achète rien : aucune unité ne se consomme ici."
+        );
+    }
+
+    public function test_une_cause_jamais_revelee_reste_fermee_dans_la_liste(): void
+    {
+        $this->peupler(6);
+        $this->passer([[false, 'hesitant'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure']]);
+
+        // Aucune correction consultée : rien n'a été payé.
+        $this->rdv()->update(['due_on' => now(config('naja7i.timezone_candidat'))->toDateString()]);
+
+        $ligne = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/memory/{$this->epreuve->code}/due")
+            ->json('data.0');
+
+        $this->assertNull($ligne['cause'], 'Le mur payant tient sur ce qui n\'a jamais été révélé.');
+        $this->assertTrue($ligne['cause_locked']);
     }
 
     public function test_la_seance_sert_une_soeur_et_non_la_question_tracee(): void

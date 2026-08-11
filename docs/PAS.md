@@ -52,7 +52,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | SHA du PAS-23 au journal et au backlog, DET-42 | `f1599cc` |
 | 24 | Correctifs de l'index : correct_count nul avant soumission, dernière activité, exam_code sans oracle, no-store sur le chronomètre | `e62106c` |
 | — | SHA du PAS-24 au journal et au backlog, DET-43 | `405e593` |
-| 25 | Mesure de DET-43 : la lenteur est de l'attente d'hôte, jamais du travail — clos en « environnement », la médiane sur trois devient la méthode | `c154e0c` |
+| 25 | Mesure de DET-43 : la lenteur est de l'attente d'hôte, jamais du travail — clos en « environnement », la médiane sur trois devient la méthode | `51159d9` |
 
 ## Lots frontend
 

@@ -55,6 +55,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 25 | Mesure de DET-43 : la lenteur est de l'attente d'hôte, jamais du travail — clos en « environnement », la médiane sur trois devient la méthode | `51159d9` |
 | — | Correction du SHA du PAS-25, puis AGENTS.md en lien et la durée renvoyée à la méthode | `11ef3f6`, `976e0bf`, `9833b6c` |
 | 26 | F05 — la question miroir : sélecteur partagé, la correction n'annonce que l'existence, et l'unité de quota passe au couple | `c15e032` |
+| — | SHA du PAS-26 au journal et au backlog, DET-45 | `b0a230b` |
+| 27 | La chaîne éditoriale par l'API : rédiger, amender, lister, file de relecture — aucune règle métier neuve, et DET-46 signalé | `079b283` |
 
 ## Lots frontend
 

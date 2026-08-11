@@ -491,6 +491,35 @@ devenu gratuit, sans plus rien prouver de l'atomicité qu'ils défendent.
 **Non tranché, tracé (DET-45) :** `questions.mirror_question_id` existe depuis
 le PAS-5 et n'est pas utilisée ici.
 
+### PAS-27 — La chaîne éditoriale par l'API · `079b283`
+**Périmètre :** `POST/PATCH/GET admin/questions`, `GET admin/questions/{uuid}`,
+`GET admin/questions/a-relire`, `QuestionAuthoringService`,
+`QuestionAdminResource`. `publish` et `retire` sont inchangés. **L'écran est le
+lot A4**, pas ce pas.
+
+**Acceptation :** une question naît BROUILLON quoi qu'on envoie ; la cause n'est
+jamais posée sur la bonne réponse ; un distracteur sans cause bloque la
+publication pour diagnostic ; le valideur n'est jamais l'auteur ; une question
+publiée ne s'amende plus et ne change plus de source, garanti par trigger ; la
+liste est bornée à 50 et l'annonce ; chaque geste porte sa permission, et la
+file de relecture sert le plus ancien d'abord.
+
+**Aucune règle métier n'est née ici** — c'était la contrainte du lot. Le
+service d'assemblage n'a pas d'avis ; `QuestionIntegrityChecker` répond, et ses
+motifs sont rendus dans `meta.publication_blockers` à chaque lecture.
+
+**Divergence signalée, non tranchée :** la consigne demandait 404 pour un
+rédacteur sans permission. `RequirePermission` rend 403 `PERMISSION_DENIED`
+depuis le PAS-9, couvert par les tests du PAS-11, et la règle « 404 jamais
+403 » porte sur la ressource d'un autre CANDIDAT, pas sur une permission de
+personnel. Le comportement existant est conservé ; changer le middleware
+toucherait toute la surface d'administration.
+
+**Bloquant connu (DET-46) :** aucun chemin applicatif ne pose
+`verification = 'verified'`. La chaîne va jusqu'à la validation pédagogique
+puis bute sur la publication pour diagnostic. Il manque une décision, pas du
+code.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
@@ -507,6 +536,7 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 | Module Opportunités | Veille, annonces, alertes | Non ouvert |
 | Commercial et CMI | Offres, commandes, paiement | Non ouvert |
 | Back-office Filament | Rédaction, révision, publication | Non ouvert — lot A4 |
+| Import de questions en volume | JSON/CSV, prévalidation, rejet détaillé ligne à ligne | Non ouvert — n'a de sens qu'une fois la rédaction unitaire (PAS-27) éprouvée |
 | Journal d'audit administratif | Traçabilité des actions back-office | **Non planifié — voir §7** |
 | Row-Level Security PostgreSQL | Isolation au niveau base | Différée au gate B2B (ADR-0002) |
 | MFA | Second facteur staff | Non ouvert (ADR-0009 §4) |

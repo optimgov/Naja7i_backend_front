@@ -67,4 +67,23 @@ return [
     | technique : le pilote dira si deux est le bon seuil.
     */
     'free_cause_quota' => env('FREE_CAUSE_QUOTA', 2),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fuseau horaire du candidat — frontière de journée (F07)
+    |--------------------------------------------------------------------------
+    | « Échu aujourd'hui » suppose de savoir quand commence aujourd'hui. Le
+    | projet n'avait aucun traitement de fuseau : `app.timezone` est en UTC, ce
+    | qui décale la frontière d'une heure sur le Maroc et ferait apparaître les
+    | rendez-vous à 01h00 locale.
+    |
+    | Clé GLOBALE et non colonne d'utilisateur : l'audience est marocaine, et
+    | une préférence par compte serait une complexité sans demandeur. Le jour où
+    | un candidat de la diaspora s'en plaindra, cette clé devient une colonne —
+    | voir la dette.
+    |
+    | Quand le module Opportunités arrivera, il consomme cette clé plutôt que
+    | d'en déclarer une seconde.
+    */
+    'timezone_candidat' => env('TIMEZONE_CANDIDAT', 'Africa/Casablanca'),
 ];

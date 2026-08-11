@@ -16,6 +16,7 @@ use App\Services\AttemptService;
 use App\Services\CauseRevealService;
 use App\Services\DiagnosticComposer;
 use App\Services\MasteryCalculator;
+use App\Services\MemoryScheduler;
 use App\Services\RemediationPlanner;
 use App\Services\TrainingComposer;
 use App\Support\ApiError;
@@ -44,6 +45,7 @@ class ParcoursController extends Controller
         private readonly CauseRevealService $reveals,
         private readonly RemediationPlanner $planner,
         private readonly TrainingComposer $trainingComposer,
+        private readonly MemoryScheduler $memory,
     ) {}
 
     /** Ouvre un diagnostic, ou rend celui déjà en cours. */
@@ -265,6 +267,11 @@ class ParcoursController extends Controller
 
         if ($clos->exam !== null) {
             $this->mastery->recomputeForExam($request->user(), $clos->exam);
+
+            /* F07 — les rendez-vous se planifient ici, au même moment que le
+             * recalcul de maîtrise : `is_correct` vient d'être figé, et c'est
+             * la seule chose dont la planification a besoin. */
+            $this->memory->planFromAttempt($clos);
         }
 
         return (new AttemptResource($clos->load('exam')))->response();

@@ -315,6 +315,27 @@ mesurée par balayage : à 1,0 le sauteur égale celui qui a répondu faux. Un t
 relit le facteur dans le résultat et tient ce plafond sans exposer la constante.
 Clôt DET-34, inscrit au même pas.
 
+### PAS-19 — Une cause déjà payée ne se reverrouille pas · `31b87e2`
+**Périmètre :** `CauseRevealService::revealedCouples()`, `MemoireController::due()`,
+`ReviewScheduleResource`.
+
+**Ce qui était faux :** DET-38 avait été inscrit au PAS-18 comme un prix
+assumé. C'était une erreur de qualification. `ParcoursController::correction()`
+promet que le quota est décompté une seule fois et que revenir sur sa
+correction ne recoûte rien ; `CauseRevealCounter` n'est jamais remis à zéro
+pour cette raison même. Une cause payée qui réapparaît fermée dans la liste de
+révision n'est pas un mur payant, c'est une promesse rompue. L'objection du
+coût — une lecture par ligne — ne tenait pas : une requête suffit.
+
+**Acceptation :** une cause révélée en correction reste ouverte dans la liste,
+sans qu'aucune unité ne se consomme à la lecture ; une cause jamais révélée
+reste fermée hors abonnement ; le compteur ne bouge pas.
+
+**Portée bornée, et c'est une décision :** rendre gratuite une cause déjà payée
+sur une AUTRE question du même couple, dans la correction, ferait passer
+l'unité de quota du « par réponse » au « par couple ». C'est l'économie de F03,
+donc une décision de produit — non prise ici.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

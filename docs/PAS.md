@@ -39,6 +39,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 17 | L'évitement cesse de payer : une question servie et sautée est comptée, entre dans l'urgence à facteur partiel et sous son propre motif | `5a97c19` |
 | — | SHA du PAS-16 et du PAS-17 au journal et au backlog, DET-32 à DET-36 | `fc6e598` |
 | 18 | Rendez-vous Mémoire, seconde moitié : les deux routes, la question sœur, le plafond annoncé, et DET-35 tranché — le couple avance, plus la question tracée | `23d4aa6` |
+| — | SHA du PAS-18 au journal et au backlog, DET-35 clos, DET-37 et DET-38 | `7b29607` |
+| 19 | Une cause déjà payée ne se reverrouille pas : la liste de révision tient la garantie du quota, DET-38 requalifié en défaut | `31b87e2` |
 
 ## Lots frontend
 

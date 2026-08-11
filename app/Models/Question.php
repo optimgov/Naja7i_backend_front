@@ -88,6 +88,16 @@ class Question extends Model
         return $this->belongsTo(Exam::class);
     }
 
+    /**
+     * Le rédacteur. Exposé par `QuestionAdminResource` sous forme d'uuid
+     * seulement : filtrer par auteur ne demande pas de publier l'identité du
+     * personnel éditorial.
+     */
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_id');
+    }
+
     public function node(): BelongsTo
     {
         return $this->belongsTo(CompetencyNode::class, 'competency_node_id');

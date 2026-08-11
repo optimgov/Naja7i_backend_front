@@ -153,6 +153,26 @@ Route::prefix('v1')->group(function () {
      * dans les méthodes — c'est ce qui a manqué à l'ADR-0009 pendant neuf pas.
      */
     Route::middleware(['auth:sanctum', 'verified.api'])->prefix('admin')->group(function () {
+        /* PAS-27 — la chaîne éditoriale. Chaque geste porte SA permission :
+         * écrire, relire et publier ne sont pas le même métier, et le
+         * référentiel du PAS-9 les distingue déjà. */
+        Route::post('questions', [QuestionAdminController::class, 'store'])
+            ->middleware('permission:questions.create');
+
+        Route::patch('questions/{uuid}', [QuestionAdminController::class, 'update'])
+            ->middleware('permission:questions.create');
+
+        Route::get('questions', [QuestionAdminController::class, 'index'])
+            ->middleware('permission:questions.view');
+
+        /* AVANT la route à paramètre : « a-relire » serait sinon lu comme un
+         * uuid, et le relecteur recevrait 404 sur sa propre file. */
+        Route::get('questions/a-relire', [QuestionAdminController::class, 'aRelire'])
+            ->middleware('permission:questions.review');
+
+        Route::get('questions/{uuid}', [QuestionAdminController::class, 'show'])
+            ->middleware('permission:questions.view');
+
         Route::post('questions/{uuid}/publish', [QuestionAdminController::class, 'publish'])
             ->middleware('permission:questions.publish');
 

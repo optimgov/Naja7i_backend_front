@@ -433,6 +433,32 @@ nouveau. Mais un candidat qui prépare A et a travaillé B en dernier verra B : 
 produit sait quelle épreuve il a TOUCHÉE, pas laquelle il PRÉPARE. Le profil
 candidat remplacera cette déduction.
 
+### PAS-24 — Correctifs de l'index des tentatives · `e62106c`
+**Périmètre :** `AttemptResource` (`correct_count`, `last_activity_at`),
+migration `attempts.last_activity_at` et son index, `AttemptService`,
+`Attempt::booted()`, `ParcoursController::index()`, middleware `NoStore`.
+
+**Acceptation :** `correct_count` est nul tant que `submitted_at` l'est, sur
+l'index comme sur la route unitaire ; la tentative travaillée en dernier sort
+en tête, quelle que soit sa date d'ouverture ; un `exam_code` inconnu et un
+`exam_code` réel hors portée rendent la MÊME réponse — 200, liste vide ;
+`status` et `kind` restent refusés en 422 hors énumération ; toute réponse
+portant `seconds_remaining` est `no-store`.
+
+**Ce que la mesure a corrigé du brief :** l'oracle de `correct_count` n'existait
+pas — la valeur n'est écrite qu'à la soumission, et retirer la garde de la
+ressource ne changeait rien (vérifié par mutation). Le test porte donc sur la
+COLONNE, qui est la vraie garantie ; la garde de la ressource est la seconde
+ligne. Recensement fait des autres agrégats : correction fermée en 409,
+maîtrise et rendez-vous alimentés depuis `submit()` seul, derrière la garde de
+transition du PAS-21. Aucun autre ne fuit.
+
+**Déjà livré, rien à faire :** le bloc `exams` du catalogue (code, nom
+localisé, coefficient) existe depuis `91e5920`.
+
+**Non ouvert, volontairement :** la pagination par curseur. Le plafond reste et
+`meta` l'annonce.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

@@ -388,6 +388,29 @@ réels ; ce montage n'en a pas, et le commentaire le dit.
 
 **Ferme DET-36.** Ouvre DET-40.
 
+### PAS-22 — Le plafond de l'énoncé resservi, et le plan de rédaction · `04b78e6`
+**Périmètre :** `MemoryScheduler::PLAFOND_ENONCE_RESSERVI`, `CouvertureBanque`,
+`GET admin/banque/couverture/{examCode}` sous `permission:questions.view`,
+`meta.without_sibling` sur la liste échue du candidat.
+
+**L'arbitrage :** un énoncé resservi à l'identique fait monter le palier
+jusqu'au MILIEU de l'échelle — 7 jours — et pas au-delà. Geler complètement
+ferait revenir chaque jour, indéfiniment, tout couple à question unique, et ces
+revenants satureraient la liste plafonnée à vingt en évinçant les rendez-vous
+résolubles. Laisser filer jusqu'à 35 jours ferait disparaître le rendez-vous
+par la petite porte après lui avoir fermé la grande. La sortie du calendrier
+reste fermée ; un échec remet toujours à zéro. Le plafond borne la MONTÉE et ne
+rabaisse jamais un palier déjà mérité — clause testée pour elle-même.
+
+**Acceptation :** le plan de rédaction liste les couples (compétence, cause)
+attendus par au moins un candidat que la banque ne couvre pas, ordonnés par
+nombre de candidats en attente ; la couverture est donnée PAR LANGUE, une
+question étant monolingue ; le candidat n'en reçoit qu'un NOMBRE, jamais les
+couples — les nommer nommerait des causes, et la cause est un champ payant.
+
+**Ce qui n'est pas fait :** aucune interface. Le back-office n'est pas ouvert
+(lot A4) et un rédacteur ne lit pas du JSON — DET-41.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

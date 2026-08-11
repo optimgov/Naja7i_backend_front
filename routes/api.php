@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\CatalogueController;
 use App\Http\Controllers\Api\V1\DemonstrationController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\LegalController;
+use App\Http\Controllers\Api\V1\MemoireController;
 use App\Http\Controllers\Api\V1\ParcoursController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ProgressionController;
@@ -106,6 +107,14 @@ Route::prefix('v1')->group(function () {
 
         // Entraînement ciblé : ce que l'ordonnance recommande devient cliquable.
         Route::post('me/training/{examCode}', [ParcoursController::class, 'startTraining'])
+            ->middleware('throttle:10,1');
+
+        /* F07 — Rendez-vous Mémoire. La lecture n'est pas limitée comme
+         * l'ouverture : consulter ce qui est dû est un geste quotidien, en
+         * ouvrir la séance ne se fait qu'une fois. */
+        Route::get('me/memory/{examCode}/due', [MemoireController::class, 'due']);
+
+        Route::post('me/memory/{examCode}/session', [MemoireController::class, 'startSession'])
             ->middleware('throttle:10,1');
 
         // PAS-8 — Restitution : maîtrise par compétence et ordonnance.

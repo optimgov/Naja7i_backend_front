@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Memoire;
 
+use App\Contracts\AccessGrant;
+use App\Models\AccessGrantRecord;
 use App\Models\Attempt;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
@@ -59,6 +61,10 @@ class RendezVousMemoireTest extends TestCase
         $this->valideur = $this->utilisateur('valideur@naja7i.ma');
         $this->candidat = $this->utilisateur('candidat@naja7i.ma');
         $this->candidat->grantCandidateRole();
+
+        /* Les routes du parcours exigent un e-mail vérifié. `email_verified_at`
+         * n'est pas assignable en masse — on passe par le contrat. */
+        $this->candidat->markEmailAsVerified();
     }
 
     private function utilisateur(string $email): User
@@ -256,11 +262,9 @@ class RendezVousMemoireTest extends TestCase
 
     public function test_deux_reussites_certaines_consecutives_font_sortir_du_calendrier(): void
     {
-        /* Vivier réduit à SIX pour six items servis : toutes les questions
-         * reviennent à chaque session, y compris celle que le rendez-vous a
-         * tracée. Sans cela l'anti-répétition la repousse tant qu'il reste du
-         * neuf, et la réussite ne peut pas atteindre le rendez-vous — le
-         * calendrier n'avance que sur la question qu'il a fait servir. */
+        /* Depuis DET-35, le vivier n'a plus à être réduit pour que la réussite
+         * atteigne le rendez-vous : c'est le COUPLE (compétence, cause) qui
+         * avance, quelle que soit la question servie. Six reste suffisant. */
         $this->peupler(6);
 
         // Première session : une erreur, le rendez-vous naît.
@@ -343,5 +347,261 @@ class RendezVousMemoireTest extends TestCase
         foreach (['probab', 'retention', 'prediction', 'chance'] as $interdit) {
             $this->assertStringNotContainsString($interdit, $charge);
         }
+    }
+
+    // --- DET-35 : le couple avance, plus la question tracée --------------------
+
+    /**
+     * Deux séances : la première fait naître le rendez-vous sur une question,
+     * la seconde le fait avancer sur d'AUTRES questions.
+     *
+     * L'anti-répétition sert le neuf d'abord : avec dix questions et cinq par
+     * séance, la seconde ne peut pas resservir celles de la première. C'est
+     * exactement la situation où l'ancien appariement par `last_question_id`
+     * ne faisait rien avancer.
+     */
+    private function deuxSeances(): ReviewSchedule
+    {
+        $this->peupler(10);
+
+        $this->passer([[false, 'hesitant'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure']]);
+
+        $rdv = $this->rdv();
+        $this->assertNotNull($rdv, 'La première séance fait naître le rendez-vous.');
+        $this->premiereQuestion = $rdv->last_question_id;
+
+        $this->passer(array_fill(0, 5, [true, 'sure']));
+
+        return $this->rdv()->fresh();
+    }
+
+    private ?int $premiereQuestion = null;
+
+    public function test_une_reussite_sur_une_autre_question_fait_avancer_le_palier(): void
+    {
+        $rdv = $this->deuxSeances();
+
+        $this->assertNotNull($rdv, "Deux réussites certaines n'ont pas encore ouvert la porte de sortie.");
+        $this->assertSame(2, $rdv->palier, 'Le couple a avancé, servi par une autre question.');
+        $this->assertNotSame(
+            $this->premiereQuestion, $rdv->last_question_id,
+            "L'avancement ne vient pas de la question tracée : c'est tout l'objet de DET-35."
+        );
+    }
+
+    public function test_un_couple_ne_bouge_qu_une_fois_par_seance(): void
+    {
+        $rdv = $this->deuxSeances();
+
+        /* Les cinq questions de la seconde séance tendent toutes le même piège.
+         * Sans dédoublonnage, le rendez-vous aurait avancé cinq fois — et deux
+         * réussites certaines suffisant à sortir, il aurait disparu. */
+        $this->assertSame(1, $rdv->consecutive_sure, 'Le candidat a rencontré le couple une fois, pas cinq.');
+        $this->assertSame(1, ReviewSchedule::count());
+    }
+
+    public function test_l_echec_du_jour_l_emporte_sur_les_reussites_du_meme_jour(): void
+    {
+        $this->peupler(6);
+
+        // Tombé dans le piège à la première question, évité aux cinq suivantes.
+        $this->passer([[false, 'hesitant'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure']]);
+
+        $rdv = $this->rdv();
+
+        $this->assertNotNull($rdv, "L'erreur vient d'être démontrée : la séance ne l'efface pas elle-même.");
+        $this->assertSame(1, $rdv->palier);
+        $this->assertSame(0, $rdv->consecutive_sure);
+    }
+
+    // --- La séance de révision, par la route ------------------------------------
+
+    /** Rendez-vous échus fabriqués directement : on teste la liste, pas le jeu. */
+    private function planifier(int $combien): void
+    {
+        $noeuds = CompetencyNode::where('exam_id', $this->epreuve->id)->pluck('id');
+        $causes = [
+            'confusion_notions', 'lecture_enonce', 'regle_mal_appliquee', 'connaissance_absente',
+            'source_perimee', 'calcul', 'piege_formulation', 'indetermine',
+        ];
+
+        $couples = $noeuds->crossJoin($causes)->take($combien);
+
+        $this->assertCount($combien, $couples, 'Pas assez de couples (compétence, cause) pour cette sonde.');
+
+        foreach ($couples as [$nodeId, $cause]) {
+            ReviewSchedule::create([
+                'user_id' => $this->candidat->id,
+                'exam_id' => $this->epreuve->id,
+                'competency_node_id' => $nodeId,
+                'cause' => $cause,
+                'palier' => 1,
+                'due_on' => now(config('naja7i.timezone_candidat'))->toDateString(),
+            ]);
+        }
+    }
+
+    public function test_rien_d_echu_repond_une_liste_vide_et_la_prochaine_date(): void
+    {
+        $this->peupler(6);
+        $this->passer([[false, 'hesitant'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure']]);
+
+        // Le rendez-vous est né aujourd'hui, échéance au premier palier : demain.
+        $reponse = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/memory/{$this->epreuve->code}/due");
+
+        $reponse->assertOk();   // rien d'échu n'est PAS une erreur
+        $this->assertSame([], $reponse->json('data'));
+        $this->assertSame(0, $reponse->json('meta.due_total'));
+        $this->assertNotNull(
+            $reponse->json('meta.next_due_on'),
+            "« Rien aujourd'hui, prochain le 14 » est une information ; un 404 n'en est pas une."
+        );
+    }
+
+    public function test_le_plafond_sert_vingt_rendez_vous_et_annonce_le_reste(): void
+    {
+        $this->planifier(60);
+
+        $reponse = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/memory/{$this->epreuve->code}/due");
+
+        $reponse->assertOk();
+        $this->assertCount(MemoryScheduler::PLAFOND_LISTE, $reponse->json('data'));
+        $this->assertSame(60, $reponse->json('meta.due_total'));
+        $this->assertSame(20, $reponse->json('meta.served'));
+        $this->assertSame(
+            40, $reponse->json('meta.pending'),
+            'Aucun plafond silencieux : à qui on cache quarante rendez-vous, il croit avoir fini.'
+        );
+    }
+
+    public function test_la_cause_reste_fermee_hors_abonnement(): void
+    {
+        $this->planifier(1);
+
+        $ligne = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/memory/{$this->epreuve->code}/due")
+            ->json('data.0');
+
+        $this->assertNull($ligne['cause'], 'La cause est le diagnostic vendu : elle ne fuit pas par la liste.');
+        $this->assertTrue($ligne['cause_locked']);
+        $this->assertNotNull($ligne['competency']['name'], 'Ce qui reste visible suffit à agir.');
+
+        AccessGrantRecord::create([
+            'user_id' => $this->candidat->id,
+            'capability' => AccessGrant::CAUSE_REVEAL,
+            'starts_at' => now()->subDay(), 'origin' => 'purchase',
+        ]);
+
+        $abonne = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/memory/{$this->epreuve->code}/due")
+            ->json('data.0');
+
+        $this->assertNotNull($abonne['cause']);
+        $this->assertFalse($abonne['cause_locked']);
+    }
+
+    public function test_la_seance_sert_une_soeur_et_non_la_question_tracee(): void
+    {
+        $this->peupler(10);
+        $this->passer([[false, 'hesitant'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure']]);
+
+        $tracee = $this->rdv()->last_question_id;
+        $this->rdv()->update(['due_on' => now(config('naja7i.timezone_candidat'))->toDateString()]);
+
+        $reponse = $this->actingAs($this->candidat)
+            ->postJson("/api/v1/me/memory/{$this->epreuve->code}/session");
+
+        $reponse->assertCreated();
+        $this->assertSame('review', $reponse->json('data.kind'));
+        $this->assertSame(1, $reponse->json('data.item_count'), 'Un rendez-vous échu, une question.');
+        $this->assertSame(1, $reponse->json('meta.due_total'));
+        $this->assertSame(1, $reponse->json('meta.covered'));
+
+        $servie = Question::where('uuid', $reponse->json('data.items.0.question.uuid'))->firstOrFail();
+
+        $this->assertNotSame(
+            $tracee, $servie->id,
+            "Resservir le même énoncé apprendrait l'énoncé, pas le raisonnement."
+        );
+        $this->assertSame($this->noeud->id, $servie->competency_node_id);
+    }
+
+    public function test_ouvrir_deux_fois_reprend_la_seance_sans_en_creer_une_seconde(): void
+    {
+        $this->peupler(10);
+        $this->passer([[false, 'hesitant'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure']]);
+        $this->rdv()->update(['due_on' => now(config('naja7i.timezone_candidat'))->toDateString()]);
+
+        $premiere = $this->actingAs($this->candidat)
+            ->postJson("/api/v1/me/memory/{$this->epreuve->code}/session");
+        $premiere->assertCreated();
+
+        $seconde = $this->actingAs($this->candidat)
+            ->postJson("/api/v1/me/memory/{$this->epreuve->code}/session");
+
+        $seconde->assertOk();   // 200 : on reprend, on n'ouvre pas
+        $this->assertSame($premiere->json('data.uuid'), $seconde->json('data.uuid'));
+        $this->assertSame(1, Attempt::where('kind', 'review')->count());
+    }
+
+    public function test_ouvrir_sans_rien_d_echu_refuse_avec_un_code_propre(): void
+    {
+        $this->peupler(6);
+        $this->passer([[false, 'hesitant'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure'], [true, 'sure']]);
+
+        $reponse = $this->actingAs($this->candidat)
+            ->postJson("/api/v1/me/memory/{$this->epreuve->code}/session");
+
+        $reponse->assertStatus(409);
+        $this->assertSame('MEMORY_NOTHING_DUE', $reponse->json('error.code'));
+        $this->assertNotNull(
+            $reponse->json('error.details.next_due_on'),
+            "Le refus dit lui-même quand revenir, plutôt que d'exiger un second appel."
+        );
+    }
+
+    public function test_des_rendez_vous_sans_question_soeur_sont_dits_et_non_remplaces(): void
+    {
+        // Aucune question en banque : le calendrier a du travail, pas la banque.
+        $this->planifier(3);
+
+        $reponse = $this->actingAs($this->candidat)
+            ->postJson("/api/v1/me/memory/{$this->epreuve->code}/session");
+
+        $reponse->assertStatus(409);
+        $this->assertSame(
+            'MEMORY_NO_SIBLING_QUESTION', $reponse->json('error.code'),
+            'Distinct de « rien d\'échu » : le candidat n\'a rien à corriger de son côté.'
+        );
+        $this->assertSame(3, $reponse->json('error.details.due_total'));
+    }
+
+    public function test_une_question_couvre_plusieurs_rendez_vous_du_meme_piege(): void
+    {
+        $this->peupler(10);
+
+        /* Deux causes échues sur la même compétence. Les questions du montage
+         * portent les deux sur leurs distracteurs : une seule question suffit
+         * à servir les deux rendez-vous. */
+        foreach (['confusion_notions', 'lecture_enonce'] as $cause) {
+            ReviewSchedule::create([
+                'user_id' => $this->candidat->id,
+                'exam_id' => $this->epreuve->id,
+                'competency_node_id' => $this->noeud->id,
+                'cause' => $cause,
+                'palier' => 1,
+                'due_on' => now(config('naja7i.timezone_candidat'))->toDateString(),
+            ]);
+        }
+
+        $reponse = $this->actingAs($this->candidat)
+            ->postJson("/api/v1/me/memory/{$this->epreuve->code}/session");
+
+        $reponse->assertCreated();
+        $this->assertSame(1, $reponse->json('data.item_count'), 'Une question, servie une fois.');
+        $this->assertSame(2, $reponse->json('meta.covered'), 'Elle couvre les deux rendez-vous.');
+        $this->assertSame(0, $reponse->json('meta.pending'));
     }
 }

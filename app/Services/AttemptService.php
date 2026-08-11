@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Exceptions\NoSiblingQuestionAvailable;
+use App\Exceptions\NothingDueForReview;
 use App\Exceptions\TrainingScopeTooNarrow;
 use App\Models\Attempt;
 use App\Models\AttemptItem;
@@ -41,6 +43,8 @@ final class AttemptService
     public function __construct(
         private readonly DiagnosticComposer $composer,
         private readonly TrainingComposer $training,
+        private readonly ReviewComposer $reviews,
+        private readonly MemoryScheduler $memory,
     ) {}
 
     public function startDiagnostic(
@@ -192,6 +196,125 @@ final class AttemptService
             'demande' => $total,
             'disponibles' => $compose['disponibles'],
             'resservies' => $compose['resservies'],
+        ];
+    }
+
+    /**
+     * Ouvre une session de RÉVISION, ou rend celle déjà ouverte.
+     *
+     * Troisième genre de tentative, et non un entraînement paramétré : le
+     * périmètre ne vient ni des poids officiels ni d'un domaine faible, mais du
+     * CALENDRIER — ce qui est échu aujourd'hui.
+     *
+     * Deux différences avec `startTraining`, toutes deux voulues :
+     *
+     *  - AUCUN MINIMUM UTILE. Un seul rendez-vous échu vaut une session : c'est
+     *    ce que le calendrier a promis au candidat, et le refuser lui ferait
+     *    perdre son palier pour cause de liste courte. `MINIMUM_UTILE` protège
+     *    d'un entraînement qui n'apprend rien ; ici, on révise ce qui est dû.
+     *  - RIEN D'ÉCHU EST UNE SITUATION NOMMÉE, pas une série vide. L'exception
+     *    porte la prochaine échéance pour que le client sache quand revenir.
+     *
+     * @return array{attempt: Attempt, creee: bool, echus: int, servies: int, couverts: int, sans_question: int}
+     *
+     * @throws NothingDueForReview
+     * @throws NoSiblingQuestionAvailable
+     */
+    public function startReview(
+        User $user,
+        Exam $exam,
+        string $locale,
+        string $idempotencyKey,
+        ?int $total = null,
+    ): array {
+        $total ??= MemoryScheduler::PLAFOND_LISTE;
+
+        $existante = Attempt::where('user_id', $user->id)
+            ->where('idempotency_key', $idempotencyKey)
+            ->first();
+
+        if ($existante !== null) {
+            return $this->repriseDeRevision($user, $existante);
+        }
+
+        /* Une seule session de révision ouverte, tous concours confondus —
+         * même portée que l'entraînement. Deux sessions serviraient deux fois
+         * les mêmes rendez-vous, et la première soumise ferait avancer des
+         * paliers que la seconde croirait encore en retard. */
+        $enCours = Attempt::where('user_id', $user->id)
+            ->where('kind', 'review')
+            ->open()
+            ->first();
+
+        if ($enCours !== null) {
+            return $this->repriseDeRevision($user, $enCours);
+        }
+
+        $echus = $this->memory->dueCount($user, $exam->id);
+
+        if ($echus === 0) {
+            throw new NothingDueForReview($this->memory->prochaineEcheance($user, $exam->id));
+        }
+
+        $compose = $this->reviews->compose(
+            $exam,
+            $this->memory->due($user, $exam->id),
+            $locale,
+            $total,
+        );
+
+        $questions = $compose['questions'];
+
+        if ($questions->isEmpty()) {
+            throw new NoSiblingQuestionAvailable($echus);
+        }
+
+        $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $questions) {
+            $attempt = Attempt::create([
+                'user_id' => $user->id,
+                'exam_id' => $exam->id,
+                'locale' => $locale,
+                'idempotency_key' => $idempotencyKey,
+                'kind' => 'review',
+                'status' => 'in_progress',
+                'started_at' => now(),
+                // Réviser n'est pas une épreuve : jamais de chronomètre.
+                'expires_at' => null,
+                'item_count' => $questions->count(),
+            ]);
+
+            foreach ($questions as $i => $question) {
+                AttemptItem::create([
+                    'attempt_id' => $attempt->id,
+                    'question_id' => $question->id,
+                    'competency_node_id' => $question->competency_node_id,
+                    'position' => $i + 1,
+                ]);
+            }
+
+            return $attempt->fresh('items');
+        });
+
+        return [
+            'attempt' => $attempt,
+            'creee' => true,
+            'echus' => $echus,
+            'servies' => $questions->count(),
+            'couverts' => $compose['couverts'],
+            'sans_question' => $compose['sans_question'],
+        ];
+    }
+
+    /** @return array{attempt: Attempt, creee: bool, echus: int, servies: int, couverts: int, sans_question: int} */
+    private function repriseDeRevision(User $user, Attempt $attempt): array
+    {
+        return [
+            'attempt' => $attempt->load('items'),
+            'creee' => false,
+            'echus' => $attempt->exam_id === null ? 0 : $this->memory->dueCount($user, $attempt->exam_id),
+            'servies' => $attempt->item_count,
+            'couverts' => $attempt->item_count,
+            'sans_question' => 0,
         ];
     }
 

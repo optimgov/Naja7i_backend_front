@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\AccessGrant;
+use App\Exceptions\IdempotencyKeyReused;
 use App\Exceptions\TrainingScopeTooNarrow;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AttemptResource;
@@ -15,8 +16,6 @@ use App\Models\QuestionOption;
 use App\Services\AttemptService;
 use App\Services\CauseRevealService;
 use App\Services\DiagnosticComposer;
-use App\Services\MasteryCalculator;
-use App\Services\MemoryScheduler;
 use App\Services\RemediationPlanner;
 use App\Services\TrainingComposer;
 use App\Support\ApiError;
@@ -40,12 +39,10 @@ class ParcoursController extends Controller
     public function __construct(
         private readonly AttemptService $attempts,
         private readonly DiagnosticComposer $composer,
-        private readonly MasteryCalculator $mastery,
         private readonly AccessGrant $access,
         private readonly CauseRevealService $reveals,
         private readonly RemediationPlanner $planner,
         private readonly TrainingComposer $trainingComposer,
-        private readonly MemoryScheduler $memory,
     ) {}
 
     /** Ouvre un diagnostic, ou rend celui déjà en cours. */
@@ -80,6 +77,11 @@ class ParcoursController extends Controller
 
         try {
             $attempt = $this->attempts->startDiagnostic($user, $exam, $user->locale, $cle, $total);
+        } catch (IdempotencyKeyReused $e) {
+            /* AVANT le `RuntimeException` ci-dessous, dont il hérite : sans cet
+             * ordre, une clé réutilisée se déguiserait en « diagnostic
+             * indisponible » et le client chercherait un problème de banque. */
+            return $this->cleReutilisee($e);
         } catch (RuntimeException $e) {
             return ApiError::make('DIAGNOSTIC_NOT_AVAILABLE', $e->getMessage(), 409);
         }
@@ -127,6 +129,8 @@ class ParcoursController extends Controller
 
         try {
             $session = $this->attempts->startTraining($user, $exam, $noeuds, $user->locale, $cle, $total);
+        } catch (IdempotencyKeyReused $e) {
+            return $this->cleReutilisee($e);
         } catch (TrainingScopeTooNarrow $e) {
             /* Code DISTINCT de celui du diagnostic : les deux situations se
              * ressemblent mais n'appellent pas la même conduite. */
@@ -157,6 +161,24 @@ class ParcoursController extends Controller
             ]])
             ->response()
             ->setStatusCode($session['creee'] ? 201 : 200);
+    }
+
+    /**
+     * Une clé d'idempotence rejouée sur une AUTRE requête.
+     *
+     * Refus explicite, jamais une autre tentative. Rendre la préexistante
+     * ferait croire au client qu'il a ouvert ce qu'il demandait, et
+     * contournerait au passage les gardes d'ouverture — « périmètre trop
+     * étroit » et « rien à réviser » ne sont jamais atteintes si le service
+     * rend une tentative avant d'y arriver.
+     */
+    private function cleReutilisee(IdempotencyKeyReused $e): JsonResponse
+    {
+        return ApiError::make(
+            'IDEMPOTENCY_KEY_REUSED',
+            __('parcours.cle_idempotence_reutilisee'),
+            409,
+        );
     }
 
     /**
@@ -254,7 +276,20 @@ class ParcoursController extends Controller
         ]);
     }
 
-    /** Clôt la tentative, fige les corrections et recalcule la maîtrise. */
+    /**
+     * Clôt la tentative.
+     *
+     * LE CONTRÔLEUR N'ORCHESTRE PLUS D'EFFETS MÉTIER. Recalcul de maîtrise et
+     * planification des rendez-vous vivaient ici, appelés SANS CONDITION après
+     * un `submit()` qui rend sans bruit une tentative déjà close — un rejeu de
+     * ce POST les rejouait donc, et faisait avancer deux fois le calendrier
+     * (audit BLOC-1). Ils sont désormais dans `AttemptService::submit()`,
+     * derrière la garde de transition et dans la transaction de clôture.
+     *
+     * Toute autre voie de soumission — commande de clôture des tentatives
+     * expirées, back-office, futur abonné d'événement — en bénéficie du même
+     * coup. C'était l'objet de DET-36, refermé par là.
+     */
     public function submit(Request $request, string $uuid): JsonResponse
     {
         $attempt = $this->find($request, $uuid);
@@ -263,18 +298,7 @@ class ParcoursController extends Controller
             return ApiError::make('RESOURCE_NOT_FOUND', __('errors.not_found'), 404);
         }
 
-        $clos = $this->attempts->submit($attempt);
-
-        if ($clos->exam !== null) {
-            $this->mastery->recomputeForExam($request->user(), $clos->exam);
-
-            /* F07 — les rendez-vous se planifient ici, au même moment que le
-             * recalcul de maîtrise : `is_correct` vient d'être figé, et c'est
-             * la seule chose dont la planification a besoin. */
-            $this->memory->planFromAttempt($clos);
-        }
-
-        return (new AttemptResource($clos->load('exam')))->response();
+        return (new AttemptResource($this->attempts->submit($attempt)->load('exam')))->response();
     }
 
     /**

@@ -149,10 +149,11 @@ class RendezVousMemoireTest extends TestCase
             $service->answer($item, $option, $certitude);
         }
 
-        $clos = $service->submit($attempt->fresh());
-        $this->scheduler()->planFromAttempt($clos);
-
-        return $clos;
+        /* `submit()` planifie LUI-MÊME depuis l'audit BLOC-1 : les effets de
+         * bord vivent dans le service, derrière la garde de transition. Le
+         * montage n'a plus à les déclencher — et ne le doit plus, sous peine de
+         * planifier deux fois ce qu'une seule séance a produit. */
+        return $service->submit($attempt->fresh());
     }
 
     private function rdv(): ?ReviewSchedule

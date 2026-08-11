@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\AccessGrant;
+use App\Exceptions\IdempotencyKeyReused;
 use App\Exceptions\NoSiblingQuestionAvailable;
 use App\Exceptions\NothingDueForReview;
 use App\Http\Controllers\Controller;
@@ -119,6 +120,14 @@ class MemoireController extends Controller
             $session = $this->attempts->startReview(
                 $user, $exam, $user->locale, $cle, $validated['total'] ?? null
             );
+        } catch (IdempotencyKeyReused $e) {
+            /* Refus explicite. Rendre la tentative préexistante contournerait
+             * en silence la garde « rien à réviser » juste en dessous. */
+            return ApiError::make(
+                'IDEMPOTENCY_KEY_REUSED',
+                __('parcours.cle_idempotence_reutilisee'),
+                409,
+            );
         } catch (NothingDueForReview $e) {
             /* Code DISTINCT de ceux du diagnostic et de l'entraînement : les
              * trois refus se ressemblent et n'appellent pas la même conduite.
@@ -159,6 +168,11 @@ class MemoireController extends Controller
                 /* Rendez-vous échus qu'AUCUNE question ne peut servir : la
                  * banque ne tend pas encore ce piège. Dit, jamais masqué. */
                 'without_question' => $session['sans_question'],
+                /* Rendez-vous servis par l'énoncé DÉJÀ VU, faute de sœur en
+                 * banque. Le repli est assumé — sauter une échéance serait pire
+                 * — mais il est annoncé, et il ne fait pas sortir du calendrier :
+                 * reconnaître un énoncé n'est pas maîtriser une cause. */
+                'reserved_identical' => $session['resservies_identiques'],
             ]])
             ->response()
             ->setStatusCode($session['creee'] ? 201 : 200);

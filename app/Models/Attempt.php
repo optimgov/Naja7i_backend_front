@@ -18,12 +18,18 @@ class Attempt extends Model
     use BelongsToTenant, HasPublicUuid;
 
     protected $fillable = [
-        'user_id', 'exam_id', 'specialty_id', 'locale', 'idempotency_key',
+        'user_id', 'exam_id', 'specialty_id', 'locale',
+        'idempotency_key', 'idempotency_fingerprint',
         'kind', 'status', 'started_at', 'expires_at', 'submitted_at',
         'item_count', 'answered_count', 'correct_count',
     ];
 
-    protected $hidden = ['id', 'tenant_id', 'user_id', 'exam_id', 'specialty_id', 'idempotency_key'];
+    /* L'empreinte est un détail d'implémentation de l'idempotence : la publier
+     * apprendrait à un client à la reconstruire, donc à la contourner. */
+    protected $hidden = [
+        'id', 'tenant_id', 'user_id', 'exam_id', 'specialty_id',
+        'idempotency_key', 'idempotency_fingerprint',
+    ];
 
     protected function casts(): array
     {

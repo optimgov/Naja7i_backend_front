@@ -8,8 +8,11 @@ use App\Models\QuestionOption;
 use App\Models\Response;
 use App\Models\ReviewSchedule;
 use App\Models\User;
+use App\Support\UniqueViolation;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * F07 — Rendez-vous Mémoire : la planification de la répétition espacée.
@@ -145,8 +148,7 @@ final class MemoryScheduler
             $existant = $this->rendezVous($attempt, (int) $reponse->competency_node_id, $reponse->cause);
 
             if ($existant === null) {
-                $this->creer($attempt, $reponse, $echeance);
-                $bilan['crees']++;
+                $bilan[$this->creerOuRejoindre($attempt, $reponse, $echeance)]++;
 
                 continue;
             }
@@ -154,73 +156,130 @@ final class MemoryScheduler
             $bilan[$this->appliquer($existant, false, $reponse->confidence, $reponse->question_id, $echeance)]++;
         }
 
+        /*
+         * LES RÉUSSITES SONT REGROUPÉES PAR COUPLE AVANT D'ÊTRE APPLIQUÉES.
+         *
+         * Une même séance peut toucher un couple par plusieurs questions. Les
+         * traiter dans l'ordre des items ferait dépendre le résultat du hasard
+         * de la composition : si l'énoncé DÉJÀ VU tombait en premier, son gel
+         * du compteur de sorties l'emporterait sur quatre sœurs réussies juste
+         * après — alors que ces quatre-là sont la vraie preuve.
+         *
+         * On retient donc la MEILLEURE preuve du couple, puis on l'applique une
+         * seule fois.
+         *
+         * @var array<string, list<object>> $reussites
+         */
+        $reussites = [];
+
         foreach ($reponses->where('is_correct', '===', true) as $reponse) {
-            $bilan = $this->surUneReussite($attempt, $reponse, $pieges, $echeance, $bilan, $traites);
+            foreach ($pieges[$reponse->question_id] ?? [] as $cause) {
+                $couple = $reponse->competency_node_id.'|'.$cause;
+
+                if (isset($traites[$couple])) {
+                    continue;   // l'échec du jour l'emporte
+                }
+
+                $reussites[$couple][] = $reponse;
+            }
         }
 
-        return $bilan;
-    }
+        foreach ($reussites as $couple => $candidates) {
+            [$nodeId, $cause] = explode('|', $couple, 2);
 
-    private function rendezVous(Attempt $attempt, int $nodeId, string $cause): ?ReviewSchedule
-    {
-        return ReviewSchedule::where('user_id', $attempt->user_id)
-            ->where('competency_node_id', $nodeId)
-            ->where('cause', $cause)
-            ->first();
-    }
-
-    /**
-     * Une réussite fait avancer le COUPLE, pas la question tracée (DET-35).
-     *
-     * Le calendrier n'avançait auparavant que si la question retenue dans
-     * `last_question_id` était resservie à l'identique. Une session
-     * d'entraînement ne faisait donc progresser aucun palier, sauf
-     * coïncidence : le candidat qui travaillait le plus revoyait indéfiniment
-     * les mêmes rendez-vous — l'inverse exact de l'effet recherché.
-     *
-     * COMMENT LIRE UNE RÉUSSITE, puisqu'une bonne réponse ne porte aucune
-     * cause (contrainte du PAS-5) : une réponse JUSTE à une question dont un
-     * distracteur porte la cause X, dans la même compétence, est la preuve que
-     * le piège X n'a pas fonctionné. C'est cela, l'évidence — pas l'identité de
-     * la question. `last_question_id` change donc de rôle : il ne sert plus à
-     * apparier, il sert à ne pas resservir la même sœur (voir ReviewComposer).
-     *
-     * ON NE CRÉE JAMAIS SUR UNE RÉUSSITE. La règle fondatrice ne bouge pas :
-     * n'entre au calendrier que ce qui a été MANQUÉ. Éviter un piège qu'on
-     * n'est jamais tombé dedans ne prouve rien qui vaille un rendez-vous.
-     *
-     * @param  array<int, list<string>>  $pieges
-     * @param  array{crees: int, avances: int, recules: int, sortis: int}  $bilan
-     * @param  array<string, true>  $traites  couples déjà bougés dans cette tentative
-     * @return array{crees: int, avances: int, recules: int, sortis: int}
-     */
-    private function surUneReussite(
-        Attempt $attempt,
-        object $reponse,
-        array $pieges,
-        ?CarbonImmutable $echeance,
-        array $bilan,
-        array &$traites,
-    ): array {
-        foreach ($pieges[$reponse->question_id] ?? [] as $cause) {
-            $couple = $reponse->competency_node_id.'|'.$cause;
-
-            if (isset($traites[$couple])) {
-                continue;
-            }
-
-            $rdv = $this->rendezVous($attempt, (int) $reponse->competency_node_id, $cause);
+            $rdv = $this->rendezVous($attempt, (int) $nodeId, $cause);
 
             if ($rdv === null) {
                 continue;   // jamais manqué, donc jamais planifié : rien à avancer
             }
 
-            $traites[$couple] = true;
+            $preuve = $this->meilleurePreuve($candidates, $rdv);
 
-            $bilan[$this->appliquer($rdv, true, $reponse->confidence, $reponse->question_id, $echeance)]++;
+            $bilan[$this->appliquer($rdv, true, $preuve->confidence, $preuve->question_id, $echeance)]++;
         }
 
         return $bilan;
+    }
+
+    /**
+     * La réussite qui prouve le plus : une SŒUR plutôt que l'énoncé déjà vu.
+     *
+     * Reconnaître un énoncé n'est pas maîtriser une cause — mais si le candidat
+     * a aussi réussi une autre question du même piège dans la séance, c'est
+     * celle-là qui compte, et le rendez-vous progresse pour de bon.
+     *
+     * @param  list<object>  $candidates
+     */
+    private function meilleurePreuve(array $candidates, ReviewSchedule $rdv): object
+    {
+        foreach ($candidates as $reponse) {
+            if ($reponse->question_id !== $rdv->last_question_id) {
+                return $reponse;
+            }
+        }
+
+        return $candidates[0];
+    }
+
+    /**
+     * Le rendez-vous d'un couple, VERROUILLÉ pour la durée de la transaction.
+     *
+     * ORDRE DE VERROUILLAGE : tentative, puis items, puis rendez-vous. Le même
+     * que dans `AttemptService::answer()` et `submit()`, d'où cette méthode est
+     * appelée. Un ordre implicite finit toujours par s'inverser, et
+     * l'interblocage qui en résulte ne se reproduit qu'en charge — d'où ce
+     * commentaire plutôt qu'une convention orale.
+     *
+     * Sans ce verrou, deux tentatives du même candidat soumises simultanément
+     * sur le même couple lisaient toutes deux le même palier, et l'une des deux
+     * progressions se perdait — lecture, calcul, écriture, sans rien entre les
+     * trois.
+     */
+    private function rendezVous(Attempt $attempt, int $nodeId, string $cause): ?ReviewSchedule
+    {
+        return ReviewSchedule::where('user_id', $attempt->user_id)
+            ->where('competency_node_id', $nodeId)
+            ->where('cause', $cause)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * Crée le rendez-vous, ou rejoint celui qu'une transaction concurrente
+     * vient de créer.
+     *
+     * UNE VIOLATION D'INDEX EST UNE RELECTURE, PAS UNE ERREUR. Deux tentatives
+     * simultanées sur le même couple lisent toutes deux « absent » : l'une
+     * gagne, l'autre butait sur `review_schedules_unique_erreur` APRÈS que sa
+     * propre tentative soit close. Le candidat perdait sa soumission pour une
+     * course qu'il n'a pas provoquée.
+     *
+     * LE POINT DE REPRISE N'EST PAS DÉCORATIF. En PostgreSQL, une erreur avorte
+     * la transaction ENTIÈRE : sans `SAVEPOINT`, rattraper l'exception ne
+     * servirait à rien, la clôture échouerait quand même. `DB::transaction`
+     * imbriquée en pose un et y revient toute seule.
+     *
+     * @return 'crees'|'avances'|'recules'|'sortis'
+     */
+    private function creerOuRejoindre(Attempt $attempt, object $reponse, ?CarbonImmutable $echeance): string
+    {
+        try {
+            DB::transaction(fn () => $this->creer($attempt, $reponse, $echeance));
+
+            return 'crees';
+        } catch (QueryException $e) {
+            if (! UniqueViolation::on($e, 'review_schedules_unique_erreur')) {
+                throw $e;
+            }
+
+            $rdv = $this->rendezVous($attempt, (int) $reponse->competency_node_id, $reponse->cause);
+
+            if ($rdv === null) {
+                throw $e;   // l'index a parlé, la ligne n'est pas là : on ne devine pas
+            }
+
+            return $this->appliquer($rdv, false, $reponse->confidence, $reponse->question_id, $echeance);
+        }
     }
 
     /**
@@ -353,7 +412,26 @@ final class MemoryScheduler
     ): string {
         $suite = $this->prochainPalier($rdv->palier, $juste, $certitude);
 
-        $consecutifs = $suite['sure'] ? $rdv->consecutive_sure + 1 : 0;
+        /*
+         * RECONNAÎTRE UN ÉNONCÉ N'EST PAS MAÎTRISER UNE CAUSE.
+         *
+         * Quand la banque ne compte qu'une seule question pour un couple,
+         * `ReviewComposer` ressert celle que le rendez-vous a déjà fait servir
+         * — mieux vaut retravailler le même énoncé que sauter une échéance. Le
+         * candidat le reconnaît alors, et le reconnaître ne prouve rien.
+         *
+         * Sa réussite ne fait donc PAS progresser le compteur de sorties : elle
+         * le gèle. Un couple servi indéfiniment par la même question ne peut
+         * jamais quitter le calendrier. L'échec, lui, remet toujours à zéro —
+         * se tromper sur un énoncé déjà vu est un signal plus fort encore.
+         */
+        $memeEnonce = $rdv->last_question_id !== null && $rdv->last_question_id === $questionId;
+
+        $consecutifs = match (true) {
+            ! $suite['sure'] => 0,
+            $memeEnonce => $rdv->consecutive_sure,
+            default => $rdv->consecutive_sure + 1,
+        };
 
         // PORTE DE SORTIE. Sans elle la liste grossit indéfiniment.
         if ($consecutifs >= self::SORTIES_CONSECUTIVES) {

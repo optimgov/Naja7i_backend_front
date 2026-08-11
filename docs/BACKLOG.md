@@ -275,8 +275,9 @@ dans le titre et dans cette fiche, pas dans le numéro.
 **Acceptation :** rien d'échu répond 200 avec une liste vide et la prochaine
 date — « rien aujourd'hui, prochain le 14 » est une information, un 404 n'en
 est pas une ; aucun plafond silencieux — 20 servis, le reste compté et annoncé
-dans `meta` ; la séance sert une question SŒUR et non celle que le rendez-vous
-a tracée ; une question dont plusieurs distracteurs portent des causes échues
+dans `meta` ; la séance sert une question SŒUR quand la banque en a une, et
+ressert l'énoncé tracé sinon — repli annoncé dans `meta.reserved_identical`,
+et qui ne fait JAMAIS sortir du calendrier (PAS-21, audit BLOC-3) ; une question dont plusieurs distracteurs portent des causes échues
 en couvre plusieurs à la fois ; 201 à l'ouverture, 200 à la reprise, une seule
 séance ouverte par candidat ; deux codes d'erreur distincts l'un de l'autre
 comme du diagnostic et de l'entraînement — `MEMORY_NOTHING_DUE` (le candidat

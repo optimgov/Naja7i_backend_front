@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\IdempotencyKeyReused;
 use App\Exceptions\NoSiblingQuestionAvailable;
 use App\Exceptions\NothingDueForReview;
 use App\Exceptions\TrainingScopeTooNarrow;
@@ -11,6 +12,8 @@ use App\Models\Exam;
 use App\Models\QuestionOption;
 use App\Models\Response;
 use App\Models\User;
+use App\Support\UniqueViolation;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -45,7 +48,96 @@ final class AttemptService
         private readonly TrainingComposer $training,
         private readonly ReviewComposer $reviews,
         private readonly MemoryScheduler $memory,
+        private readonly MasteryCalculator $mastery,
     ) {}
+
+    /**
+     * Empreinte de l'OPÉRATION demandée sous une clé d'idempotence.
+     *
+     * Une clé identifie une opération, pas un utilisateur. Sans empreinte, la
+     * clé d'un diagnostic réutilisée pour ouvrir un entraînement rendait le
+     * diagnostic — et les gardes d'ouverture (« rien à réviser », « périmètre
+     * trop étroit ») se contournaient par restitution silencieuse, n'étant
+     * jamais atteintes.
+     *
+     * N'entre ici que ce qui CHANGE LE RÉSULTAT. Le genre et l'épreuve d'abord ;
+     * puis les paramètres propres à chaque chemin — le nombre demandé, le
+     * périmètre de nœuds. La locale n'y figure pas : elle vient du profil du
+     * candidat, pas de la requête.
+     *
+     * @param  array<string, mixed>  $parametres
+     */
+    private function empreinte(string $kind, ?int $examId, array $parametres = []): string
+    {
+        ksort($parametres);
+
+        return hash('sha256', json_encode([
+            'kind' => $kind,
+            'exam_id' => $examId,
+            'parametres' => $parametres,
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Tentative déjà ouverte sous cette clé, si la requête est LA MÊME.
+     *
+     * Une empreinte absente ne compare rien : les tentatives antérieures à la
+     * migration n'en ont pas, et leur en inventer une supposerait de deviner
+     * les paramètres d'appels déjà servis.
+     *
+     * @throws IdempotencyKeyReused
+     */
+    private function rejeu(User $user, string $cle, string $empreinte): ?Attempt
+    {
+        $existante = Attempt::where('user_id', $user->id)
+            ->where('idempotency_key', $cle)
+            ->first();
+
+        if ($existante === null) {
+            return null;
+        }
+
+        if ($existante->idempotency_fingerprint !== null
+            && $existante->idempotency_fingerprint !== $empreinte) {
+            throw new IdempotencyKeyReused($cle);
+        }
+
+        return $existante;
+    }
+
+    /**
+     * Rend la tentative gagnante après une collision d'index, ou relance.
+     *
+     * Le contrôle « une session est-elle déjà ouverte ? » précède la création
+     * et ne peut pas être atomique : entre la lecture et l'écriture, une
+     * seconde requête passe. L'index partiel fait alors son travail EN BASE —
+     * c'est lui qui garantit l'invariant — mais une violation d'index n'est pas
+     * une erreur du candidat : c'est une reprise. Un double-clic doit rendre
+     * 200 et la session existante, jamais 500.
+     *
+     * On ne rattrape que les index ATTENDUS, nommément : un `catch` large
+     * avalerait une contrainte de contrôle ou une clé étrangère orpheline, et
+     * le défaut ressortirait ailleurs, méconnaissable.
+     *
+     * @param  list<string>  $index
+     */
+    private function gagnante(QueryException $e, array $index, callable $relire): Attempt
+    {
+        if (! UniqueViolation::onAny($e, $index)) {
+            throw $e;
+        }
+
+        $gagnante = $relire();
+
+        if ($gagnante === null) {
+            /* L'index a parlé mais la ligne est introuvable : elle a été close
+             * ou supprimée entre-temps. Rien à rendre — on ne fabrique pas une
+             * reprise qui n'existe pas. */
+            throw $e;
+        }
+
+        return $gagnante;
+    }
 
     public function startDiagnostic(
         User $user,
@@ -55,19 +147,24 @@ final class AttemptService
         int $total = 10,
         ?int $durationMinutes = null,
     ): Attempt {
-        $existante = Attempt::where('user_id', $user->id)
-            ->where('idempotency_key', $idempotencyKey)
-            ->first();
+        $empreinte = $this->empreinte('diagnostic', $exam->id, [
+            'total' => $total,
+            'duration_minutes' => $durationMinutes,
+        ]);
+
+        $existante = $this->rejeu($user, $idempotencyKey, $empreinte);
 
         if ($existante !== null) {
             return $existante;
         }
 
-        $enCours = Attempt::where('user_id', $user->id)
+        $ouverte = fn () => Attempt::where('user_id', $user->id)
             ->where('exam_id', $exam->id)
             ->where('kind', 'diagnostic')
             ->open()
             ->first();
+
+        $enCours = $ouverte();
 
         if ($enCours !== null && ! $enCours->hasExpired()) {
             return $enCours;
@@ -81,30 +178,42 @@ final class AttemptService
             );
         }
 
-        return DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $questions, $durationMinutes) {
-            $attempt = Attempt::create([
-                'user_id' => $user->id,
-                'exam_id' => $exam->id,
-                'locale' => $locale,
-                'idempotency_key' => $idempotencyKey,
-                'kind' => 'diagnostic',
-                'status' => 'in_progress',
-                'started_at' => now(),
-                'expires_at' => $durationMinutes ? now()->addMinutes($durationMinutes) : null,
-                'item_count' => $questions->count(),
-            ]);
-
-            foreach ($questions as $i => $question) {
-                AttemptItem::create([
-                    'attempt_id' => $attempt->id,
-                    'question_id' => $question->id,
-                    'competency_node_id' => $question->competency_node_id,
-                    'position' => $i + 1,
+        try {
+            return DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $questions, $durationMinutes) {
+                $attempt = Attempt::create([
+                    'user_id' => $user->id,
+                    'exam_id' => $exam->id,
+                    'locale' => $locale,
+                    'idempotency_key' => $idempotencyKey,
+                    'idempotency_fingerprint' => $empreinte,
+                    'kind' => 'diagnostic',
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'expires_at' => $durationMinutes ? now()->addMinutes($durationMinutes) : null,
+                    'item_count' => $questions->count(),
                 ]);
-            }
 
-            return $attempt->fresh('items');
-        });
+                foreach ($questions as $i => $question) {
+                    AttemptItem::create([
+                        'attempt_id' => $attempt->id,
+                        'question_id' => $question->id,
+                        'competency_node_id' => $question->competency_node_id,
+                        'position' => $i + 1,
+                    ]);
+                }
+
+                return $attempt->fresh('items');
+            });
+        } catch (QueryException $e) {
+            // Deux ouvertures simultanées : l'index a tranché, on rend le gagnant.
+            return $this->gagnante(
+                $e,
+                ['attempts_single_open_diagnostic', 'attempts_tenant_user_idempotency_unique'],
+                fn () => $ouverte()?->load('items')
+                    ?? Attempt::where('user_id', $user->id)
+                        ->where('idempotency_key', $idempotencyKey)->first()?->load('items'),
+            );
+        }
     }
 
     /**
@@ -135,18 +244,26 @@ final class AttemptService
         string $idempotencyKey,
         int $total = 15,
     ): array {
-        $existante = Attempt::where('user_id', $user->id)
-            ->where('idempotency_key', $idempotencyKey)
-            ->first();
+        $noeudsTries = $nodeIds;
+        sort($noeudsTries);
+
+        $empreinte = $this->empreinte('training', $exam->id, [
+            'total' => $total,
+            'node_ids' => $noeudsTries,
+        ]);
+
+        $existante = $this->rejeu($user, $idempotencyKey, $empreinte);
 
         if ($existante !== null) {
             return $this->reprise($existante, $total);
         }
 
-        $enCours = Attempt::where('user_id', $user->id)
+        $ouverte = fn () => Attempt::where('user_id', $user->id)
             ->where('kind', 'training')
             ->open()
             ->first();
+
+        $enCours = $ouverte();
 
         if ($enCours !== null) {
             return $this->reprise($enCours, $total);
@@ -161,31 +278,44 @@ final class AttemptService
             throw new TrainingScopeTooNarrow($compose['disponibles'], $questions->count());
         }
 
-        $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $questions) {
-            $attempt = Attempt::create([
-                'user_id' => $user->id,
-                'exam_id' => $exam->id,
-                'locale' => $locale,
-                'idempotency_key' => $idempotencyKey,
-                'kind' => 'training',
-                'status' => 'in_progress',
-                'started_at' => now(),
-                // Jamais d'échéance : ce n'est pas une épreuve.
-                'expires_at' => null,
-                'item_count' => $questions->count(),
-            ]);
-
-            foreach ($questions as $i => $question) {
-                AttemptItem::create([
-                    'attempt_id' => $attempt->id,
-                    'question_id' => $question->id,
-                    'competency_node_id' => $question->competency_node_id,
-                    'position' => $i + 1,
+        try {
+            $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $questions) {
+                $attempt = Attempt::create([
+                    'user_id' => $user->id,
+                    'exam_id' => $exam->id,
+                    'locale' => $locale,
+                    'idempotency_key' => $idempotencyKey,
+                    'idempotency_fingerprint' => $empreinte,
+                    'kind' => 'training',
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    // Jamais d'échéance : ce n'est pas une épreuve.
+                    'expires_at' => null,
+                    'item_count' => $questions->count(),
                 ]);
-            }
 
-            return $attempt->fresh('items');
-        });
+                foreach ($questions as $i => $question) {
+                    AttemptItem::create([
+                        'attempt_id' => $attempt->id,
+                        'question_id' => $question->id,
+                        'competency_node_id' => $question->competency_node_id,
+                        'position' => $i + 1,
+                    ]);
+                }
+
+                return $attempt->fresh('items');
+            });
+        } catch (QueryException $e) {
+            return $this->reprise(
+                $this->gagnante(
+                    $e,
+                    ['attempts_single_open_training', 'attempts_tenant_user_idempotency_unique'],
+                    fn () => $ouverte() ?? Attempt::where('user_id', $user->id)
+                        ->where('idempotency_key', $idempotencyKey)->first(),
+                ),
+                $total,
+            );
+        }
 
         return [
             'attempt' => $attempt,
@@ -215,10 +345,11 @@ final class AttemptService
      *  - RIEN D'ÉCHU EST UNE SITUATION NOMMÉE, pas une série vide. L'exception
      *    porte la prochaine échéance pour que le client sache quand revenir.
      *
-     * @return array{attempt: Attempt, creee: bool, echus: int, servies: int, couverts: int, sans_question: int}
+     * @return array{attempt: Attempt, creee: bool, echus: int, servies: int, couverts: int, sans_question: int, resservies_identiques: int}
      *
      * @throws NothingDueForReview
      * @throws NoSiblingQuestionAvailable
+     * @throws IdempotencyKeyReused
      */
     public function startReview(
         User $user,
@@ -229,9 +360,9 @@ final class AttemptService
     ): array {
         $total ??= MemoryScheduler::PLAFOND_LISTE;
 
-        $existante = Attempt::where('user_id', $user->id)
-            ->where('idempotency_key', $idempotencyKey)
-            ->first();
+        $empreinte = $this->empreinte('review', $exam->id, ['total' => $total]);
+
+        $existante = $this->rejeu($user, $idempotencyKey, $empreinte);
 
         if ($existante !== null) {
             return $this->repriseDeRevision($user, $existante);
@@ -241,10 +372,12 @@ final class AttemptService
          * même portée que l'entraînement. Deux sessions serviraient deux fois
          * les mêmes rendez-vous, et la première soumise ferait avancer des
          * paliers que la seconde croirait encore en retard. */
-        $enCours = Attempt::where('user_id', $user->id)
+        $ouverte = fn () => Attempt::where('user_id', $user->id)
             ->where('kind', 'review')
             ->open()
             ->first();
+
+        $enCours = $ouverte();
 
         if ($enCours !== null) {
             return $this->repriseDeRevision($user, $enCours);
@@ -269,31 +402,44 @@ final class AttemptService
             throw new NoSiblingQuestionAvailable($echus);
         }
 
-        $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $questions) {
-            $attempt = Attempt::create([
-                'user_id' => $user->id,
-                'exam_id' => $exam->id,
-                'locale' => $locale,
-                'idempotency_key' => $idempotencyKey,
-                'kind' => 'review',
-                'status' => 'in_progress',
-                'started_at' => now(),
-                // Réviser n'est pas une épreuve : jamais de chronomètre.
-                'expires_at' => null,
-                'item_count' => $questions->count(),
-            ]);
-
-            foreach ($questions as $i => $question) {
-                AttemptItem::create([
-                    'attempt_id' => $attempt->id,
-                    'question_id' => $question->id,
-                    'competency_node_id' => $question->competency_node_id,
-                    'position' => $i + 1,
+        try {
+            $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $questions) {
+                $attempt = Attempt::create([
+                    'user_id' => $user->id,
+                    'exam_id' => $exam->id,
+                    'locale' => $locale,
+                    'idempotency_key' => $idempotencyKey,
+                    'idempotency_fingerprint' => $empreinte,
+                    'kind' => 'review',
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    // Réviser n'est pas une épreuve : jamais de chronomètre.
+                    'expires_at' => null,
+                    'item_count' => $questions->count(),
                 ]);
-            }
 
-            return $attempt->fresh('items');
-        });
+                foreach ($questions as $i => $question) {
+                    AttemptItem::create([
+                        'attempt_id' => $attempt->id,
+                        'question_id' => $question->id,
+                        'competency_node_id' => $question->competency_node_id,
+                        'position' => $i + 1,
+                    ]);
+                }
+
+                return $attempt->fresh('items');
+            });
+        } catch (QueryException $e) {
+            return $this->repriseDeRevision(
+                $user,
+                $this->gagnante(
+                    $e,
+                    ['attempts_single_open_review', 'attempts_tenant_user_idempotency_unique'],
+                    fn () => $ouverte() ?? Attempt::where('user_id', $user->id)
+                        ->where('idempotency_key', $idempotencyKey)->first(),
+                ),
+            );
+        }
 
         return [
             'attempt' => $attempt,
@@ -302,10 +448,11 @@ final class AttemptService
             'servies' => $questions->count(),
             'couverts' => $compose['couverts'],
             'sans_question' => $compose['sans_question'],
+            'resservies_identiques' => $compose['resservies_identiques'],
         ];
     }
 
-    /** @return array{attempt: Attempt, creee: bool, echus: int, servies: int, couverts: int, sans_question: int} */
+    /** @return array{attempt: Attempt, creee: bool, echus: int, servies: int, couverts: int, sans_question: int, resservies_identiques: int} */
     private function repriseDeRevision(User $user, Attempt $attempt): array
     {
         return [
@@ -315,6 +462,7 @@ final class AttemptService
             'servies' => $attempt->item_count,
             'couverts' => $attempt->item_count,
             'sans_question' => 0,
+            'resservies_identiques' => 0,
         ];
     }
 
@@ -396,8 +544,43 @@ final class AttemptService
     }
 
     /**
-     * Clôt la tentative et fige les corrections.
-     * Même ordre de verrouillage que `answer()` : tentative, puis items.
+     * Clôt la tentative, fige les corrections, PUIS en tire les conséquences.
+     *
+     * ORDRE DE VERROUILLAGE, UNE FOIS POUR TOUTES : tentative, puis items, puis
+     * rendez-vous de révision. Le même dans `answer()`, dans `submit()` et dans
+     * `MemoryScheduler`. Un ordre implicite finit toujours par s'inverser, et
+     * l'interblocage qui en résulte ne se reproduit qu'en charge.
+     *
+     * LES EFFETS DE BORD VIVENT ICI, ET DERRIÈRE LA GARDE. Ils étaient dans
+     * `ParcoursController::submit()`, appelés SANS CONDITION après un
+     * `submit()` qui rend sans bruit une tentative déjà close. Conséquence
+     * mesurée par l'audit : un client qui soumet, perd la réponse HTTP et
+     * rejoue le même POST faisait avancer `consecutive_sure` DEUX fois. Deux
+     * réussites certaines suffisant à sortir du calendrier, un simple renvoi
+     * réseau pouvait vider un rendez-vous — et le garde « un couple ne bouge
+     * qu'une fois par tentative » n'y pouvait rien : c'est un tableau en
+     * mémoire, qui ne vit que le temps d'un appel.
+     *
+     * Ici, une tentative déjà close sort par le premier `return` et ne
+     * déclenche plus rien. Le rejeu redevient ce qu'il doit être : sans effet.
+     *
+     * Ils sont aussi DANS la transaction, et le prix a été MESURÉ plutôt que
+     * supposé : 41 ms et 42 requêtes pour une série de dix dont cinq erreurs —
+     * le pire cas courant, chaque erreur ouvrant ou déplaçant un rendez-vous.
+     * Une transaction de cet ordre ne tient aucun verrou disputé assez
+     * longtemps pour compter : les lignes verrouillées sont celles du candidat
+     * lui-même, que personne d'autre ne touche.
+     *
+     * Le repli, si ce coût devenait déraisonnable, serait un marqueur
+     * persistant — une colonne enregistrant la tentative ayant fait bouger
+     * chaque rendez-vous, qui rendrait le rejeu inoffensif sans allonger la
+     * transaction. Il n'est pas nécessaire aujourd'hui, et il coûterait une
+     * écriture de plus par rendez-vous.
+     *
+     * Le bénéfice immédiat est qu'une clôture partielle n'existe plus : soit la
+     * tentative est close ET ses conséquences tirées, soit rien.
+     *
+     * Ferme DET-36.
      */
     public function submit(Attempt $attempt): Attempt
     {
@@ -436,7 +619,16 @@ final class AttemptService
                 'correct_count' => $justes,
             ]);
 
-            return $verrouillee->fresh();
+            $clos = $verrouillee->fresh();
+
+            /* Une tentative sans épreuve ne nourrit ni maîtrise ni calendrier :
+             * les deux sont indexés par épreuve. */
+            if ($clos->exam !== null) {
+                $this->mastery->recomputeForExam($clos->user, $clos->exam);
+                $this->memory->planFromAttempt($clos);
+            }
+
+            return $clos;
         });
     }
 }

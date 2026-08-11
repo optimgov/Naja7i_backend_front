@@ -45,13 +45,17 @@ final class ReviewComposer
      * @return array{
      *     questions: Collection<int, Question>,
      *     couverts: int,
-     *     sans_question: int
+     *     sans_question: int,
+     *     resservies_identiques: int
      * }
      */
     public function compose(Exam $exam, Collection $rendezVous, string $locale, int $total): array
     {
         if ($rendezVous->isEmpty() || $total < 1) {
-            return ['questions' => collect(), 'couverts' => 0, 'sans_question' => 0];
+            return [
+                'questions' => collect(), 'couverts' => 0,
+                'sans_question' => 0, 'resservies_identiques' => 0,
+            ];
         }
 
         $vivier = $this->vivier($exam, $rendezVous->pluck('competency_node_id')->unique()->all(), $locale);
@@ -59,6 +63,7 @@ final class ReviewComposer
         $choisies = collect();
         $couverts = 0;
         $sansQuestion = 0;
+        $identiques = 0;
 
         foreach ($rendezVous as $rdv) {
             $candidates = $vivier
@@ -87,6 +92,14 @@ final class ReviewComposer
 
             $soeur = $this->soeur($candidates, $rdv);
 
+            if ($soeur->id === $rdv->last_question_id) {
+                /* Faute de sœur, on ressert l'énoncé déjà vu. Ce n'est ni tu ni
+                 * gratuit : l'appelant l'annonce dans `meta`, et
+                 * `MemoryScheduler` refuse à cette réussite de faire progresser
+                 * la sortie du calendrier. */
+                $identiques++;
+            }
+
             $choisies->put($soeur->id, $soeur);
             $couverts++;
         }
@@ -95,13 +108,22 @@ final class ReviewComposer
             'questions' => $choisies->values(),
             'couverts' => $couverts,
             'sans_question' => $sansQuestion,
+            'resservies_identiques' => $identiques,
         ];
     }
 
     /**
      * La sœur : n'importe laquelle, SAUF la dernière servie tant qu'il en reste
      * une autre. S'il n'en reste aucune, on ressert — mieux vaut retravailler
-     * le même énoncé que sauter un rendez-vous échu.
+     * le même énoncé que sauter un rendez-vous échu, une banque jeune ne
+     * comptant souvent qu'une question par couple.
+     *
+     * CE REPLI NE RAPPORTE PAS LA MÊME CHOSE. Il est compté
+     * (`resservies_identiques`), annoncé au client, et `MemoryScheduler` gèle
+     * le compteur de sorties sur la réussite qui en découle : reconnaître un
+     * énoncé n'est pas maîtriser une cause. Le code d'erreur
+     * `MEMORY_NO_SIBLING_QUESTION` reste réservé au cas où le couple n'a
+     * AUCUNE question.
      *
      * @param  Collection<int, Question>  $candidates
      */

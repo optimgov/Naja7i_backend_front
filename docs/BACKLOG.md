@@ -459,6 +459,38 @@ localisé, coefficient) existe depuis `91e5920`.
 **Non ouvert, volontairement :** la pagination par curseur. Le plafond reste et
 `meta` l'annonce.
 
+### PAS-26 — F05, la question miroir · `c15e032`
+**Périmètre :** `QuestionsSoeurs` (extrait de `ReviewComposer`),
+`AttemptService::startMirror()`, `POST me/mirrors/{itemUuid}`,
+`CorrectionResource.mirror_available`, index d'unicité `mirror`,
+`CauseRevealService::reveal()`.
+
+**Acceptation :** un item juste, sans réponse, ou d'une tentative non soumise
+n'ouvre aucun miroir (409 `MIRROR_NOT_APPLICABLE`) ; l'item d'un autre candidat
+est **introuvable** ; le miroir n'est **jamais** la question déjà répondue, et
+son absence répond 409 `MIRROR_NOT_AVAILABLE` — code distinct, la banque étant
+en cause et non le candidat ; la correction n'annonce que l'EXISTENCE, aucun
+énoncé ni uuid de miroir n'y voyage, éprouvé sur les octets ; 201 à
+l'ouverture, 200 à la reprise, une seule ouverte à la fois ; réussir le miroir
+fait avancer le rendez-vous mémoire du couple.
+
+**Un seul sélecteur pour deux surfaces.** `QuestionsSoeurs` porte le vivier
+indexé par (compétence, cause) ; la POLITIQUE DE REPLI reste à chaque appelant
+— la révision ressert l'énoncé connu faute de mieux, le miroir refuse. Trois
+sélecteurs du même concept divergent : c'est la leçon de DET-30.
+
+**Changement d'économie, à connaître (F03).** L'unité de quota portait sur la
+RÉPONSE ; elle porte désormais sur le COUPLE (compétence, cause). F05 l'a
+imposé : le miroir porte par construction la cause qu'on vient de payer, et la
+faire repayer vendrait deux fois le même diagnostic. Plus proche de la lettre
+de la fiche — « un compte gratuit voit deux causes » — que le décompte par
+réponse ne l'était. Trois tests du quota ont dû changer de montage : ils
+répondaient deux fois au même distracteur et empruntaient donc le chemin
+devenu gratuit, sans plus rien prouver de l'atomicité qu'ils défendent.
+
+**Non tranché, tracé (DET-45) :** `questions.mirror_question_id` existe depuis
+le PAS-5 et n'est pas utilisée ici.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
@@ -471,7 +503,6 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 |---|---|---|
 | Séries d'entraînement ciblées | Composition adaptative | Non ouvert |
 | Simulateur d'examen | Chronomètre, barème, rapport | Non ouvert |
-| Question miroir (F05) | Variante d'un même item par `sibling_group` | Non ouvert — le sélecteur de `ReviewComposer` est son point de branchement |
 | Profil candidat | Situation, objectif, échéance | Non ouvert |
 | Module Opportunités | Veille, annonces, alertes | Non ouvert |
 | Commercial et CMI | Offres, commandes, paiement | Non ouvert |

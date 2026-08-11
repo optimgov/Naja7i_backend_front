@@ -43,6 +43,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 19 | Une cause déjà payée ne se reverrouille pas : la liste de révision tient la garantie du quota, DET-38 requalifié en défaut | `31b87e2` |
 | — | SHA du PAS-19 au journal et au backlog, DET-38 clos et requalifié | `69e184b` |
 | 20 | La suite passe de 249 s à ~117 s sans dépendance : semis une fois par processus, argon2id au coût de test — paratest écarté par la mesure | `d3320b0` |
+| — | SHA du PAS-20 au journal et au backlog, DET-28 requalifié, DET-39 | `6f2cbf0` |
+| 21 | Audit externe 490fc53, cinq bloquants : effets de bord derrière la garde de transition, planificateur verrouillé, énoncé resservi qui ne fait plus sortir, collisions d'ouverture rattrapées, empreinte d'idempotence | `aac1d7a` |
 
 ## Lots frontend
 

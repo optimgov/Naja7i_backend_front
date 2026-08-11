@@ -362,6 +362,32 @@ du §6 reste non reproduit ET non vérifié** — le vérifier exige paratest.
 test qui l'écrirait fuirait sur les suivants. Aucun ne le fait ; la contrainte
 est écrite parce qu'elle ne se déduit d'aucune ligne de code.
 
+### PAS-21 — Correctifs de l'audit externe 490fc53 · `aac1d7a`
+**Origine :** audit externe, cinq bloquants. Les cinq sont exacts ; quatre
+relèvent de la concurrence, et la suite était verte pendant tout ce temps.
+
+**Acceptation :** un rejeu de `POST submit` ne touche aucune colonne d'un
+rendez-vous — les effets de bord sont dans `AttemptService::submit()`, dans la
+transaction et derrière la garde de transition, donc valables pour TOUTE voie
+de soumission ; le planificateur verrouille le rendez-vous DÈS LA LECTURE et
+traite une violation d'index comme une relecture, sous point de reprise ;
+l'énoncé resservi faute de sœur est annoncé et GÈLE le compteur de sorties ;
+deux ouvertures simultanées rendent 201 puis 200 sur la même session, jamais
+500, sur les trois chemins ; une clé d'idempotence rejouée sur une autre
+opération reçoit 409 et jamais une autre tentative.
+
+**Ordre de verrouillage, écrit une fois pour toutes :** tentative, puis items,
+puis rendez-vous. Le même dans `answer()`, `submit()` et `MemoryScheduler`.
+
+**Épreuve :** quatre tests à DEUX sessions PostgreSQL, l'entrelacement imposé
+par `DB::listen`. Chaque test vérifié par mutation — **deux ne discriminaient
+pas** et ont été refaits : l'un se fiait à des horodatages à la seconde
+(DET-40), l'autre constatait une attente sans vérifier quelle instruction
+l'avait provoquée. Un test de mise à jour perdue exigerait deux processus
+réels ; ce montage n'en a pas, et le commentaire le dit.
+
+**Ferme DET-36.** Ouvre DET-40.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

@@ -206,6 +206,80 @@ class ParcoursController extends Controller
             ->all();
     }
 
+    /**
+     * Plafond de l'index. Le reste est ANNONCÉ, jamais tronqué en silence —
+     * même règle que la liste de révision, et pour la même raison : un client
+     * à qui l'on cache ce qui manque croit avoir tout vu.
+     */
+    public const PLAFOND_INDEX = 20;
+
+    /**
+     * Les tentatives du candidat, la plus récente d'abord.
+     *
+     * CE QUE CETTE ROUTE RÉPARE. `show()` exige de connaître l'uuid ; sur un
+     * appareil neuf, personne ne le connaît. La reprise multi-appareil ne
+     * fonctionnait que par un effet de bord — rouvrir un diagnostic rend celui
+     * en cours — qui suppose de connaître l'ÉPREUVE, que le frontend gardait
+     * dans une trace locale faute de contrat (sa dette D-F15). La béquille
+     * existait parce que l'API manquait.
+     *
+     * LA RESSOURCE NE PORTE PAS LES ITEMS, et ce n'est pas un oubli.
+     * `AttemptResource` les expose par `whenLoaded` : ne rien charger suffit à
+     * les taire. Une liste n'a besoin ni des énoncés ni des options, et les y
+     * mettre rapprocherait la correction d'une surface qui n'a pas à la
+     * connaître. Un test l'éprouve sur les octets rendus.
+     *
+     * `exam` EST chargée, elle : c'est ce qui permet au client de déduire
+     * l'épreuve suivie sans profil ni trace locale.
+     *
+     * Portée : les tentatives d'un autre candidat sont INTROUVABLES, pas
+     * interdites — le filtre par `user_id` fait foi, comme dans `find()`.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['sometimes', 'in:in_progress,submitted,expired,abandoned'],
+            'kind' => ['sometimes', 'in:diagnostic,training,simulation,mirror,review'],
+            'exam_code' => ['sometimes', 'string', 'exists:exams,code'],
+        ]);
+
+        $requete = Attempt::where('user_id', $request->user()->id)
+            ->when(
+                isset($validated['status']),
+                fn ($q) => $q->where('attempts.status', $validated['status'])
+            )
+            ->when(
+                isset($validated['kind']),
+                fn ($q) => $q->where('kind', $validated['kind'])
+            )
+            ->when(
+                isset($validated['exam_code']),
+                fn ($q) => $q->whereHas('exam', fn ($e) => $e->where('code', $validated['exam_code']))
+            );
+
+        $total = (clone $requete)->count();
+
+        /* `id` en second critère : deux tentatives ouvertes dans la même
+         * seconde auraient le même `started_at`, les horodatages étant à la
+         * seconde (DET-40), et l'ordre deviendrait celui du hasard. */
+        $tentatives = $requete
+            ->with('exam')
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->limit(self::PLAFOND_INDEX)
+            ->get();
+
+        return response()->json([
+            'data' => AttemptResource::collection($tentatives)->resolve(),
+            'meta' => [
+                'total' => $total,
+                'served' => $tentatives->count(),
+                'pending' => max(0, $total - $tentatives->count()),
+                'cap' => self::PLAFOND_INDEX,
+            ],
+        ]);
+    }
+
     /** État d'une tentative, avec ses questions — jamais leurs réponses. */
     public function show(Request $request, string $uuid): JsonResponse
     {

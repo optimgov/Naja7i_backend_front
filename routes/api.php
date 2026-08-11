@@ -98,6 +98,11 @@ Route::prefix('v1')->group(function () {
         Route::post('me/diagnostics/{examCode}', [ParcoursController::class, 'startDiagnostic'])
             ->middleware('throttle:10,1');
 
+        /* L'index AVANT la route à paramètre : `me/attempts` et
+         * `me/attempts/{uuid}` ne se disputent aucun chemin, mais les lire dans
+         * cet ordre évite qu'on croie le contraire. */
+        Route::get('me/attempts', [ParcoursController::class, 'index']);
+
         Route::get('me/attempts/{uuid}', [ParcoursController::class, 'show']);
 
         Route::put('me/attempts/{uuid}/items/{itemUuid}', [ParcoursController::class, 'answer'])

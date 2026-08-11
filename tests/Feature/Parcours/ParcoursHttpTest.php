@@ -3,7 +3,9 @@
 namespace Tests\Feature\Parcours;
 
 use App\Contracts\AccessGrant;
+use App\Http\Controllers\Api\V1\ParcoursController;
 use App\Models\AccessGrantRecord;
+use App\Models\Attempt;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
 use App\Models\Question;
@@ -401,6 +403,114 @@ class ParcoursHttpTest extends TestCase
             ->getJson("/api/v1/me/plan/{$this->epreuve->code}")
             ->assertOk()
             ->assertJsonStructure(['data', 'meta' => ['exam_code', 'disclaimer']]);
+    }
+
+    // --- Index des tentatives ------------------------------------------------
+
+    public function test_l_index_rend_les_tentatives_du_candidat_la_plus_recente_d_abord(): void
+    {
+        $premier = $this->ouvrirDiagnostic();
+        $this->actingAs($this->candidat)->postJson("/api/v1/me/attempts/{$premier['uuid']}/submit")->assertOk();
+
+        $second = $this->ouvrirDiagnostic();
+
+        $reponse = $this->actingAs($this->candidat)->getJson('/api/v1/me/attempts');
+
+        $reponse->assertOk();
+        $this->assertSame(2, $reponse->json('meta.total'));
+        $this->assertSame($second['uuid'], $reponse->json('data.0.uuid'), 'La plus récente d\'abord.');
+        $this->assertSame(
+            $this->epreuve->code, $reponse->json('data.0.exam.code'),
+            'L\'épreuve est chargée : c\'est ce qui permet de la déduire sans trace locale.'
+        );
+    }
+
+    public function test_l_index_ne_montre_jamais_les_tentatives_d_un_autre_candidat(): void
+    {
+        $this->ouvrirDiagnostic();
+
+        $autre = $this->candidat('autre@naja7i.ma');
+
+        // Session vierge : c'est ce que fait un second navigateur (voir agirComme).
+        $reponse = $this->agirComme($autre)->getJson('/api/v1/me/attempts');
+
+        $reponse->assertOk();
+        $this->assertSame([], $reponse->json('data'));
+        $this->assertSame(0, $reponse->json('meta.total'));
+    }
+
+    public function test_le_filtre_status_rend_la_tentative_ouverte_et_elle_seule(): void
+    {
+        $close = $this->ouvrirDiagnostic();
+        $this->actingAs($this->candidat)->postJson("/api/v1/me/attempts/{$close['uuid']}/submit")->assertOk();
+
+        $ouverte = $this->ouvrirDiagnostic();
+
+        $reponse = $this->actingAs($this->candidat)
+            ->getJson('/api/v1/me/attempts?status=in_progress');
+
+        $reponse->assertOk();
+        $this->assertCount(1, $reponse->json('data'));
+        $this->assertSame($ouverte['uuid'], $reponse->json('data.0.uuid'));
+    }
+
+    /**
+     * Éprouvé sur les OCTETS rendus, pas par lecture du code.
+     *
+     * `AttemptResource` expose les items par `whenLoaded` : il suffit de ne pas
+     * les charger. Mais « il suffit de » est exactement ce qu'un chargement
+     * ajouté ailleurs — un `with()` de confort, un `load()` dans un helper —
+     * viendrait défaire sans que personne ne le remarque.
+     */
+    public function test_l_index_ne_porte_aucun_enonce_ni_aucune_option(): void
+    {
+        $this->ouvrirDiagnostic();
+
+        $corps = $this->actingAs($this->candidat)->getJson('/api/v1/me/attempts')->content();
+
+        $this->assertStringNotContainsString('"items"', $corps, 'Une liste n\'a pas à porter les items.');
+        $this->assertStringNotContainsString('Énoncé 1', $corps);
+        $this->assertStringNotContainsString('"stem"', $corps);
+        $this->assertStringNotContainsString('"options"', $corps);
+        $this->assertStringNotContainsString('JUSTIFICATION_GENERALE_SECRETE', $corps);
+        $this->assertStringNotContainsString('RATIONALE_SECRETE', $corps);
+    }
+
+    public function test_la_borne_de_l_index_est_annoncee_et_non_silencieuse(): void
+    {
+        $plafond = ParcoursController::PLAFOND_INDEX;
+
+        /* Une tentative de plus que le plafond, créées directement : la route
+         * d'ouverture refuserait le second diagnostic ouvert, et ce test porte
+         * sur la BORNE, pas sur les règles d'ouverture. */
+        for ($i = 0; $i <= $plafond; $i++) {
+            Attempt::create([
+                'user_id' => $this->candidat->id, 'exam_id' => $this->epreuve->id,
+                'locale' => 'fr', 'idempotency_key' => (string) Str::uuid7(),
+                'kind' => 'training', 'status' => 'submitted',
+                'started_at' => now()->subMinutes($i), 'submitted_at' => now(),
+                'item_count' => 5, 'correct_count' => 3,
+            ]);
+        }
+
+        $reponse = $this->actingAs($this->candidat)->getJson('/api/v1/me/attempts');
+
+        $reponse->assertOk();
+        $this->assertCount($plafond, $reponse->json('data'));
+        $this->assertSame($plafond + 1, $reponse->json('meta.total'));
+        $this->assertSame($plafond, $reponse->json('meta.served'));
+        $this->assertSame(
+            1, $reponse->json('meta.pending'),
+            'Ce qui n\'est pas servi est compté et dit, jamais tronqué en silence.'
+        );
+        $this->assertSame($plafond, $reponse->json('meta.cap'));
+    }
+
+    public function test_un_filtre_inconnu_est_refuse_plutot_que_silencieusement_ignore(): void
+    {
+        $this->actingAs($this->candidat)
+            ->getJson('/api/v1/me/attempts?status=inexistant')
+            ->assertStatus(422);
     }
 
     public function test_aucune_cle_interne_dans_les_reponses_du_parcours(): void

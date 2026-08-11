@@ -69,5 +69,6 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 
 ## À venir
 
-Simulateur, question miroir (F05), profil candidat, module opportunités,
-commercial et CMI, back-office Filament. Voir `docs/BACKLOG.md`.
+Simulateur, profil candidat, module opportunités, commercial et CMI,
+back-office Filament (lot A4), import de questions en volume.
+Voir `docs/BACKLOG.md`.

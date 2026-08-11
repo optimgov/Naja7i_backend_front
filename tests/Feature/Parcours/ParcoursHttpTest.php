@@ -513,6 +513,165 @@ class ParcoursHttpTest extends TestCase
             ->assertStatus(422);
     }
 
+    /**
+     * Le filtre par épreuve ne dit JAMAIS ce qui existe.
+     *
+     * Valider l'existence ferait répondre 422 à un code inconnu et 200 à un
+     * code réel hors portée : la différence entre les deux réponses
+     * renseignerait sur le catalogue. Les deux répondent 200, liste vide.
+     */
+    public function test_exam_code_ne_dit_pas_ce_qui_existe(): void
+    {
+        $this->ouvrirDiagnostic();
+
+        foreach (['CODE-QUI-N-EXISTE-PAS', 'CRMEF-PRIMAIRE-2025'] as $code) {
+            $reponse = $this->actingAs($this->candidat)
+                ->getJson("/api/v1/me/attempts?exam_code={$code}");
+
+            $reponse->assertOk();
+            $this->assertSame([], $reponse->json('data'), "Réponse distincte pour {$code}.");
+            $this->assertSame(0, $reponse->json('meta.total'));
+        }
+
+        // Et le code réel de l'épreuve suivie rend bien la tentative.
+        $this->assertSame(
+            1,
+            $this->actingAs($this->candidat)
+                ->getJson("/api/v1/me/attempts?exam_code={$this->epreuve->code}")
+                ->json('meta.total')
+        );
+    }
+
+    // --- correct_count n'est pas un oracle de correction ----------------------
+
+    /**
+     * L'oracle de correction n'existe pas, et ce test le tient À LA SOURCE.
+     *
+     * L'inquiétude était juste dans sa forme : un compteur de bonnes réponses
+     * servi pendant la tentative se lirait une question à la fois — répondre,
+     * rappeler la liste, regarder s'il a monté — et livrerait la correction par
+     * une porte qui n'était pas censée l'ouvrir.
+     *
+     * Mais `correct_count` n'est ÉCRIT qu'à la soumission
+     * (`AttemptService::submit`) : il vaut nul en base pendant toute la
+     * tentative, et aucun chemin ne le maintient au fil des réponses. Vérifié
+     * par mutation — retirer la garde de `AttemptResource` ne changeait rien,
+     * la valeur étant déjà nulle.
+     *
+     * D'où la première assertion, qui est la vraie : LA COLONNE reste nulle
+     * après dix bonnes réponses. C'est elle qui rougirait le jour où quelqu'un
+     * rendrait ce compteur vivant « pour éviter un calcul à la soumission ».
+     * La garde de la ressource est la seconde ligne, pas la première.
+     */
+    public function test_correct_count_reste_nul_tant_que_rien_n_est_soumis(): void
+    {
+        $attempt = $this->ouvrirDiagnostic();
+
+        foreach ($attempt['items'] as $item) {
+            // La bonne réponse est connue du montage : « Option B ».
+            $bonne = collect($item['question']['options'])->firstWhere('content', 'Option B');
+
+            $this->actingAs($this->candidat)->putJson(
+                "/api/v1/me/attempts/{$attempt['uuid']}/items/{$item['item_uuid']}",
+                ['option_uuid' => $bonne['uuid'], 'confidence' => 'sure']
+            )->assertOk();
+
+            $this->assertNull(
+                Attempt::where('uuid', $attempt['uuid'])->value('correct_count'),
+                'La colonne est maintenue au fil des réponses : le compteur est devenu un oracle.'
+            );
+
+            foreach ([
+                "/api/v1/me/attempts/{$attempt['uuid']}",
+                '/api/v1/me/attempts',
+            ] as $url) {
+                $charge = $this->actingAs($this->candidat)->getJson($url)->json();
+                $tentative = $charge['data'][0] ?? $charge['data'];
+
+                $this->assertArrayHasKey(
+                    'correct_count', $tentative,
+                    'La clé est TOUJOURS présente : un client n\'a pas à distinguer '
+                    .'« pas encore » de « champ inconnu ».'
+                );
+                $this->assertNull(
+                    $tentative['correct_count'],
+                    "Le compteur de bonnes réponses a fuité sur {$url} avant la soumission."
+                );
+            }
+        }
+
+        // Après soumission, il devient licite — et exact.
+        $this->actingAs($this->candidat)
+            ->postJson("/api/v1/me/attempts/{$attempt['uuid']}/submit")
+            ->assertOk()
+            ->assertJsonPath('data.correct_count', 10);
+    }
+
+    // --- Dernière activité ----------------------------------------------------
+
+    public function test_la_tentative_travaillee_en_dernier_sort_en_tete(): void
+    {
+        // A, ouverte en premier et laissée en cours.
+        $a = $this->ouvrirDiagnostic();
+
+        /* B, ouverte APRÈS A et close aussitôt. Créée directement : deux
+         * diagnostics ouverts sur la même épreuve sont interdits, et ce test
+         * porte sur le TRI, pas sur les règles d'ouverture. */
+        $b = Attempt::create([
+            'user_id' => $this->candidat->id, 'exam_id' => $this->epreuve->id,
+            'locale' => 'fr', 'idempotency_key' => (string) Str::uuid7(),
+            'kind' => 'training', 'status' => 'submitted',
+            'started_at' => now()->addSecond(), 'submitted_at' => now()->addSecond(),
+            'last_activity_at' => now()->addSecond(),
+            'item_count' => 5, 'correct_count' => 3,
+        ]);
+
+        $this->assertSame(
+            $b->uuid,
+            $this->actingAs($this->candidat)->getJson('/api/v1/me/attempts')->json('data.0.uuid'),
+            'À ce stade, B est bien la plus récemment touchée.'
+        );
+
+        /* On travaille A. Son OUVERTURE reste antérieure à celle de B : seul un
+         * tri sur l'ACTIVITÉ peut la faire remonter. Deux secondes d'écart, les
+         * horodatages étant à la seconde (DET-40). */
+        $this->travelTo(now()->addSeconds(2));
+
+        $item = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/attempts/{$a['uuid']}")->json('data.items.0');
+
+        $this->actingAs($this->candidat)->putJson(
+            "/api/v1/me/attempts/{$a['uuid']}/items/{$item['item_uuid']}",
+            ['option_uuid' => $item['question']['options'][0]['uuid'], 'confidence' => 'sure']
+        );
+
+        $reponse = $this->actingAs($this->candidat)->getJson('/api/v1/me/attempts');
+
+        $this->assertSame(
+            $a['uuid'], $reponse->json('data.0.uuid'),
+            'Une tentative travaillée à l\'instant passe devant une tentative ouverte après elle '
+            .'mais laissée de côté.'
+        );
+        $this->assertNotNull($reponse->json('data.0.last_activity_at'));
+    }
+
+    public function test_la_reponse_portant_un_chronometre_n_est_pas_stockable(): void
+    {
+        $attempt = $this->ouvrirDiagnostic();
+
+        foreach ([
+            '/api/v1/me/attempts',
+            "/api/v1/me/attempts/{$attempt['uuid']}",
+        ] as $url) {
+            $entete = $this->actingAs($this->candidat)->getJson($url)->headers->get('Cache-Control');
+
+            $this->assertStringContainsString(
+                'no-store', (string) $entete,
+                "{$url} porte seconds_remaining : rejouée depuis un cache, elle rendrait un chronomètre faux."
+            );
+        }
+    }
+
     public function test_aucune_cle_interne_dans_les_reponses_du_parcours(): void
     {
         $attempt = $this->ouvrirDiagnostic();

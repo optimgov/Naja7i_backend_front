@@ -486,6 +486,11 @@ class AuditRevisionTest extends TestCase
                     'kind' => 'review',
                     'status' => 'in_progress',
                     'started_at' => now(),
+                    /* Insertion BRUTE : elle contourne le modèle, donc le
+                     * défaut posé par `Attempt::booted()`. La colonne est
+                     * NOT NULL — c'est ce qu'on veut d'une seconde connexion
+                     * qui simule un autre processus. */
+                    'last_activity_at' => now(),
                     'item_count' => 1,
                     'answered_count' => 0,
                     'created_at' => now(),

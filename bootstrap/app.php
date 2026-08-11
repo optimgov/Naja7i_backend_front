@@ -4,6 +4,7 @@ use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureBffRequestsAreStateful;
 use App\Http\Middleware\EnsureEmailIsVerified;
+use App\Http\Middleware\NoStore;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\SetLocale;
@@ -46,6 +47,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'verified.api' => EnsureEmailIsVerified::class,
             'permission' => RequirePermission::class,
+            /* Une contrainte de transport se lit dans la table des routes, au
+             * même titre qu'une autorisation. Voir NoStore : `seconds_remaining`
+             * vient du serveur et ne survit pas à une mise en cache. */
+            'no-store' => NoStore::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

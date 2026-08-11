@@ -21,7 +21,7 @@ class Attempt extends Model
         'user_id', 'exam_id', 'specialty_id', 'locale',
         'idempotency_key', 'idempotency_fingerprint',
         'kind', 'status', 'started_at', 'expires_at', 'submitted_at',
-        'item_count', 'answered_count', 'correct_count',
+        'last_activity_at', 'item_count', 'answered_count', 'correct_count',
     ];
 
     /* L'empreinte est un détail d'implémentation de l'idempotence : la publier
@@ -37,7 +37,24 @@ class Attempt extends Model
             'started_at' => 'datetime',
             'expires_at' => 'datetime',
             'submitted_at' => 'datetime',
+            'last_activity_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Une tentative naît avec une dernière activité : son ouverture.
+     *
+     * La colonne est NOT NULL parce que « pas d'activité connue » n'existe pas
+     * — ouvrir EST une activité. Mais l'exiger de chaque appelant ferait échouer
+     * en base toute création directe, ici pour une valeur qui se déduit
+     * toujours. `AttemptService` la pose explicitement ; ce filet couvre les
+     * autres chemins, présents et à venir.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $attempt) {
+            $attempt->last_activity_at ??= $attempt->started_at ?? now();
+        });
     }
 
     public function user(): BelongsTo

@@ -94,26 +94,37 @@ Route::prefix('v1')->group(function () {
     // achat) viendront dans ce groupe.
     Route::middleware(['auth:sanctum', 'verified.api'])->group(function () {
 
-        // PAS-8 — Parcours de diagnostic.
-        Route::post('me/diagnostics/{examCode}', [ParcoursController::class, 'startDiagnostic'])
-            ->middleware('throttle:10,1');
+        /*
+         * PAS-8 — Parcours de diagnostic, et tout ce qui rend une tentative.
+         *
+         * `no-store` PARTOUT OÙ UNE TENTATIVE EST RENDUE. Ces réponses portent
+         * `seconds_remaining`, calculé par le serveur à l'instant de la réponse
+         * (PAS-6 : l'horloge du client n'est jamais autoritative). Rejouée
+         * depuis un cache, la réponse rendrait un chronomètre faux — et
+         * d'autant plus faux qu'elle serait gardée longtemps.
+         */
+        Route::middleware('no-store')->group(function () {
+            /* L'index AVANT la route à paramètre : `me/attempts` et
+             * `me/attempts/{uuid}` ne se disputent aucun chemin, mais les lire
+             * dans cet ordre évite qu'on croie le contraire. */
+            Route::get('me/attempts', [ParcoursController::class, 'index']);
 
-        /* L'index AVANT la route à paramètre : `me/attempts` et
-         * `me/attempts/{uuid}` ne se disputent aucun chemin, mais les lire dans
-         * cet ordre évite qu'on croie le contraire. */
-        Route::get('me/attempts', [ParcoursController::class, 'index']);
+            Route::get('me/attempts/{uuid}', [ParcoursController::class, 'show']);
 
-        Route::get('me/attempts/{uuid}', [ParcoursController::class, 'show']);
+            Route::post('me/attempts/{uuid}/submit', [ParcoursController::class, 'submit']);
+
+            Route::post('me/diagnostics/{examCode}', [ParcoursController::class, 'startDiagnostic'])
+                ->middleware('throttle:10,1');
+
+            // Entraînement ciblé : ce que l'ordonnance recommande devient cliquable.
+            Route::post('me/training/{examCode}', [ParcoursController::class, 'startTraining'])
+                ->middleware('throttle:10,1');
+        });
 
         Route::put('me/attempts/{uuid}/items/{itemUuid}', [ParcoursController::class, 'answer'])
             ->middleware('throttle:120,1');   // une réponse toutes les 30 s en rythme soutenu
 
-        Route::post('me/attempts/{uuid}/submit', [ParcoursController::class, 'submit']);
         Route::get('me/attempts/{uuid}/correction', [ParcoursController::class, 'correction']);
-
-        // Entraînement ciblé : ce que l'ordonnance recommande devient cliquable.
-        Route::post('me/training/{examCode}', [ParcoursController::class, 'startTraining'])
-            ->middleware('throttle:10,1');
 
         /* F07 — Rendez-vous Mémoire. La lecture n'est pas limitée comme
          * l'ouverture : consulter ce qui est dû est un geste quotidien, en

@@ -240,7 +240,24 @@ class ParcoursController extends Controller
         $validated = $request->validate([
             'status' => ['sometimes', 'in:in_progress,submitted,expired,abandoned'],
             'kind' => ['sometimes', 'in:diagnostic,training,simulation,mirror,review'],
-            'exam_code' => ['sometimes', 'string', 'exists:exams,code'],
+            /*
+             * FORME SEULEMENT, JAMAIS L'EXISTENCE.
+             *
+             * Valider par `exists:exams,code` ferait de ce filtre un ORACLE :
+             * un code inconnu répondrait 422, un code réel hors de la portée du
+             * candidat répondrait 200 avec une liste vide, et la différence
+             * entre les deux réponses dirait ce qui existe au catalogue. Le
+             * catalogue est public, mais la règle ne se plaide pas au cas par
+             * cas — un filtre ne renseigne jamais sur ce qu'il ne rend pas.
+             *
+             * Inconnu ou hors portée : 200, liste vide, aucun aveu.
+             *
+             * `status` et `kind` restent validés par ÉNUMÉRATION, et c'est une
+             * autre affaire : la liste des valeurs est le contrat lui-même, un
+             * client la connaît déjà, et refuser `status=in_progres` évite de
+             * rendre tout l'historique à qui croyait avoir filtré.
+             */
+            'exam_code' => ['sometimes', 'string', 'max:64'],
         ]);
 
         $requete = Attempt::where('user_id', $request->user()->id)
@@ -259,12 +276,19 @@ class ParcoursController extends Controller
 
         $total = (clone $requete)->count();
 
-        /* `id` en second critère : deux tentatives ouvertes dans la même
-         * seconde auraient le même `started_at`, les horodatages étant à la
-         * seconde (DET-40), et l'ordre deviendrait celui du hasard. */
+        /*
+         * TRI SUR LA DERNIÈRE ACTIVITÉ, non sur l'ouverture. `started_at` ne
+         * date que le moment où la série a été composée : trier là-dessus
+         * classe une tentative travaillée ce matin DERRIÈRE une tentative
+         * ouverte hier et abandonnée aussitôt.
+         *
+         * `id` en second critère : les horodatages sont à la seconde (DET-40),
+         * deux tentatives touchées dans la même auraient la même date et
+         * l'ordre serait celui du hasard.
+         */
         $tentatives = $requete
             ->with('exam')
-            ->orderByDesc('started_at')
+            ->orderByDesc('last_activity_at')
             ->orderByDesc('id')
             ->limit(self::PLAFOND_INDEX)
             ->get();

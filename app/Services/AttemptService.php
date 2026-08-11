@@ -189,6 +189,7 @@ final class AttemptService
                     'kind' => 'diagnostic',
                     'status' => 'in_progress',
                     'started_at' => now(),
+                    'last_activity_at' => now(),
                     'expires_at' => $durationMinutes ? now()->addMinutes($durationMinutes) : null,
                     'item_count' => $questions->count(),
                 ]);
@@ -289,6 +290,7 @@ final class AttemptService
                     'kind' => 'training',
                     'status' => 'in_progress',
                     'started_at' => now(),
+                    'last_activity_at' => now(),
                     // Jamais d'échéance : ce n'est pas une épreuve.
                     'expires_at' => null,
                     'item_count' => $questions->count(),
@@ -413,6 +415,7 @@ final class AttemptService
                     'kind' => 'review',
                     'status' => 'in_progress',
                     'started_at' => now(),
+                    'last_activity_at' => now(),
                     // Réviser n'est pas une épreuve : jamais de chronomètre.
                     'expires_at' => null,
                     'item_count' => $questions->count(),
@@ -531,8 +534,24 @@ final class AttemptService
                 ]
             );
 
+            /*
+             * LA DERNIÈRE ACTIVITÉ BOUGE À CHAQUE RÉPONSE, Y COMPRIS AU REJEU.
+             *
+             * Répondre écrit dans `responses` : sans cette écriture, la
+             * tentative ne porterait aucune trace du travail du candidat, et un
+             * écran de reprise classerait une série travaillée ce matin
+             * derrière une série ouverte hier puis abandonnée.
+             *
+             * Rejouable au sens qui compte : rejouer la même réponse ne crée
+             * rien et ne compte rien deux fois. Seule la date avance, et c'est
+             * exact — le candidat vient bien de repasser sur cette question.
+             * `answered_count`, lui, reste conditionné à la nouveauté.
+             */
             if ($existante === null) {
-                Attempt::where('id', $attempt->id)->increment('answered_count');
+                Attempt::where('id', $attempt->id)
+                    ->increment('answered_count', 1, ['last_activity_at' => now()]);
+            } else {
+                Attempt::where('id', $attempt->id)->update(['last_activity_at' => now()]);
             }
 
             if ($verrouille !== null && $verrouille->presented_at === null) {
@@ -616,6 +635,8 @@ final class AttemptService
             $verrouillee->update([
                 'status' => $verrouillee->hasExpired() ? 'expired' : 'submitted',
                 'submitted_at' => now(),
+                // Soumettre EST une activité : c'est la dernière de la série.
+                'last_activity_at' => now(),
                 'correct_count' => $justes,
             ]);
 

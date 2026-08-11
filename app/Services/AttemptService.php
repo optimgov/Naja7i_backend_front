@@ -586,11 +586,18 @@ final class AttemptService
 
         $exam = $source->exam;
 
-        $vivier = $this->soeurs->vivier($exam, [$item->competency_node_id], $locale);
+        /* DET-45 — LA DÉSIGNATION D'ABORD, LE COUPLE ENSUITE. Un miroir choisi
+         * par un rédacteur est plus délibéré qu'un miroir déduit ; le repli sur
+         * le couple couvre le reste de la banque, où rien n'est désigné. */
+        $miroir = $this->soeurs->designee($item->question, $locale);
 
-        $miroir = $this->soeurs
-            ->autresQue($vivier, $item->competency_node_id, $cause, $item->question_id)
-            ->first();
+        if ($miroir === null) {
+            $vivier = $this->soeurs->vivier($exam, [$item->competency_node_id], $locale);
+
+            $miroir = $this->soeurs
+                ->autresQue($vivier, $item->competency_node_id, $cause, $item->question_id)
+                ->first();
+        }
 
         if ($miroir === null) {
             throw new NoMirrorAvailable($cause);

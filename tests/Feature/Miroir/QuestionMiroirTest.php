@@ -280,6 +280,101 @@ class QuestionMiroirTest extends TestCase
         $this->assertSame($repondue->uuid, $reponse->json('meta.source_question_uuid'));
     }
 
+    // --- DET-45 : la désignation d'abord, le couple ensuite --------------------
+
+    /**
+     * La désignation se pose À LA RÉDACTION, et pas après.
+     *
+     * `mirror_question_id` est gelé après publication comme le reste du contenu
+     * (ADR-0015 §5) : le rédacteur choisit le miroir avant de publier, ou crée
+     * une nouvelle version. Le montage suit donc l'usage réel plutôt que de
+     * forcer la colonne sur une question déjà publiée.
+     */
+    private function avecMiroirDesigne(Question $miroir): Question
+    {
+        $question = Question::create([
+            'exam_id' => $this->epreuve->id,
+            'competency_node_id' => $this->noeud->id,
+            'locale' => 'fr',
+            'sibling_group' => (string) Str::uuid7(),
+            'stem' => 'Énoncé qui désigne son miroir',
+            'explanation' => 'Justification.',
+            'remediation_id' => Remediation::where('competency_node_id', $this->noeud->id)->value('id'),
+            'author_id' => $this->utilisateur('designateur@naja7i.ma')->id,
+            'mirror_question_id' => $miroir->id,
+        ]);
+
+        foreach ([
+            ['A', false, 'confusion_notions'],
+            ['B', true, null],
+            ['C', false, 'lecture_enonce'],
+            ['D', false, 'connaissance_absente'],
+        ] as $p => [$c, $juste, $cause]) {
+            QuestionOption::create([
+                'question_id' => $question->id, 'position' => $p + 1,
+                'content' => $c, 'is_correct' => $juste, 'rationale' => 'r', 'cause' => $cause,
+            ]);
+        }
+
+        $question->contentSources()->attach($this->source->id, ['verification' => 'verified']);
+
+        $transitions = app(QuestionTransitionService::class);
+        $transitions->submitForReview($question);
+        $transitions->markReviewed($question->fresh(), $this->valideur);
+        $transitions->validate($question->fresh(), $this->valideur);
+
+        return $transitions->publish($question->fresh(), forDiagnostic: true)->load('options');
+    }
+
+    public function test_le_miroir_designe_l_emporte_sur_le_couple(): void
+    {
+        $this->peupler(4);
+
+        // Le rédacteur désigne la DERNIÈRE, que le couple n'aurait pas choisie.
+        $designee = $this->questions()->last();
+        $source = $this->avecMiroirDesigne($designee);
+
+        $item = $this->servir($source, juste: false);
+
+        $servie = Question::where(
+            'uuid',
+            $this->ouvrirMiroir($item)->assertCreated()->json('data.items.0.question.uuid')
+        )->firstOrFail();
+
+        $this->assertSame(
+            $designee->id, $servie->id,
+            'Un miroir choisi à la main est plus délibéré qu\'un miroir déduit.'
+        );
+    }
+
+    /**
+     * Une désignation caduque ne punit pas le candidat.
+     *
+     * La désignation dit « c'est cette question-là » ; elle ne peut pas dire
+     * « sers-la même si elle est en brouillon ». On se replie sur le couple
+     * plutôt que de refuser un miroir pour un choix éditorial devenu invalide.
+     */
+    public function test_une_designation_non_servable_se_replie_sur_le_couple(): void
+    {
+        $this->peupler(4);
+
+        $designee = $this->questions()->last();
+        $source = $this->avecMiroirDesigne($designee);
+
+        // La désignée est retirée APRÈS coup : le choix devient caduc.
+        app(QuestionTransitionService::class)->retire($designee->fresh());
+
+        $item = $this->servir($source, juste: false);
+
+        $servie = Question::where(
+            'uuid',
+            $this->ouvrirMiroir($item)->assertCreated()->json('data.items.0.question.uuid')
+        )->firstOrFail();
+
+        $this->assertNotSame($designee->id, $servie->id, 'Un miroir retiré ne se sert jamais.');
+        $this->assertSame($this->noeud->id, $servie->competency_node_id);
+    }
+
     // --- La cause ne s'obtient pas en ouvrant un miroir ------------------------
 
     /**

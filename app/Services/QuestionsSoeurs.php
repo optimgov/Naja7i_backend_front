@@ -99,4 +99,37 @@ final class QuestionsSoeurs
     {
         return $nodeId.'|'.$cause;
     }
+
+    /**
+     * Le miroir DÉSIGNÉ d'une question, s'il est servable — DET-45, tranché.
+     *
+     * `questions.mirror_question_id` existe depuis le PAS-5 et n'avait jamais
+     * eu d'autorité : F05 choisissait par le couple (compétence, cause), le
+     * champ dormait, et personne ne savait plus lequel des deux faisait foi.
+     * Le back-office lui donne une surface, et ce sélecteur lui donne la
+     * PRIORITÉ : un miroir désigné à la main est plus délibéré qu'un miroir
+     * déduit. Le couple reste le repli, et couvre le reste de la banque.
+     *
+     * SERVABLE N'EST PAS NÉGOCIABLE, et ce n'est pas contredire le rédacteur.
+     * La désignation dit « c'est cette question-là » ; elle ne peut pas dire
+     * « sers-la même si elle est en brouillon ». Un miroir non publié
+     * livrerait à un candidat un contenu qui n'a pas passé la relecture. Quand
+     * la désignée n'est pas servable, on se replie sur le couple plutôt que de
+     * refuser : le candidat n'a pas à payer une désignation devenue caduque.
+     *
+     * `mirror_question_id <> id` est garanti en base depuis le PAS-5 : la
+     * désignée n'est jamais la question elle-même.
+     */
+    public function designee(Question $source, string $locale): ?Question
+    {
+        if ($source->mirror_question_id === null) {
+            return null;
+        }
+
+        return Question::forDiagnostic()
+            ->where('questions.id', $source->mirror_question_id)
+            ->where('questions.locale', $locale)
+            ->with(['options' => fn ($q) => $q->where('is_correct', false)->whereNotNull('cause')])
+            ->first();
+    }
 }

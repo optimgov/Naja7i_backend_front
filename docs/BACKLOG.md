@@ -568,6 +568,19 @@ typographique. **DET-47 reste ouverte** pour le versionnement de la source —
 une source vérifiée devient immuable, la corriger en crée une version, comme
 pour une question publiée.
 
+### PAS-30 — DET-45 tranché : le miroir désigné · `88fbcf5`
+**Périmètre :** `QuestionsSoeurs::designee()`, priorité dans
+`AttemptService::startMirror()`. Aucune surface HTTP nouvelle.
+
+**Acceptation :** la question désignée par `mirror_question_id` l'emporte sur
+le choix par couple ; une désignation NON SERVABLE — brouillon, retirée, autre
+langue — se replie sur le couple au lieu de refuser ; le repli reste le
+comportement par défaut, rien n'étant désigné dans la banque actuelle.
+
+**Contrainte à connaître pour le lot A4 (DET-48) :** `mirror_question_id` est
+gelé après publication. Le miroir se désigne à la rédaction, ou par une
+nouvelle version.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

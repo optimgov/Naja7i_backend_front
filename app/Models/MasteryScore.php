@@ -25,7 +25,7 @@ class MasteryScore extends Model
 
     protected $fillable = [
         'user_id', 'exam_id', 'competency_node_id',
-        'score', 'evidence', 'answered_count', 'correct_count',
+        'score', 'evidence', 'answered_count', 'correct_count', 'skipped_count',
         'lucky_guess_count', 'confident_error_count',
         'last_answered_at', 'computed_at',
     ];
@@ -91,6 +91,12 @@ class MasteryScore extends Model
             'evidence' => $this->evidence,
             'answered_count' => $this->answered_count,
             'answers_missing' => $this->answersMissing(),
+            /* Servies puis laissées. À ne pas confondre avec
+             * `answers_missing`, qui compte ce qu'il faut RÉPONDRE ENCORE pour
+             * qu'un score s'affiche — les deux sont indépendants, et un
+             * candidat peut sauter la moitié d'un domaine avec un
+             * `answers_missing` à zéro. */
+            'skipped_count' => $this->skipped_count,
             'lucky_guesses' => $this->lucky_guess_count,
             'confident_errors' => $this->confident_error_count,
             'last_answered_at' => $this->last_answered_at?->toIso8601String(),

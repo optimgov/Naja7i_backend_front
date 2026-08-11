@@ -21,6 +21,7 @@ use Database\Seeders\CatalogueSeeder;
 use Database\Seeders\Crmef2025Seeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -50,7 +51,9 @@ class MaitriseTest extends TestCase
         ]);
         $this->candidat->grantCandidateRole();
 
-        $this->peuplerBanque(6);
+        /* Dix par sous-domaine : la sonde d'évitement rejoue la série de dix
+         * de l'exemple fondateur, cinq répondues et cinq sautées. */
+        $this->peuplerBanque(10);
     }
 
     private function peuplerBanque(int $parSousDomaine): void
@@ -118,6 +121,51 @@ class MaitriseTest extends TestCase
                 'attempt_id' => $attempt->id, 'question_id' => $question->id,
                 'competency_node_id' => $question->competency_node_id, 'position' => $i + 1,
             ]);
+
+            [$juste, $certitude] = $reponses[$i];
+            $option = $juste ? $question->correctOption() : $question->distractors()->first();
+
+            $service->answer($item, $option, $certitude);
+        }
+
+        $service->submit($attempt);
+    }
+
+    /**
+     * Sert une série sur un sous-domaine, en laissant sauter certaines
+     * questions. Une entrée `null` est un item SERVI et laissé sans réponse —
+     * ce que fait un candidat qui passe son tour.
+     *
+     * @param  list<array{0: bool, 1: string}|null>  $reponses
+     */
+    private function servir(string $codeNoeud, array $reponses): void
+    {
+        $noeud = CompetencyNode::where('code', $codeNoeud)->firstOrFail();
+        $service = app(AttemptService::class);
+
+        $questions = Question::where('competency_node_id', $noeud->id)->take(count($reponses))->get();
+
+        $this->assertCount(
+            count($reponses), $questions,
+            "La banque de {$codeNoeud} ne contient pas assez de questions pour cette sonde."
+        );
+
+        $attempt = Attempt::create([
+            'user_id' => $this->candidat->id, 'exam_id' => $this->epreuve->id,
+            'locale' => 'fr', 'idempotency_key' => (string) Str::uuid7(),
+            'kind' => 'training', 'status' => 'in_progress', 'started_at' => now(),
+            'item_count' => count($reponses),
+        ]);
+
+        foreach ($questions as $i => $question) {
+            $item = AttemptItem::create([
+                'attempt_id' => $attempt->id, 'question_id' => $question->id,
+                'competency_node_id' => $question->competency_node_id, 'position' => $i + 1,
+            ]);
+
+            if ($reponses[$i] === null) {
+                continue;   // servie, jamais répondue
+            }
 
             [$juste, $certitude] = $reponses[$i];
             $option = $juste ? $question->correctOption() : $question->distractors()->first();
@@ -306,6 +354,25 @@ class MaitriseTest extends TestCase
         }
     }
 
+    /**
+     * Le motif se lit, il ne se décode pas. La convention du planificateur
+     * vaut pour `questions_sautees` comme pour les cinq autres : des mots,
+     * jamais un code d'erreur ni un numéro.
+     */
+    public function test_le_motif_du_saut_est_un_texte_lisible_comme_les_autres(): void
+    {
+        $motifs = $this->sondeEvitement()->pluck('reason')->unique();
+
+        $this->assertContains('questions_sautees', $motifs);
+
+        foreach ($motifs as $motif) {
+            $this->assertMatchesRegularExpression(
+                '/^[a-z]+(_[a-z]+)*$/', $motif,
+                "Le motif « {$motif} » doit rester un texte lisible, pas un code."
+            );
+        }
+    }
+
     public function test_la_remediation_absente_est_dite_absente(): void
     {
         Remediation::query()->update(['status' => 'draft']);
@@ -316,6 +383,196 @@ class MaitriseTest extends TestCase
         $ligne = app(RemediationPlanner::class)->prioritize($this->candidat, $this->epreuve, 10)->first();
 
         $this->assertNull($ligne['remediation'], 'On ne fabrique pas une ressource qui n\'existe pas.');
+    }
+
+    // --- L'évitement ne paie plus -------------------------------------------
+
+    /**
+     * Le défaut fondateur, rejoué tel qu'il a été constaté.
+     *
+     * Deux candidats — ici deux domaines de MÊME POIDS pour un seul candidat,
+     * ce qui isole le comportement — reçoivent la même série de dix et
+     * réussissent cinq questions chacun. L'un répond faux aux cinq autres,
+     * l'autre les saute. Avant correctif : le premier tombait à 50 et prenait
+     * la tête, le second affichait 100 et sortait de l'ordonnance.
+     *
+     * Deux témoins encadrent la mesure : un domaine tout juste (rien ne doit
+     * bouger) et un domaine tout sauté (le cas extrême).
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function sondeEvitement(): Collection
+    {
+        $this->servir('SE-PSY-DEV', array_merge(          // 20 % — répond faux
+            array_fill(0, 5, [true, 'sure']),
+            array_fill(0, 5, [false, 'hesitant']),
+        ));
+
+        $this->servir('SE-PSY-LEARN', array_merge(        // 20 % — saute
+            array_fill(0, 5, [true, 'sure']),
+            array_fill(0, 5, null),
+        ));
+
+        $this->servir('SE-SOC-EDU', array_fill(0, 10, [true, 'sure']));   // témoin : tout juste
+        $this->servir('SE-SOC-GROUP', array_fill(0, 10, null));           // témoin : tout sauté
+
+        app(MasteryCalculator::class)->recomputeForExam($this->candidat, $this->epreuve);
+
+        return app(RemediationPlanner::class)->prioritize($this->candidat, $this->epreuve, 30);
+    }
+
+    public function test_une_question_sautee_laisse_une_trace_sans_toucher_au_score(): void
+    {
+        $this->sondeEvitement();
+
+        $score = $this->maitrise('SE-PSY-LEARN');
+
+        $this->assertSame(5, $score->answered_count);
+        $this->assertSame(5, $score->skipped_count, 'La question servie et laissée est comptée.');
+        $this->assertEqualsWithDelta(
+            100.0, $score->score, 0.01,
+            'Le score reste honnête : de ce qu\'il a tenté, tout était juste.'
+        );
+        $this->assertSame('low', $score->evidence, 'Ce qu\'il vaut se lit dans son volume d\'évidence.');
+    }
+
+    public function test_le_sauteur_remonte_dans_l_ordonnance_avec_son_propre_motif(): void
+    {
+        $priorites = $this->sondeEvitement();
+
+        $sauteur = $priorites->firstWhere('node_code', 'SE-PSY-LEARN');
+        $toutJuste = $priorites->firstWhere('node_code', 'SE-SOC-EDU');
+
+        $this->assertGreaterThan(0.0, $sauteur['urgency'], 'Sauter ne sort plus de l\'ordonnance.');
+        $this->assertGreaterThan(
+            $toutJuste['urgency'], $sauteur['urgency'],
+            'Le sauteur passe devant un domaine réellement maîtrisé — c\'est tout le correctif.'
+        );
+
+        $this->assertSame('questions_sautees', $sauteur['reason']);
+        $this->assertNotSame('erreurs_avec_certitude', $sauteur['reason']);
+        $this->assertNotSame('jamais_evalue', $sauteur['reason']);
+
+        $this->assertSame(5, $sauteur['skipped_count'], 'Le candidat peut vérifier ce que le motif affirme.');
+    }
+
+    public function test_le_sauteur_ne_passe_pas_devant_celui_qui_a_repondu_faux(): void
+    {
+        $priorites = $this->sondeEvitement();
+
+        $faux = $priorites->firstWhere('node_code', 'SE-PSY-DEV');
+        $sauteur = $priorites->firstWhere('node_code', 'SE-PSY-LEARN');
+
+        $this->assertLessThan(
+            $faux['urgency'], $sauteur['urgency'],
+            'L\'erreur démontrée reste le signal le plus sûr : rien ne la dépasse.'
+        );
+    }
+
+    /**
+     * La sonde de calibration : elle ne juge pas une valeur, elle tient la
+     * BORNE au-delà de laquelle le correctif se retournerait.
+     *
+     * Les deux domaines pèsent 20 %, et le sauteur a esquivé la moitié de ce
+     * qui lui a été servi. Son urgence vaut donc poids × facteur × 0,5, celle
+     * du répondeur poids × 0,5 — le facteur réellement appliqué se relit dans
+     * le résultat, sans que la constante ait à être exposée.
+     */
+    public function test_le_facteur_du_saut_reste_sous_la_borne_mesuree(): void
+    {
+        $priorites = $this->sondeEvitement();
+
+        $sauteur = $priorites->firstWhere('node_code', 'SE-PSY-LEARN');
+        $facteur = $sauteur['urgency'] / ($sauteur['weight_percent'] * 0.5);
+
+        $this->assertGreaterThan(0.0, $facteur, 'À facteur nul, sauter redevient gratuit.');
+        $this->assertLessThan(
+            1.0, $facteur,
+            'Borne mesurée : à 1,0 le sauteur égale exactement celui qui a répondu faux, '
+            .'au-delà il le dépasse. Le réétalonnage peut déplacer la valeur, jamais franchir ce plafond.'
+        );
+    }
+
+    public function test_un_domaine_entierement_repondu_et_reussi_ne_bouge_pas(): void
+    {
+        $priorites = $this->sondeEvitement();
+
+        $toutJuste = $priorites->firstWhere('node_code', 'SE-SOC-EDU');
+
+        $this->assertSame(0, $this->maitrise('SE-SOC-EDU')->skipped_count);
+        $this->assertEqualsWithDelta(
+            0.0, $toutJuste['urgency'], 0.001,
+            'Le correctif ne déplace aucun domaine que le candidat a entièrement affronté.'
+        );
+    }
+
+    public function test_un_domaine_entierement_saute_n_est_pas_un_angle_mort(): void
+    {
+        $priorites = $this->sondeEvitement();
+
+        $toutSaute = $priorites->firstWhere('node_code', 'SE-SOC-GROUP');
+        $jamaisServi = $priorites->firstWhere('reason', 'jamais_evalue');
+
+        $this->assertNull($toutSaute['score'], 'Aucune réponse ne fonde aucun score.');
+        $this->assertSame(10, $toutSaute['skipped_count']);
+        $this->assertSame(
+            'questions_sautees', $toutSaute['reason'],
+            'Servi puis refusé n\'est pas jamais servi : le candidat ne doit pas lire « à découvrir ».'
+        );
+
+        /* Même urgence à poids égal que le domaine jamais servi, et c'est
+         * assumé : sur ce qui n'a pas été répondu, on ne sait rien dans les
+         * deux cas. Ce qui les sépare est le motif, pas la connaissance. */
+        $this->assertSame(15.0, $toutSaute['weight_percent']);
+        $this->assertSame(15.0, $jamaisServi['weight_percent']);
+        $this->assertEqualsWithDelta($jamaisServi['urgency'], $toutSaute['urgency'], 0.001);
+    }
+
+    public function test_le_parent_herite_des_questions_sautees(): void
+    {
+        $this->sondeEvitement();
+
+        $this->assertSame(5, $this->maitrise('SE-PSY')->skipped_count, 'Cinq sautées sous Psychologie.');
+        $this->assertSame(10, $this->maitrise('SE-SOC')->skipped_count, 'Dix sous Sociologie.');
+    }
+
+    public function test_une_tentative_en_cours_ne_produit_aucune_sautee(): void
+    {
+        $noeud = CompetencyNode::where('code', 'SE-PSY-DEV')->firstOrFail();
+
+        $attempt = Attempt::create([
+            'user_id' => $this->candidat->id, 'exam_id' => $this->epreuve->id,
+            'locale' => 'fr', 'idempotency_key' => (string) Str::uuid7(),
+            'kind' => 'training', 'status' => 'in_progress', 'started_at' => now(),
+            'item_count' => 5,
+        ]);
+
+        foreach (Question::where('competency_node_id', $noeud->id)->take(5)->get() as $i => $question) {
+            AttemptItem::create([
+                'attempt_id' => $attempt->id, 'question_id' => $question->id,
+                'competency_node_id' => $question->competency_node_id, 'position' => $i + 1,
+            ]);
+        }
+
+        app(MasteryCalculator::class)->recomputeForExam($this->candidat, $this->epreuve);
+
+        $this->assertNull(
+            $this->maitrise('SE-PSY-DEV'),
+            'Ne pas avoir encore répondu n\'est pas avoir sauté : c\'est ne pas avoir fini.'
+        );
+    }
+
+    public function test_le_recalcul_ne_gonfle_pas_les_sautees(): void
+    {
+        $this->servir('SE-PSY-LEARN', array_merge(
+            array_fill(0, 5, [true, 'sure']),
+            array_fill(0, 5, null),
+        ));
+
+        app(MasteryCalculator::class)->recomputeForExam($this->candidat, $this->epreuve);
+        app(MasteryCalculator::class)->recomputeForExam($this->candidat, $this->epreuve);
+
+        $this->assertSame(5, $this->maitrise('SE-PSY-LEARN')->skipped_count);
     }
 
     // --- Aucun score prédictif (METHODE §7.3) ------------------------------

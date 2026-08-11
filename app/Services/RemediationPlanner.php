@@ -54,6 +54,43 @@ final class RemediationPlanner
     private const FACTEUR_JAMAIS_EVALUE = 0.5;
 
     /**
+     * Une question servie et sautée : le même raisonnement, appliqué non plus
+     * au domaine entier mais à la part qu'il a esquivée.
+     *
+     * Sans elle, la plateforme récompensait l'évitement. Deux candidats sur la
+     * même série de dix, cinq bonnes réponses chacun :
+     *
+     *     répond faux aux cinq autres → score 50, écart 0,5 → urgence 10
+     *     saute les cinq autres       → score 100, écart 0   → urgence  0
+     *
+     * Le second sortait de l'ordonnance en n'affrontant pas ses questions.
+     * C'est l'exact contraire de la promesse : `DiagnosticComposer` répartit
+     * selon les poids officiels pour ne pas flatter un candidat fort sur un
+     * domaine mineur, et l'ordonnance flattait celui qui n'avait pas répondu.
+     *
+     * MÊME VALEUR QUE `FACTEUR_JAMAIS_EVALUE`, ET C'EST DÉLIBÉRÉ. Sur la part
+     * sautée, on ne sait rien — exactement comme sur un domaine jamais servi.
+     * L'écart y est inconnu, pas maximal. Ce qui distingue les deux cas n'est
+     * pas ce qu'on sait, c'est ce qu'on en dit : le motif, que le candidat
+     * lit. Un domaine à moitié sauté reste donc classé sous un domaine jamais
+     * servi de même poids (0,25 × poids contre 0,5 × poids) — on en sait
+     * encore moins sur le second.
+     *
+     * DEUX CONSTANTES SÉPARÉES malgré la valeur commune : elles arbitrent des
+     * questions différentes — « faire découvrir » contre « faire corriger »
+     * pour l'une, « ne pas récompenser l'évitement » sans « punir plus que
+     * l'erreur » pour l'autre. Elles divergeront au réétalonnage.
+     *
+     * BORNE HAUTE MESURÉE, pas devinée : au-delà de 1,0, le sauteur de
+     * l'exemple passe DEVANT celui qui a répondu faux. L'erreur démontrée
+     * reste le signal le plus sûr du produit ; rien ne doit la dépasser.
+     * La sonde de `MaitriseTest` tient cette borne.
+     *
+     * Valeur d'architecte, à réétalonner avec DET-19 et DET-22.
+     */
+    private const FACTEUR_QUESTION_SAUTEE = 0.5;
+
+    /**
      * Priorités de révision, de la plus urgente à la moins urgente.
      *
      * @return Collection<int, array<string, mixed>>
@@ -82,12 +119,16 @@ final class RemediationPlanner
             $poids = (float) $noeud->weight_percent;
 
             /*
-             * Un domaine jamais évalué n'est pas « maîtrisé » : c'est un angle
+             * Aucune ligne : le domaine n'a JAMAIS été servi. C'est un angle
              * mort. Il entre dans l'ordonnance à écart partiel (voir
              * FACTEUR_JAMAIS_EVALUE) et avec un motif distinct — le candidat
              * doit savoir qu'on lui propose de découvrir, pas de corriger.
+             *
+             * Une ligne existe désormais dès qu'une question a été SERVIE,
+             * même si aucune n'a été répondue : ce cas-là n'est plus un angle
+             * mort, c'est un évitement, et il est traité plus bas.
              */
-            if ($score === null || $score->score === null) {
+            if ($score === null) {
                 $lignes->push($this->ligne(
                     $noeud, $score, $poids,
                     urgence: $poids * self::FACTEUR_JAMAIS_EVALUE,
@@ -97,7 +138,28 @@ final class RemediationPlanner
                 continue;
             }
 
-            $ecart = max(0, 100 - $score->score) / 100;
+            /*
+             * L'écart se compose de deux parts, au prorata de ce que le
+             * candidat a affronté :
+             *
+             *  - sur ce qu'il a répondu, l'écart MESURÉ ;
+             *  - sur ce qu'il a sauté, un écart inconnu à facteur partiel.
+             *
+             * Quand rien n'est sauté, la seconde part est nulle et le calcul
+             * est mot pour mot celui d'avant. Le correctif ne déplace donc
+             * aucun domaine entièrement répondu.
+             */
+            $servies = $score->answered_count + $score->skipped_count;
+            $partSautee = $servies > 0 ? $score->skipped_count / $servies : 0.0;
+
+            /* Score nul = évidence insuffisante : l'écart n'est pas nul, il
+             * est inconnu — même traitement qu'un domaine jamais évalué. */
+            $ecartMesure = $score->score !== null
+                ? max(0, 100 - $score->score) / 100
+                : self::FACTEUR_JAMAIS_EVALUE;
+
+            $ecart = ($ecartMesure * (1 - $partSautee))
+                   + (self::FACTEUR_QUESTION_SAUTEE * $partSautee);
 
             $bonus = ($score->confident_error_count * self::FACTEUR_ERREUR_AVEUGLE)
                    + ($score->lucky_guess_count * self::FACTEUR_CHANCE);
@@ -106,7 +168,7 @@ final class RemediationPlanner
 
             $lignes->push($this->ligne(
                 $noeud, $score, $poids, $urgence,
-                motif: $this->motif($score)
+                motif: $this->motif($score, $partSautee, $ecartMesure)
             ));
         }
 
@@ -118,11 +180,29 @@ final class RemediationPlanner
      * comprendre pourquoi ce domaine lui est proposé. Une recommandation sans
      * raison est une injonction, et le produit refuse d'en donner.
      */
-    private function motif(MasteryScore $score): string
+    private function motif(MasteryScore $score, float $partSautee, float $ecartMesure): string
     {
         return match (true) {
             $score->confident_error_count > 0 => 'erreurs_avec_certitude',
             $score->lucky_guess_count > 0 => 'reussites_au_hasard',
+
+            /*
+             * Le motif dit POURQUOI ce domaine est proposé. Il bascule sur
+             * l'évitement quand l'évitement est ce qui pèse le plus dans
+             * l'urgence — pas dès la première question sautée, sinon une
+             * sautée sur vingt effacerait un motif plus juste.
+             *
+             * Le seuil est le calcul lui-même, non une constante de plus :
+             * on compare la part sautée à la part mesurée, telles qu'elles
+             * entrent dans l'écart quelques lignes plus haut.
+             */
+            self::FACTEUR_QUESTION_SAUTEE * $partSautee
+                > $ecartMesure * (1 - $partSautee) => 'questions_sautees',
+
+            /* Servi, sous le seuil d'évidence, et rien de sauté : on ne sait
+             * toujours rien de ce domaine. */
+            $score->score === null => 'jamais_evalue',
+
             $score->evidence === 'low' => 'evidence_faible',
             $score->score < 50 => 'maitrise_faible',
             default => 'consolidation',
@@ -146,6 +226,9 @@ final class RemediationPlanner
             'evidence' => $score->evidence ?? 'insufficient',
             'answered_count' => $score->answered_count ?? 0,
             'answers_missing' => $score?->answersMissing() ?? MasteryScore::SEUIL_FAIBLE,
+            /* Servi puis laissé. Le candidat doit pouvoir vérifier lui-même
+             * ce que le motif `questions_sautees` lui affirme. */
+            'skipped_count' => $score->skipped_count ?? 0,
             'confident_errors' => $score->confident_error_count ?? 0,
             'lucky_guesses' => $score->lucky_guess_count ?? 0,
             'reason' => $motif,

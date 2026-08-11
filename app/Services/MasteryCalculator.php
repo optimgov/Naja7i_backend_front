@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AttemptItem;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
 use App\Models\MasteryScore;
@@ -62,7 +63,13 @@ final class MasteryCalculator
     }
 
     /**
-     * Nœuds où des questions ont réellement été répondues.
+     * Nœuds où des questions ont été servies — répondues ou sautées.
+     *
+     * Un nœud entre ici dès qu'une tentative close lui a présenté une
+     * question, même si le candidat n'en a répondu AUCUNE. C'est le cas que
+     * l'ancien code ne voyait pas : partir de `responses` rendait l'évitement
+     * indistinguable du jamais-servi, et l'ordonnance le traitait donc en
+     * angle mort au lieu d'y voir un refus.
      *
      * @return Collection<int, MasteryScore>
      */
@@ -81,19 +88,55 @@ final class MasteryCalculator
                 'responses.answered_at',
             ])
             ->get()
-            ->groupBy('competency_node_id');
+            ->groupBy('competency_node_id')
+            ->keyBy(fn (Collection $groupe, int|string $nodeId) => (int) $nodeId);
+
+        $sautees = $this->sautees($user, $exam);
 
         $resultats = collect();
 
-        foreach ($reponses as $nodeId => $groupe) {
-            $resultats->push($this->ecrire($user, $exam, (int) $nodeId, $groupe));
+        foreach ($reponses->keys()->merge($sautees->keys())->unique() as $nodeId) {
+            $resultats->push($this->ecrire(
+                $user, $exam, $nodeId,
+                $reponses->get($nodeId) ?? collect(),
+                $sautees->get($nodeId, 0),
+            ));
         }
 
         return $resultats;
     }
 
+    /**
+     * Questions servies et laissées sans réponse, par nœud.
+     *
+     * La tentative doit être CLOSE : `submitted_at` fait foi, pas le statut —
+     * une tentative expirée est soumise elle aussi, et ses items sans réponse
+     * ont bien été servis puis laissés. Tant qu'une tentative est en cours,
+     * ne pas avoir répondu n'est pas avoir sauté, c'est ne pas avoir fini.
+     *
+     * La requête est pilotée par `AttemptItem`, dont le scope global filtre
+     * `attempt_items.tenant_id` : les jointures, elles, sont écrites à la main
+     * et ne portent aucun scope.
+     *
+     * @return Collection<int, int>
+     */
+    private function sautees(User $user, Exam $exam): Collection
+    {
+        return AttemptItem::query()
+            ->join('attempts', 'attempts.id', '=', 'attempt_items.attempt_id')
+            ->leftJoin('responses', 'responses.attempt_item_id', '=', 'attempt_items.id')
+            ->where('attempts.user_id', $user->id)
+            ->where('attempts.exam_id', $exam->id)
+            ->whereNotNull('attempts.submitted_at')
+            ->whereNull('responses.id')
+            ->groupBy('attempt_items.competency_node_id')
+            ->selectRaw('attempt_items.competency_node_id as node_id, count(*) as total')
+            ->pluck('total', 'node_id')
+            ->mapWithKeys(fn (int|string $total, int|string $nodeId) => [(int) $nodeId => (int) $total]);
+    }
+
     /** @param  Collection<int, object>  $groupe */
-    private function ecrire(User $user, Exam $exam, int $nodeId, Collection $groupe): MasteryScore
+    private function ecrire(User $user, Exam $exam, int $nodeId, Collection $groupe, int $sautees): MasteryScore
     {
         $total = $groupe->count();
         $justes = $groupe->where('is_correct', true)->count();
@@ -107,6 +150,22 @@ final class MasteryCalculator
             $poidsCumule += self::POIDS[$famille][$reponse->confidence] ?? 0.0;
         }
 
+        /*
+         * LES SAUTÉES N'ENTRENT PAS AU DÉNOMINATEUR, et ce n'est pas un oubli.
+         *
+         * Les y mettre donnerait au sauteur exactement le score de celui qui
+         * s'est trompé — soit dire qu'éviter une question et la rater sont le
+         * même fait. Or l'erreur démontrée est le signal le plus sûr dont
+         * dispose le produit, et l'écraser sur une abstention le dégraderait.
+         *
+         * « De ce qu'il a tenté, tout était juste » est vrai. Ce score n'est
+         * pas faux, il est peu informatif — et c'est `evidence` qui le dit,
+         * puis l'ordonnance qui en tient compte (RemediationPlanner).
+         *
+         * `$total` peut valoir zéro quand toutes les questions ont été
+         * sautées : l'évidence est alors insuffisante et la division n'est
+         * jamais évaluée.
+         */
         $evidence = MasteryScore::evidenceFor($total);
         $score = $evidence === 'insufficient' ? null : round(($poidsCumule / $total) * 100, 2);
 
@@ -118,6 +177,7 @@ final class MasteryCalculator
                 'evidence' => $evidence,
                 'answered_count' => $total,
                 'correct_count' => $justes,
+                'skipped_count' => $sautees,
                 'lucky_guess_count' => $chance,
                 'confident_error_count' => $aveugle,
                 'last_answered_at' => $groupe->max('answered_at'),
@@ -169,6 +229,7 @@ final class MasteryCalculator
                 $chance = 0;
                 $aveugle = 0;
                 $justes = 0;
+                $sautees = 0;
                 $dernier = null;
 
                 foreach ($enfants as $enfant) {
@@ -182,6 +243,7 @@ final class MasteryCalculator
                     $justes += $score->correct_count;
                     $chance += $score->lucky_guess_count;
                     $aveugle += $score->confident_error_count;
+                    $sautees += $score->skipped_count;
 
                     if ($score->last_answered_at !== null
                         && ($dernier === null || $score->last_answered_at->gt($dernier))) {
@@ -207,6 +269,10 @@ final class MasteryCalculator
                         'evidence' => $evidence,
                         'answered_count' => $reponses,
                         'correct_count' => $justes,
+                        /* L'évitement remonte l'arbre comme l'évidence : un
+                         * domaine dont deux sous-domaines ont été esquivés
+                         * doit le dire à son niveau. */
+                        'skipped_count' => $sautees,
                         'lucky_guess_count' => $chance,
                         'confident_error_count' => $aveugle,
                         'last_answered_at' => $dernier,

@@ -21,6 +21,16 @@ class ExamFamilyResource extends JsonResource
                 'name' => $this->filiere->localized('name'),
             ]),
             'specialties' => SpecialtyResource::collection($this->whenLoaded('specialties')),
+            /* Trois champs, pas un de plus. Le coefficient est ici la donnée
+               qui compte : c'est lui qui montre d'un coup d'œil que la
+               spécialité pèse 20 et les sciences de l'éducation 8. Durée,
+               langues et format relèvent de la fiche d'épreuve, pas de la
+               famille — les exposer ici créerait un second contrat. */
+            'exams' => $this->whenLoaded('exams', fn () => $this->exams->map(fn ($exam) => [
+                'code' => $exam->code,
+                'name' => $exam->localized('name'),
+                'coefficient' => $exam->coefficient,
+            ])->values()),
             'sessions' => ExamSessionResource::collection($this->whenLoaded('sessions')),
             'taxonomy' => $this->whenLoaded('taxonomyProfile', fn () => [
                 'levels' => collect($this->taxonomyProfile->levels)->map(fn ($l, $i) => [

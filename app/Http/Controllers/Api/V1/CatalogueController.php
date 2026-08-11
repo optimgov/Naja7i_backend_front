@@ -65,6 +65,12 @@ class CatalogueController extends Controller
             ->with([
                 'filiere',
                 'specialties' => fn ($q) => $q->published()->ordered(),
+                /* Exam n'emploie pas IsCatalogueEntry : il porte son propre
+                   scopePublished et pas de scopeOrdered. L'ordre est donc
+                   explicite, sur les mêmes colonnes que le trait. */
+                'exams' => fn ($q) => $q->published()
+                    ->orderBy('exams.position')
+                    ->orderBy('exams.name_fr'),
                 'sessions' => fn ($q) => $q->published()->upcoming()->orderBy('year'),
                 'taxonomyProfile',
             ])

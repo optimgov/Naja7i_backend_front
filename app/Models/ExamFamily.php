@@ -6,6 +6,7 @@ use App\Models\Concerns\IsCatalogueEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -46,6 +47,20 @@ class ExamFamily extends Model
     public function tracks(): HasMany
     {
         return $this->hasMany(Track::class);
+    }
+
+    /**
+     * Épreuves de la famille, atteintes PAR LES PARCOURS.
+     *
+     * `exams` ne porte pas de `exam_family_id` : une épreuve appartient à un
+     * parcours, et un parcours à une famille. Le raccourci est nécessaire pour
+     * que le catalogue public expose les coefficients — sans eux, la
+     * correction du PAS-4.1 reste invisible à l'écran, et la maquette laissait
+     * croire que la didactique pesait un tiers alors qu'elle vaut 12 sur 40.
+     */
+    public function exams(): HasManyThrough
+    {
+        return $this->hasManyThrough(Exam::class, Track::class);
     }
 
     public function sessions(): HasMany

@@ -238,6 +238,55 @@ maîtrise — sans quoi le profil se figerait au premier diagnostic et le plan �
 > cette lignée. Conformément au §2, PAS-14 n'est pas listé ci-dessus tant qu'il
 > n'a pas de SHA.
 
+### PAS-16 — Rendez-vous Mémoire, première moitié (F07) · `4b7ad75`
+**Périmètre :** `review_schedules`, `MemoryScheduler`, `ReviewSchedule`,
+`naja7i.timezone_candidat`, borne de session. **Lot volontairement coupé en
+deux** : les routes, le sélecteur de question sœur et le plafond de liste
+relèvent de la seconde moitié — un découpage assumé plutôt qu'un lot
+interrompu. Ne pas auditer la moitié absente comme manquante (§2).
+
+**Acceptation :** calendrier à casiers et non facteur d'aisance — paliers fixes
+`1-3-7-16-35` plutôt qu'un SM-2, qui produirait des nombres d'allure
+scientifique sur une banque jeune sans historique de calibration ; on planifie
+une ERREUR et non une question, la ligne portant le couple (compétence, cause),
+car resservir douze fois le même item apprendrait l'item et non le
+raisonnement ; sortie du calendrier après deux réussites certaines
+consécutives ; aucun rendez-vous dans la marge d'avant-épreuve ; les items sans
+réponse sont exclus — F07 révise une cause diagnostiquée, une question laissée
+vide n'en a pas.
+
+**Écart connu :** le calendrier n'avance que sur la question tracée par
+`last_question_id`, l'appariement (compétence, cause) n'étant pas symétrique.
+Une session d'entraînement ne fait donc progresser aucun palier, sauf
+coïncidence — DET-35, à trancher à la seconde moitié.
+
+### PAS-17 — L'évitement cesse de payer · `5a97c19`
+**Périmètre :** `mastery_scores.skipped_count`, `MasteryCalculator` (calcul
+piloté par les items servis et non plus par les seules réponses, agrégation
+comprise), `RemediationPlanner` (facteur partiel et motif `questions_sautees`),
+`MasteryScore::toPublicArray`.
+
+**Le défaut corrigé, mesuré et non soupçonné :** sur la même série de dix avec
+cinq bonnes réponses chacun, le candidat qui répondait faux aux cinq autres
+tombait à 50 et prenait la tête de l'ordonnance, celui qui les sautait affichait
+100 et en sortait. Le domaine faible disparaissait parce qu'il avait été
+esquivé — l'exact contraire de la promesse du produit.
+
+**Acceptation :** une question servie sur une tentative CLOSE et laissée sans
+réponse est comptée ; une tentative en cours n'en produit aucune ; le score
+n'est pas touché — les sautées au dénominateur donneraient au sauteur
+l'urgence exacte de qui a répondu faux, soit l'affirmation qu'éviter et rater
+sont le même fait ; le sauteur remonte au-dessus d'un domaine maîtrisé mais
+reste SOUS l'erreur démontrée ; le motif `questions_sautees` est distinct de
+`erreurs_avec_certitude` et de `jamais_evalue`, et reste un texte lisible ; un
+domaine entièrement répondu ne bouge d'aucun millième.
+
+**Calibration :** facteur 0,5, identique à `FACTEUR_JAMAIS_EVALUE` et pour la
+même raison — sur la part sautée, l'écart est inconnu, pas maximal. Borne haute
+mesurée par balayage : à 1,0 le sauteur égale celui qui a répondu faux. Un test
+relit le facteur dans le résultat et tient ce plafond sans exposer la constante.
+Clôt DET-34, inscrit au même pas.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
@@ -250,7 +299,7 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 |---|---|---|
 | Séries d'entraînement ciblées | Composition adaptative | Non ouvert |
 | Simulateur d'examen | Chronomètre, barème, rapport | Non ouvert |
-| Rappels espacés (F07) | Rendez-vous Mémoire | Non ouvert |
+| Rappels espacés (F07), seconde moitié | Routes, sélecteur de question sœur, plafond de liste | Ouvert — première moitié livrée au PAS-16 |
 | Profil candidat | Situation, objectif, échéance | Non ouvert |
 | Module Opportunités | Veille, annonces, alertes | Non ouvert |
 | Commercial et CMI | Offres, commandes, paiement | Non ouvert |

@@ -34,6 +34,9 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | Catalogue public : les épreuves d'une famille et leur coefficient, PAS-4.1 rendu visible | `91e5920` |
 | — | SHA du catalogue public au journal, DET-30 | `3550e22` |
 | 15 | Composition d'une session d'entraînement : périmètre jamais élargi, anti-répétition en base, sans chronomètre | `5043886` |
+| — | SHA du PAS-15 au journal et au backlog, DET-31 | `98ed1d6` |
+| 16 | Rendez-vous Mémoire (F07), première moitié : calendrier à casiers, paliers fixes, on planifie une erreur et non une question | `4b7ad75` |
+| 17 | L'évitement cesse de payer : une question servie et sautée est comptée, entre dans l'urgence à facteur partiel et sous son propre motif | `5a97c19` |
 
 ## Lots frontend
 
@@ -44,5 +47,6 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 
 ## À venir
 
-Séries d'entraînement, simulateur, rappels espacés, profil candidat, module
-opportunités, commercial et CMI, back-office Filament. Voir `docs/BACKLOG.md`.
+Seconde moitié de F07 — routes, sélecteur de question sœur, plafond de liste,
+et l'arbitrage de DET-35 —, simulateur, profil candidat, module opportunités,
+commercial et CMI, back-office Filament. Voir `docs/BACKLOG.md`.

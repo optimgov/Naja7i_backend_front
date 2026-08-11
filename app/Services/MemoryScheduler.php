@@ -68,6 +68,25 @@ final class MemoryScheduler
     public const PLAFOND_LISTE = 20;
 
     /**
+     * Palier maximal atteignable par un ÉNONCÉ RESSERVI À L'IDENTIQUE.
+     *
+     * Le milieu de l'échelle : 7 jours. Ni la sortie, ni l'éternel retour.
+     *
+     * Geler complètement le palier ferait revenir CHAQUE JOUR, indéfiniment,
+     * tout couple que la banque ne sert que par une question — et ces
+     * couples-là satureraient la liste plafonnée à vingt en évinçant les
+     * rendez-vous que le candidat peut réellement résoudre. Laisser filer
+     * jusqu'à 35 jours ferait au contraire disparaître le rendez-vous par la
+     * petite porte, après lui avoir fermé la grande.
+     *
+     * Le plafond ne fait jamais REDESCENDRE un palier déjà plus haut, atteint
+     * par de vraies sœurs : il borne la montée, il ne punit pas.
+     *
+     * Valeur d'architecte, à réétalonner avec les paliers (DET-32).
+     */
+    public const PLAFOND_ENONCE_RESSERVI = 3;
+
+    /**
      * Planifie les suites d'une tentative soumise.
      *
      * Appelée à la soumission, quand `is_correct` vient d'être figé, pour
@@ -424,6 +443,12 @@ final class MemoryScheduler
          * le gèle. Un couple servi indéfiniment par la même question ne peut
          * jamais quitter le calendrier. L'échec, lui, remet toujours à zéro —
          * se tromper sur un énoncé déjà vu est un signal plus fort encore.
+         *
+         * MAIS LE PALIER, LUI, MONTE — SOUS PLAFOND. Le geler aussi ferait
+         * revenir ce couple tous les jours pour toujours, et ces revenants
+         * satureraient la liste plafonnée à vingt en évinçant les rendez-vous
+         * résolubles. L'intervalle s'allonge donc jusqu'au milieu de l'échelle
+         * (voir PLAFOND_ENONCE_RESSERVI) et pas au-delà.
          */
         $memeEnonce = $rdv->last_question_id !== null && $rdv->last_question_id === $questionId;
 
@@ -432,6 +457,16 @@ final class MemoryScheduler
             $memeEnonce => $rdv->consecutive_sure,
             default => $rdv->consecutive_sure + 1,
         };
+
+        /* Le plafond ne mord QUE sur une montée : une réussite au hasard doit
+         * pouvoir faire redescendre le palier comme ailleurs, et un palier déjà
+         * plus haut — gagné avec de vraies sœurs — n'est jamais rabaissé. */
+        if ($memeEnonce && $suite['palier'] > $rdv->palier) {
+            $suite['palier'] = max(
+                $rdv->palier,
+                min($suite['palier'], self::PLAFOND_ENONCE_RESSERVI),
+            );
+        }
 
         // PORTE DE SORTIE. Sans elle la liste grossit indéfiniment.
         if ($consecutifs >= self::SORTIES_CONSECUTIVES) {

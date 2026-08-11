@@ -5,6 +5,7 @@ namespace Tests\Feature\Memoire;
 use App\Contracts\AccessGrant;
 use App\Models\AccessGrantRecord;
 use App\Models\Attempt;
+use App\Models\AttemptItem;
 use App\Models\CauseRevealCounter;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
@@ -13,6 +14,7 @@ use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Remediation;
 use App\Models\ReviewSchedule;
+use App\Models\Role;
 use App\Models\Source;
 use App\Models\Tenant;
 use App\Models\User;
@@ -409,6 +411,175 @@ class RendezVousMemoireTest extends TestCase
         $this->assertNotNull($rdv, "L'erreur vient d'être démontrée : la séance ne l'efface pas elle-même.");
         $this->assertSame(1, $rdv->palier);
         $this->assertSame(0, $rdv->consecutive_sure);
+    }
+
+    // --- L'énoncé resservi : plafonné, ni gelé ni libre --------------------------
+
+    /**
+     * Pose un rendez-vous déjà servi par une question donnée, à un palier donné.
+     */
+    private function rdvResservi(int $palier, int $questionId): ReviewSchedule
+    {
+        return ReviewSchedule::create([
+            'user_id' => $this->candidat->id,
+            'exam_id' => $this->epreuve->id,
+            'competency_node_id' => $this->noeud->id,
+            'cause' => 'confusion_notions',
+            'last_question_id' => $questionId,
+            'palier' => $palier,
+            'consecutive_sure' => 0,
+            'due_on' => now(config('naja7i.timezone_candidat'))->toDateString(),
+        ]);
+    }
+
+    /** Sert UNE question précise et la réussit avec certitude. */
+    private function reussirSur(Question $question): void
+    {
+        $service = app(AttemptService::class);
+
+        $attempt = Attempt::create([
+            'user_id' => $this->candidat->id, 'exam_id' => $this->epreuve->id,
+            'locale' => 'fr', 'idempotency_key' => (string) Str::uuid7(),
+            'kind' => 'review', 'status' => 'in_progress', 'started_at' => now(),
+            'item_count' => 1,
+        ]);
+
+        $item = AttemptItem::create([
+            'attempt_id' => $attempt->id, 'question_id' => $question->id,
+            'competency_node_id' => $question->competency_node_id, 'position' => 1,
+        ]);
+
+        $service->answer($item, $question->correctOption(), 'sure');
+        $service->submit($attempt->fresh());
+    }
+
+    public function test_un_enonce_resservi_monte_le_palier_jusqu_au_plafond_seulement(): void
+    {
+        $this->peupler(1);
+        $question = Question::where('competency_node_id', $this->noeud->id)->firstOrFail();
+
+        // Au palier 2, la réussite sur l'énoncé déjà vu doit mener à 3.
+        $this->rdvResservi(2, $question->id);
+        $this->reussirSur($question);
+
+        $this->assertSame(
+            MemoryScheduler::PLAFOND_ENONCE_RESSERVI,
+            $this->rdv()->palier,
+            "L'intervalle s'allonge : sans cela le couple reviendrait tous les jours, "
+            .'indéfiniment, et saturerait la liste plafonnée.'
+        );
+
+        // Au plafond, une réussite de plus ne le dépasse pas.
+        $this->reussirSur($question);
+
+        $this->assertSame(
+            MemoryScheduler::PLAFOND_ENONCE_RESSERVI,
+            $this->rdv()->palier,
+            'Reconnaître un énoncé ne mène pas à 35 jours : ce serait sortir par la petite porte.'
+        );
+        $this->assertNotNull($this->rdv(), 'Et la sortie reste fermée.');
+        $this->assertSame(0, $this->rdv()->consecutive_sure);
+    }
+
+    public function test_le_plafond_ne_rabaisse_pas_un_palier_deja_plus_haut(): void
+    {
+        $this->peupler(1);
+        $question = Question::where('competency_node_id', $this->noeud->id)->firstOrFail();
+
+        /* Palier 4, gagné avec de vraies sœurs avant que la banque ne s'épuise.
+         * Il faut qu'il soit AU-DESSUS du plafond et que la réussite tente de
+         * le faire monter : partir de 5 ne prouverait rien, le palier maximal
+         * ne montant plus, et la clause de garde ne serait pas exercée. */
+        $this->rdvResservi(4, $question->id);
+        $this->reussirSur($question);
+
+        $this->assertSame(
+            4, $this->rdv()->palier,
+            'Le plafond borne la MONTÉE ; il ne RABAISSE pas un palier déjà mérité.'
+        );
+    }
+
+    // --- Le trou éditorial, nommé pour un rédacteur, compté pour un candidat -----
+
+    public function test_la_liste_du_candidat_compte_les_couples_sans_soeur_sans_les_nommer(): void
+    {
+        $this->peupler(1);   // une seule question : aucune sœur
+        $question = Question::where('competency_node_id', $this->noeud->id)->firstOrFail();
+        $this->rdvResservi(1, $question->id);
+
+        $reponse = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/memory/{$this->epreuve->code}/due");
+
+        $reponse->assertOk();
+        $this->assertSame(1, $reponse->json('meta.without_sibling'));
+
+        $this->assertStringNotContainsString(
+            'confusion_notions',
+            json_encode($reponse->json('meta'), JSON_UNESCAPED_UNICODE),
+            'Le nombre se dit, la cause NON : c\'est un champ payant.'
+        );
+    }
+
+    public function test_le_plan_de_redaction_nomme_les_couples_et_les_ordonne(): void
+    {
+        $this->peupler(1);
+        $question = Question::where('competency_node_id', $this->noeud->id)->firstOrFail();
+        $this->rdvResservi(1, $question->id);
+
+        // Un second couple, celui-là sans AUCUNE question qui tende son piège.
+        ReviewSchedule::create([
+            'user_id' => $this->candidat->id,
+            'exam_id' => $this->epreuve->id,
+            'competency_node_id' => $this->noeud->id,
+            'cause' => 'calcul',
+            'palier' => 1,
+            'due_on' => now(config('naja7i.timezone_candidat'))->toDateString(),
+        ]);
+
+        $editeur = $this->utilisateur('editeur@naja7i.ma');
+        $editeur->markEmailAsVerified();
+        $editeur->memberships()->create([
+            'role_id' => Role::where('code', 'editeur')->whereNull('tenant_id')->value('id'),
+        ]);
+
+        $reponse = $this->actingAs($editeur)
+            ->getJson("/api/v1/admin/banque/couverture/{$this->epreuve->code}");
+
+        $reponse->assertOk();
+        $this->assertSame(2, $reponse->json('meta.gaps'));
+
+        $couples = collect($reponse->json('data'));
+
+        $this->assertSame(
+            'none',
+            $couples->firstWhere('cause', 'calcul')['coverage']['fr']['severity'],
+            'Aucune question ne tend ce piège : la séance ne peut même pas se composer.'
+        );
+        $this->assertSame(
+            'no_sibling',
+            $couples->firstWhere('cause', 'confusion_notions')['coverage']['fr']['severity'],
+            'Une seule question : l\'énoncé revient à l\'identique.'
+        );
+        $this->assertSame(
+            1, $couples->firstWhere('cause', 'confusion_notions')['coverage']['fr']['published_questions']
+        );
+
+        /* La banque arabe est vide : les DEUX couples y manquent entièrement,
+         * et c'est un travail distinct de celui du français. */
+        $this->assertSame(2, $reponse->json('meta.to_write.ar'));
+        $this->assertSame(1, $reponse->json('meta.to_write.fr'));
+        $this->assertSame(1, $reponse->json('meta.to_complete.fr'));
+
+        $this->assertSame(1, $couples->firstWhere('cause', 'calcul')['waiting_candidates']);
+        $this->assertSame('SE-PSY-DEV', $couples->firstWhere('cause', 'calcul')['competency']['code']);
+    }
+
+    public function test_le_plan_de_redaction_est_refuse_sans_permission(): void
+    {
+        $this->actingAs($this->candidat)
+            ->getJson("/api/v1/admin/banque/couverture/{$this->epreuve->code}")
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'PERMISSION_DENIED');
     }
 
     // --- La séance de révision, par la route ------------------------------------

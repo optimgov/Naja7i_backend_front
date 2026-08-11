@@ -12,6 +12,7 @@ use App\Http\Resources\ReviewScheduleResource;
 use App\Models\Exam;
 use App\Services\AttemptService;
 use App\Services\CauseRevealService;
+use App\Services\CouvertureBanque;
 use App\Services\MemoryScheduler;
 use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
@@ -41,6 +42,7 @@ class MemoireController extends Controller
         private readonly AttemptService $attempts,
         private readonly AccessGrant $access,
         private readonly CauseRevealService $reveals,
+        private readonly CouvertureBanque $couverture,
     ) {}
 
     /**
@@ -91,6 +93,13 @@ class MemoireController extends Controller
                 'pending' => max(0, $echus - $rendezVous->count()),
                 'cap' => MemoryScheduler::PLAFOND_LISTE,
                 'next_due_on' => $prochaine?->toDateString(),
+                /* Rendez-vous échus que la banque ne sert que par l'énoncé déjà
+                 * vu. UN NOMBRE, jamais le détail : nommer les couples
+                 * nommerait des causes, et la cause est un champ payant. Le
+                 * plan de rédaction correspondant est côté administration. */
+                'without_sibling' => $echus === 0
+                    ? 0
+                    : $this->couverture->trousEchusDuCandidat($exam, $user, $user->locale),
             ],
         ]);
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BanqueAdminController;
 use App\Http\Controllers\Api\V1\CatalogueController;
 use App\Http\Controllers\Api\V1\DemonstrationController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
@@ -136,5 +137,12 @@ Route::prefix('v1')->group(function () {
 
         Route::post('questions/{uuid}/retire', [QuestionAdminController::class, 'retire'])
             ->middleware('permission:questions.retire');
+
+        /* PAS-22 — plan de rédaction : les couples (compétence, cause) que la
+         * banque ne couvre pas, ordonnés par nombre de candidats en attente.
+         * `questions.view` et non `questions.create` : c'est une LECTURE sur
+         * l'état de la banque, et l'auteur comme le réviseur la détiennent. */
+        Route::get('banque/couverture/{examCode}', [BanqueAdminController::class, 'couverture'])
+            ->middleware('permission:questions.view');
     });
 });

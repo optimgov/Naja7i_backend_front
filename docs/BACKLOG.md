@@ -544,8 +544,29 @@ publiée ne sont pas dégelées.
 l'énumération ; 403 explicite pour une permission de personnel refusée. Le
 middleware n'a pas bougé — c'est l'énoncé qui manquait de portée.
 
-**Constaté, non corrigé (DET-47) :** une source vérifiée peut être modifiée
-après coup sans que le contrôle soit invalidé.
+**Constaté au PAS-28, endigué au PAS-29 (DET-47) :** une source vérifiée
+pouvait être modifiée après coup sans que le contrôle soit invalidé.
+
+### PAS-29 — Une source modifiée cesse d'être vérifiée · `0de348d`
+**Périmètre :** deux déclencheurs sur `sources`. Aucune surface HTTP nouvelle.
+
+**Acceptation :** modifier une colonne porteuse de sens — `code`, `kind`,
+`title_*`, `authority_*`, `session_label`, `url` — annule `verified_at` et
+`verified_by` ; les citations des questions NON GELÉES retombent à
+`unverified` ; la publication pour diagnostic se rebloque jusqu'à
+re-vérification, et re-vérifier débloque ; `location_note_*` et `languages` ne
+désarment PAS le contrôle — ils aident à trouver le document sans le
+constituer.
+
+**Pourquoi deux déclencheurs :** annuler `verified_at` seul aurait déplacé le
+défaut d'une table. Ce que lisent `hasVerifiedContentSource()` et le trigger de
+publication est le PIVOT. Vérifié par mutation, chaque moitié séparément.
+
+**Mesure d'attente, pas solution.** L'invalidation efface une trace au lieu de
+la conserver et impose un recontrôle complet pour une correction
+typographique. **DET-47 reste ouverte** pour le versionnement de la source —
+une source vérifiée devient immuable, la corriger en crée une version, comme
+pour une question publiée.
 
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;

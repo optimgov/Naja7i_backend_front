@@ -57,6 +57,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 26 | F05 — la question miroir : sélecteur partagé, la correction n'annonce que l'existence, et l'unité de quota passe au couple | `c15e032` |
 | — | SHA du PAS-26 au journal et au backlog, DET-45 | `b0a230b` |
 | 27 | La chaîne éditoriale par l'API : rédiger, amender, lister, file de relecture — aucune règle métier neuve, et DET-46 signalé | `079b283` |
+| — | SHA du PAS-27 au journal et au backlog, DET-46, import inscrit au §4 | `1cc6082` |
+| 28 | Audit tournée 2 : la cause du miroir verrouillée, l'acquisition d'une cause matérialisée et atomique, l'empreinte revalidée après collision ; DET-46 tranché, portée de la règle 404/403 écrite | `b884280` |
 
 ## Lots frontend
 

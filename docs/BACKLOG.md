@@ -516,6 +516,37 @@ laisser sa portée se deviner.
 **Bloquant levé au PAS-28 (DET-46) :** la vérification d'une source est
 `POST admin/sources/{uuid}/verify`.
 
+### PAS-28 — Correctifs de l'audit tournée 2, et deux décisions · `b884280`
+**Origine :** audit externe, trois bloquants dont un en production.
+
+**Acceptation :** `meta.cause` d'un miroir n'est servie que si le couple est
+acquis ou l'accès illimité — sinon `cause: null` et `cause_locked: true`, sans
+rien consommer ; deux révélations concurrentes du MÊME couple coûtent une
+unité, deux couples distincts en coûtent deux ; une collision sur l'index de
+clé revalide l'empreinte et lève `IdempotencyKeyReused` au lieu de rendre la
+tentative d'une autre opération ; un miroir ouvert sur un autre item ne se
+reprend pas.
+
+**Le déplacement structurel :** `cause_acquisitions` matérialise l'achat d'un
+couple (compétence, cause). Un acquis déduit par requête ne peut pas être
+atomique ; un acquis qui existe en base l'est par construction — même
+raisonnement qu'au PAS-10, verrouiller la ressource rare et non l'objet qui la
+consomme.
+
+**Décision 1 — DET-46 tranché :** vérifier est un acte sur LA SOURCE, pas sur
+la question. `POST admin/sources/{uuid}/verify`, sous `questions.review` par
+COMMODITÉ et non par principe. La vérification enregistre qui et quand, une
+contrainte de base refusant l'un sans l'autre. Les citations d'une question
+publiée ne sont pas dégelées.
+
+**Décision 2 — portée de la règle 404/403 écrite** dans `METHODE.md` §7.2 et
+`CLAUDE.md` : 404 pour ce qui appartient à autrui, où un 403 permettrait
+l'énumération ; 403 explicite pour une permission de personnel refusée. Le
+middleware n'a pas bougé — c'est l'énoncé qui manquait de portée.
+
+**Constaté, non corrigé (DET-47) :** une source vérifiée peut être modifiée
+après coup sans que le contrôle soit invalidé.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

@@ -411,6 +411,28 @@ couples — les nommer nommerait des causes, et la cause est un champ payant.
 **Ce qui n'est pas fait :** aucune interface. Le back-office n'est pas ouvert
 (lot A4) et un rédacteur ne lit pas du JSON — DET-41.
 
+### PAS-23 — Index des tentatives du candidat · `0cec306`
+**Périmètre :** `GET me/attempts` dans le groupe `auth:sanctum` + `verified.api`,
+`ParcoursController::index()` et `PLAFOND_INDEX`.
+
+**Le trou comblé :** `show()` exige l'uuid, que personne ne connaît sur un
+appareil neuf. La reprise multi-appareil ne tenait que par un effet de bord —
+rouvrir un diagnostic rend celui en cours — qui suppose de connaître l'épreuve,
+gardée par le frontend dans une trace locale faute de contrat (sa dette D-F15).
+
+**Acceptation :** filtres optionnels `status`, `kind`, `exam_code`, un filtre
+inconnu refusé en 422 plutôt qu'ignoré ; la plus récente d'abord, départagée par
+`id` — les horodatages sont à la seconde (DET-40) ; borne à 20 avec le reste
+compté dans `meta`, jamais tronqué en silence ; les tentatives d'un autre
+candidat n'apparaissent jamais ; **aucun énoncé ni aucune option dans la charge
+utile**, éprouvé sur les octets rendus et vérifié par mutation.
+
+**Ce que ça rend inutile, et sa limite (DET-42) :** le frontend déduit l'épreuve
+suivie de la tentative la plus récente, sans profil ni trace locale — aucun état
+nouveau. Mais un candidat qui prépare A et a travaillé B en dernier verra B : le
+produit sait quelle épreuve il a TOUCHÉE, pas laquelle il PRÉPARE. Le profil
+candidat remplacera cette déduction.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

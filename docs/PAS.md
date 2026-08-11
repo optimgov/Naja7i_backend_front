@@ -47,6 +47,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 21 | Audit externe 490fc53, cinq bloquants : effets de bord derrière la garde de transition, planificateur verrouillé, énoncé resservi qui ne fait plus sortir, collisions d'ouverture rattrapées, empreinte d'idempotence | `aac1d7a` |
 | — | SHA du PAS-21 au journal et au backlog, DET-36 clos, DET-40 | `752a10f` |
 | 22 | L'énoncé resservi monte jusqu'au milieu de l'échelle et pas au-delà ; les couples sans sœur deviennent un plan de rédaction ordonné par la demande | `04b78e6` |
+| — | SHA du PAS-22 au journal et au backlog, DET-41, DET-32 complété | `0d7cefc` |
+| 23 | Index des tentatives du candidat : filtres, borne annoncée, aucune charge d'items — la reprise multi-appareil cesse d'être une béquille | `0cec306` |
 
 ## Lots frontend
 

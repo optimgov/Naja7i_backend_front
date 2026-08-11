@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\AccessGrant;
 use App\Exceptions\IdempotencyKeyReused;
+use App\Exceptions\MirrorAlreadyOpen;
 use App\Exceptions\MirrorNotApplicable;
 use App\Exceptions\NoMirrorAvailable;
 use App\Exceptions\TrainingScopeTooNarrow;
@@ -502,6 +503,15 @@ class ParcoursController extends Controller
             $miroir = $this->attempts->startMirror($user, $item, $user->locale, $cle);
         } catch (IdempotencyKeyReused $e) {
             return $this->cleReutilisee($e);
+        } catch (MirrorAlreadyOpen $e) {
+            /* Un miroir est ouvert sur un AUTRE item. On refuse plutôt que de
+             * servir une question sans rapport sous la cause de cette demande. */
+            return ApiError::make(
+                'MIRROR_ALREADY_OPEN',
+                __('parcours.miroir_deja_ouvert'),
+                409,
+                ['attempt_uuid' => $e->uuidOuvert]
+            );
         } catch (MirrorNotApplicable $e) {
             return ApiError::make(
                 'MIRROR_NOT_APPLICABLE',
@@ -524,13 +534,39 @@ class ParcoursController extends Controller
 
         $attempt = $miroir['attempt'];
 
+        /*
+         * AUDIT TOURNÉE 2, BLOC-1 — LA CAUSE NE S'OBTIENT PAS EN OUVRANT UN MIROIR.
+         *
+         * Cette route publiait `cause` sans rien consulter. Un compte gratuit
+         * qui n'ouvrait jamais `/correction` récoltait toutes ses causes, un
+         * item à la fois : F03 contourné en entier.
+         *
+         * La supposition fautive est nommée pour ne pas revenir : « le miroir
+         * porte une cause que le candidat VIENT DE VOIR en correction ». Le
+         * contrat de route ne garantit aucun ordre — rien n'oblige à passer par
+         * la correction avant d'ouvrir un miroir, et c'est bien ainsi.
+         *
+         * VERROUILLER PLUTÔT QU'OUVRIR, et ce n'est pas la solution timide.
+         * Ouvrir le couple ici consommerait une unité sur un geste de
+         * NAVIGATION — le candidat a cliqué « vérifier », il n'a pas demandé un
+         * diagnostic. C'est le raisonnement qui a déjà écarté le décompte sur
+         * la liste de révision au PAS-19 : on ne facture pas l'ouverture d'un
+         * écran. Et le miroir reste entièrement utilisable sans la cause : la
+         * question se répond, c'est tout ce qu'on lui demande. Ce qui se vend
+         * est le diagnostic, pas l'exercice.
+         *
+         * La forme reprend celle de `CorrectionResource` : le champ est là,
+         * nul, et `cause_locked` dit pourquoi.
+         */
+        $noeud = $attempt->items->first()?->competency_node_id ?? $item->competency_node_id;
+
+        $causeOuverte = $this->access->allows($user, AccessGrant::CAUSE_REVEAL)
+            || $this->reveals->possede($user, $noeud, $miroir['cause']);
+
         return (new AttemptResource($attempt->load(['exam', 'items.question.options', 'items.response'])))
             ->additional(['meta' => [
-                /* Le piège retendu. La cause est un champ payant, mais celle-ci
-                 * vient d'être servie en correction sur l'item d'origine : le
-                 * candidat la connaît déjà, et la taire ici l'empêcherait de
-                 * comprendre ce qu'on lui demande de vérifier. */
-                'cause' => $miroir['cause'],
+                'cause' => $causeOuverte ? $miroir['cause'] : null,
+                'cause_locked' => ! $causeOuverte,
                 // De quelle question ce miroir vérifie la leçon.
                 'source_question_uuid' => $miroir['question_source_uuid'],
             ]])

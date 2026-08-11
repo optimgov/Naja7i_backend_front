@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\ParcoursController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ProgressionController;
 use App\Http\Controllers\Api\V1\QuestionAdminController;
+use App\Http\Controllers\Api\V1\SourceAdminController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -175,6 +176,11 @@ Route::prefix('v1')->group(function () {
 
         Route::post('questions/{uuid}/publish', [QuestionAdminController::class, 'publish'])
             ->middleware('permission:questions.publish');
+
+        /* DET-46 — le contrôle documentaire.  par commodité :
+         * le relecteur a la source sous les yeux. Voir SourceAdminController. */
+        Route::post('sources/{uuid}/verify', [SourceAdminController::class, 'verify'])
+            ->middleware('permission:questions.review');
 
         Route::post('questions/{uuid}/retire', [QuestionAdminController::class, 'retire'])
             ->middleware('permission:questions.retire');

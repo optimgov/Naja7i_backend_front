@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\IdempotencyKeyReused;
+use App\Exceptions\MirrorAlreadyOpen;
 use App\Exceptions\MirrorNotApplicable;
 use App\Exceptions\NoMirrorAvailable;
 use App\Exceptions\NoSiblingQuestionAvailable;
@@ -122,9 +123,31 @@ final class AttemptService
      * avalerait une contrainte de contrôle ou une clé étrangère orpheline, et
      * le défaut ressortirait ailleurs, méconnaissable.
      *
+     * AUDIT TOURNÉE 2, BLOC-3 — L'EMPREINTE SE REVALIDE AVANT TOUTE REPRISE.
+     *
+     * Ce rattrapage contournait la garde d'idempotence du BLOC-5 de la tournée
+     * précédente : il relisait une ligne et la rendait SANS comparer son
+     * empreinte. Deux requêtes différentes lancées ensemble sous la même clé ne
+     * se voyaient pas au contrôle préalable ; l'une insérait, l'autre recevait
+     * la tentative de l'AUTRE opération. Deux correctifs justes séparément se
+     * composaient en défaut.
+     *
+     * La distinction que fait cette méthode :
+     *
+     *  - collision sur l'index de CLÉ — c'est le même identifiant d'opération,
+     *    donc l'empreinte doit concorder. Sinon `IdempotencyKeyReused`, comme
+     *    au contrôle préalable : une clé identifie une opération.
+     *  - collision sur un index d'OUVERTURE — c'est une autre requête du même
+     *    candidat, légitimement en cours. On rend la session gagnante, et
+     *    l'APPELANT juge si elle lui convient : l'entraînement et la révision
+     *    reprennent n'importe quelle session ouverte de leur genre, le miroir
+     *    non — sa charge utile décrit un item précis.
+     *
      * @param  list<string>  $index
+     *
+     * @throws IdempotencyKeyReused
      */
-    private function gagnante(QueryException $e, array $index, callable $relire): Attempt
+    private function gagnante(QueryException $e, array $index, callable $relire, string $empreinte, string $cle): Attempt
     {
         if (! UniqueViolation::onAny($e, $index)) {
             throw $e;
@@ -139,7 +162,19 @@ final class AttemptService
             throw $e;
         }
 
+        if (UniqueViolation::on($e, 'attempts_tenant_user_idempotency_unique')
+            && $gagnante->idempotency_fingerprint !== null
+            && $gagnante->idempotency_fingerprint !== $empreinte) {
+            throw new IdempotencyKeyReused($cle);
+        }
+
         return $gagnante;
+    }
+
+    /** L'ouverture reprise correspond-elle à l'opération demandée ? */
+    private function memeOperation(Attempt $attempt, string $empreinte): bool
+    {
+        return $attempt->idempotency_fingerprint === $empreinte;
     }
 
     public function startDiagnostic(
@@ -216,6 +251,8 @@ final class AttemptService
                 fn () => $ouverte()?->load('items')
                     ?? Attempt::where('user_id', $user->id)
                         ->where('idempotency_key', $idempotencyKey)->first()?->load('items'),
+                $empreinte,
+                $idempotencyKey,
             );
         }
     }
@@ -317,6 +354,8 @@ final class AttemptService
                     ['attempts_single_open_training', 'attempts_tenant_user_idempotency_unique'],
                     fn () => $ouverte() ?? Attempt::where('user_id', $user->id)
                         ->where('idempotency_key', $idempotencyKey)->first(),
+                    $empreinte,
+                    $idempotencyKey,
                 ),
                 $total,
             );
@@ -443,6 +482,8 @@ final class AttemptService
                     ['attempts_single_open_review', 'attempts_tenant_user_idempotency_unique'],
                     fn () => $ouverte() ?? Attempt::where('user_id', $user->id)
                         ->where('idempotency_key', $idempotencyKey)->first(),
+                    $empreinte,
+                    $idempotencyKey,
                 ),
             );
         }
@@ -533,6 +574,13 @@ final class AttemptService
         $enCours = $ouvert();
 
         if ($enCours !== null) {
+            /* CELUI-CI, ou aucun. Un miroir décrit la vérification d'un item
+             * précis : rendre celui d'un autre item servirait une question sans
+             * rapport, sous la cause et la question source de CETTE demande. */
+            if (! $this->memeOperation($enCours, $empreinte)) {
+                throw new MirrorAlreadyOpen($enCours->uuid);
+            }
+
             return $this->repriseDeMiroir($enCours, $cause, $item);
         }
 
@@ -575,16 +623,21 @@ final class AttemptService
                 return $attempt->fresh('items');
             });
         } catch (QueryException $e) {
-            return $this->repriseDeMiroir(
-                $this->gagnante(
-                    $e,
-                    ['attempts_single_open_mirror', 'attempts_tenant_user_idempotency_unique'],
-                    fn () => $ouvert() ?? Attempt::where('user_id', $user->id)
-                        ->where('idempotency_key', $idempotencyKey)->first(),
-                ),
-                $cause,
-                $item,
+            $gagnante = $this->gagnante(
+                $e,
+                ['attempts_single_open_mirror', 'attempts_tenant_user_idempotency_unique'],
+                fn () => $ouvert() ?? Attempt::where('user_id', $user->id)
+                    ->where('idempotency_key', $idempotencyKey)->first(),
+                $empreinte,
+                $idempotencyKey,
             );
+
+            // Même règle que sur le chemin sans course : celui-ci, ou aucun.
+            if (! $this->memeOperation($gagnante, $empreinte)) {
+                throw new MirrorAlreadyOpen($gagnante->uuid);
+            }
+
+            return $this->repriseDeMiroir($gagnante, $cause, $item);
         }
 
         return [

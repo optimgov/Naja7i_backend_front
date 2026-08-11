@@ -149,7 +149,13 @@ Elles ne se renégocient pas d'un pas à l'autre.
 4. **Aucun résultat affiché sans explication**, et aucun score de maîtrise sans
    son volume d'évidence.
 5. **Aucune question publiée sans justification de chaque distracteur.**
-6. **404, jamais 403**, pour une ressource d'un autre tenant.
+6. **404, jamais 403** pour une ressource qui appartient à AUTRUI — un autre
+   candidat, un autre organisme. Un 403 y confirmerait une existence, et
+   permettrait d'énumérer ce qu'on ne possède pas. La règle vise l'énumération,
+   pas la politesse du refus. **Une permission de personnel refusée répond 403
+   explicite** : celui qui la reçoit sait déjà qu'une surface d'administration
+   existe — elle est dans le code — et lui répondre « introuvable » masquerait
+   la vraie raison sans rien protéger.
 7. **Tests sur PostgreSQL réel**, jamais SQLite.
 8. **Les tests ne sont jamais modifiés pour passer.** C'est le code qui change.
 

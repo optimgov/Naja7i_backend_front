@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\CauseAcquisition;
 use App\Models\CauseRevealCounter;
 use App\Models\Response;
 use App\Models\User;
+use App\Support\UniqueViolation;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -52,133 +55,178 @@ final class CauseRevealService
             return true;   // revoir sa correction ne recoûte rien
         }
 
-        /*
-         * UNE CAUSE DÉJÀ PAYÉE RESTE OUVERTE, MÊME SUR UN AUTRE ÉNONCÉ.
-         *
-         * Le PAS-19 avait tenu cette garantie sur la liste de révision et l'y
-         * avait bornée, en laissant ouverte la question de son extension à la
-         * correction. F05 l'a tranchée en la rendant intenable : la question
-         * miroir porte PAR CONSTRUCTION la cause que le candidat vient de voir
-         * en correction. Sans cette porte, vérifier qu'on a compris coûterait
-         * une seconde unité pour la même explication — le produit ferait payer
-         * deux fois ce qu'il présente comme un diagnostic unique.
-         *
-         * L'unité de quota porte donc sur le COUPLE (compétence, cause) et non
-         * sur la réponse. La réponse est marquée révélée sans rien consommer :
-         * l'état reste lisible d'un coup d'œil, et les lectures suivantes ne
-         * repassent pas par cette jointure.
-         */
-        if ($this->coupleDejaPaye($user, $response)) {
-            Response::where('id', $response->id)
-                ->where('cause_revealed', false)
-                ->update(['cause_revealed' => true]);
+        $couple = $this->couple($response);
 
-            return true;
+        if ($couple === null) {
+            return true;   // bonne réponse, ou aucune option choisie : rien à ouvrir
         }
 
-        return DB::transaction(function () use ($user, $response, $hasPremiumAccess) {
+        return $this->acquerir($user, $couple[0], $couple[1], $hasPremiumAccess, $response);
+    }
+
+    /**
+     * Acquiert un couple (compétence, cause), ou constate qu'il l'est déjà.
+     *
+     * AUDIT TOURNÉE 2, BLOC-2 — C'EST L'INSERTION QUI ARBITRE, PAS UNE LECTURE.
+     *
+     * L'acquisition était auparavant DÉDUITE par une jointure, hors
+     * transaction, avant la réservation. Deux révélations concurrentes du même
+     * couple portées par deux réponses différentes lisaient toutes deux « pas
+     * encore acquis » et consommaient chacune une unité. Le plafond restait
+     * atomique — il l'est depuis le PAS-10 — mais la nouvelle unité, elle, ne
+     * l'était pas.
+     *
+     * L'ordre compte : on INSÈRE d'abord dans `cause_acquisitions`, dont
+     * l'index unique tranche entre deux transactions concurrentes ; on ne
+     * réserve l'unité qu'ensuite, et si la réservation échoue le point de
+     * reprise annule aussi l'acquisition. Aucune des deux écritures ne survit
+     * sans l'autre.
+     *
+     * Rien n'est consommé quand la ligne existe déjà : c'est la garantie du
+     * PAS-19 — une cause payée reste ouverte — devenue structurelle.
+     */
+    public function acquerir(
+        User $user,
+        int $nodeId,
+        string $cause,
+        bool $hasPremiumAccess,
+        ?Response $response = null,
+    ): bool {
+        return DB::transaction(function () use ($user, $nodeId, $cause, $hasPremiumAccess, $response) {
+            $nouvelle = $this->insererAcquisition($user, $nodeId, $cause, $hasPremiumAccess, $response);
+
+            if (! $nouvelle) {
+                // Déjà acquis : gratuit, par construction.
+                $this->marquerRevelee($response);
+
+                return true;
+            }
+
             CauseRevealCounter::firstOrCreate(['user_id' => $user->id]);
 
-            if ($hasPremiumAccess) {
-                $reserve = CauseRevealCounter::where('user_id', $user->id)
-                    ->update([
-                        'revealed_total' => DB::raw('revealed_total + 1'),
-                        'last_revealed_at' => now(),
-                        'first_revealed_at' => DB::raw('COALESCE(first_revealed_at, now())'),
-                        'updated_at' => now(),
-                    ]);
-            } else {
-                /* Le plafond est dans le WHERE : deux transactions concurrentes
-                 * se sérialisent sur la ligne, et la seconde constate que
-                 * l'unité n'est plus disponible. */
-                $reserve = CauseRevealCounter::where('user_id', $user->id)
-                    ->where('revealed_total', '<', $this->quota())
-                    ->update([
-                        'revealed_total' => DB::raw('revealed_total + 1'),
-                        'last_revealed_at' => now(),
-                        'first_revealed_at' => DB::raw('COALESCE(first_revealed_at, now())'),
-                        'updated_at' => now(),
-                    ]);
-            }
+            $compteur = CauseRevealCounter::where('user_id', $user->id)
+                ->when(
+                    ! $hasPremiumAccess,
+                    /* Le plafond est dans le WHERE : deux transactions se
+                     * sérialisent sur la ligne, et la seconde constate que
+                     * l'unité n'est plus disponible. */
+                    fn ($q) => $q->where('revealed_total', '<', $this->quota())
+                );
+
+            $reserve = $compteur->update([
+                'revealed_total' => DB::raw('revealed_total + 1'),
+                'last_revealed_at' => now(),
+                'first_revealed_at' => DB::raw('COALESCE(first_revealed_at, now())'),
+                'updated_at' => now(),
+            ]);
 
             if ($reserve !== 1) {
-                return false;   // quota épuisé : aucune révélation
+                /* Quota épuisé : l'acquisition insérée juste avant ne doit pas
+                 * survivre. Sans ce retrait, le couple serait acquis sans avoir
+                 * été payé — et toutes les révélations suivantes gratuites. */
+                CauseAcquisition::where('user_id', $user->id)
+                    ->where('competency_node_id', $nodeId)
+                    ->where('cause', $cause)
+                    ->delete();
+
+                return false;
             }
 
-            $marquee = Response::where('id', $response->id)
-                ->where('cause_revealed', false)
-                ->update(['cause_revealed' => true]);
-
-            if ($marquee !== 1) {
-                /* Une requête concurrente a marqué la même réponse : on rend
-                 * l'unité réservée, sinon une seule cause en coûterait deux. */
-                CauseRevealCounter::where('user_id', $user->id)
-                    ->update(['revealed_total' => DB::raw('GREATEST(revealed_total - 1, 0)')]);
-            }
+            $this->marquerRevelee($response);
 
             return true;
         });
     }
 
     /**
-     * Ce candidat a-t-il déjà payé la cause de CE couple, sur un autre énoncé ?
+     * Le couple (compétence, cause) que cette réponse engage, s'il y en a un.
      *
-     * Une réponse sans option choisie, ou dont l'option n'a pas de cause — une
-     * bonne réponse — ne relève d'aucun couple : il n'y a rien à retrouver.
+     * Une bonne réponse ne porte aucune cause (contrainte du PAS-5), et une
+     * réponse sans option choisie non plus : ni l'une ni l'autre n'ouvre quoi
+     * que ce soit.
+     *
+     * @return array{0: int, 1: string}|null
      */
-    private function coupleDejaPaye(User $user, Response $response): bool
+    private function couple(Response $response): ?array
     {
         $item = $response->item;
         $cause = $response->selectedOption?->cause;
 
-        if ($item === null || $cause === null) {
+        return ($item === null || $cause === null)
+            ? null
+            : [$item->competency_node_id, $cause];
+    }
+
+    /**
+     * Insère l'acquisition, ou rend `false` si le couple est déjà acquis.
+     *
+     * LA VIOLATION D'INDEX EST UNE RÉPONSE, PAS UNE ERREUR — même mécanique
+     * qu'au PAS-21 BLOC-2. Le point de reprise n'est pas décoratif : en
+     * PostgreSQL une erreur avorte la transaction entière, et sans `SAVEPOINT`
+     * le rattrapage ne servirait à rien.
+     */
+    private function insererAcquisition(
+        User $user,
+        int $nodeId,
+        string $cause,
+        bool $hasPremiumAccess,
+        ?Response $response,
+    ): bool {
+        try {
+            DB::transaction(fn () => CauseAcquisition::create([
+                'user_id' => $user->id,
+                'competency_node_id' => $nodeId,
+                'cause' => $cause,
+                'response_id' => $response?->id,
+                'granted_by_access' => $hasPremiumAccess,
+                'acquired_at' => now(),
+            ]));
+
+            return true;
+        } catch (QueryException $e) {
+            if (! UniqueViolation::on($e, 'cause_acquisitions_unique')) {
+                throw $e;
+            }
+
             return false;
         }
+    }
 
-        return Response::query()
-            ->join('attempt_items', 'attempt_items.id', '=', 'responses.attempt_item_id')
-            ->join('attempts', 'attempts.id', '=', 'attempt_items.attempt_id')
-            ->join('question_options', 'question_options.id', '=', 'responses.selected_option_id')
-            ->where('attempts.user_id', $user->id)
-            ->where('responses.cause_revealed', true)
-            ->where('attempt_items.competency_node_id', $item->competency_node_id)
-            ->where('question_options.cause', $cause)
+    private function marquerRevelee(?Response $response): void
+    {
+        if ($response === null) {
+            return;
+        }
+
+        Response::where('id', $response->id)
+            ->where('cause_revealed', false)
+            ->update(['cause_revealed' => true]);
+    }
+
+    /** Ce candidat a-t-il acquis CE couple ? Une lecture, plus une déduction. */
+    public function possede(User $user, int $nodeId, string $cause): bool
+    {
+        return CauseAcquisition::where('user_id', $user->id)
+            ->where('competency_node_id', $nodeId)
+            ->where('cause', $cause)
             ->exists();
     }
 
     /**
-     * Couples (compétence, cause) dont ce candidat a DÉJÀ payé la révélation.
+     * Couples (compétence, cause) déjà acquis par ce candidat.
      *
-     * `ParcoursController::correction()` engage le produit : « le quota est
-     * décompté une seule fois par réponse, revenir sur sa correction ne recoûte
-     * rien », et `CauseRevealCounter` n'est jamais remis à zéro pour cette
-     * raison. Une cause payée qui réapparaît fermée trois jours plus tard dans
-     * la liste de révision rompt cette promesse — le candidat a déjà donné.
-     *
-     * La révélation est portée par une RÉPONSE ; un rendez-vous porte un
-     * COUPLE. Le pont est la jointure ci-dessous : la compétence vient de
-     * l'item servi, la cause du distracteur choisi.
-     *
-     * UNE SEULE REQUÊTE, et un ensemble en retour. Interroger ligne par ligne
-     * aurait coûté vingt lectures pour afficher une liste de vingt — c'était
-     * l'objection qui avait fait renoncer, elle ne tient pas.
+     * Une seule requête, et une lecture DIRECTE depuis le PAS-28 : l'acquis
+     * n'est plus déduit d'une jointure sur les réponses révélées, il est là.
      *
      * @return array<string, true> clés « nodeId|cause »
      */
     public function revealedCouples(User $user): array
     {
-        return Response::query()
-            ->join('attempt_items', 'attempt_items.id', '=', 'responses.attempt_item_id')
-            ->join('attempts', 'attempts.id', '=', 'attempt_items.attempt_id')
-            ->join('question_options', 'question_options.id', '=', 'responses.selected_option_id')
-            ->where('attempts.user_id', $user->id)
-            ->where('responses.cause_revealed', true)
-            ->whereNotNull('question_options.cause')
-            ->distinct()
-            ->selectRaw("attempt_items.competency_node_id || '|' || question_options.cause AS couple")
-            ->pluck('couple')
-            ->flip()
-            ->map(fn () => true)
+        return CauseAcquisition::where('user_id', $user->id)
+            ->get(['competency_node_id', 'cause'])
+            ->mapWithKeys(fn (CauseAcquisition $a) => [
+                $a->competency_node_id.'|'.$a->cause => true,
+            ])
             ->all();
     }
 

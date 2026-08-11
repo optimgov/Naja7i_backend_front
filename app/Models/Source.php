@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Registre des sources. Une source PROUVE quelque chose de précis — et
@@ -19,16 +20,33 @@ class Source extends Model
 {
     use HasPublicUuid;
 
+    /**
+     * `verified_at` et `verified_by` sont HORS de cette liste, et c'est la même
+     * discipline que les champs de transition d'une question : le contrôle
+     * documentaire ne s'assigne pas en masse. Il passe par
+     * `SourceVerificationService`, seul endroit qui enregistre qui et quand.
+     */
     protected $fillable = [
         'code', 'kind', 'title_fr', 'title_ar', 'authority_fr', 'authority_ar',
         'session_label', 'languages', 'location_note_fr', 'location_note_ar', 'url',
     ];
 
-    protected $hidden = ['id'];
+    protected $hidden = ['id', 'verified_by'];
+
+    /** Le relecteur qui a contrôlé cette source. */
+    public function verificateur(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function estVerifiee(): bool
+    {
+        return $this->verified_at !== null;
+    }
 
     protected function casts(): array
     {
-        return ['languages' => 'array'];
+        return ['languages' => 'array', 'verified_at' => 'datetime'];
     }
 
     public function isOfficial(): bool

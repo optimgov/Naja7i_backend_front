@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Miroir;
 
+use App\Contracts\AccessGrant;
+use App\Models\AccessGrantRecord;
 use App\Models\Attempt;
 use App\Models\AttemptItem;
 use App\Models\CauseRevealCounter;
@@ -275,8 +277,78 @@ class QuestionMiroirTest extends TestCase
             'Resservir l\'énoncé corrigé ne vérifierait rien et le ferait croire au candidat.'
         );
         $this->assertSame($this->noeud->id, $servie->competency_node_id);
-        $this->assertSame('confusion_notions', $reponse->json('meta.cause'));
         $this->assertSame($repondue->uuid, $reponse->json('meta.source_question_uuid'));
+    }
+
+    // --- La cause ne s'obtient pas en ouvrant un miroir ------------------------
+
+    /**
+     * AUDIT TOURNÉE 2, BLOC-1 — le sens que le test précédent ne vérifiait pas.
+     *
+     * `meta.cause` était publiée sans rien consulter : un compte gratuit qui
+     * n'ouvrait jamais `/correction` récoltait toutes ses causes, un item à la
+     * fois. La supposition fautive était que le miroir porte une cause « qu'on
+     * vient de voir en correction » — le contrat de route ne garantit aucun
+     * ordre.
+     */
+    public function test_le_miroir_ne_livre_pas_une_cause_non_acquise(): void
+    {
+        $this->peupler(4);
+        $item = $this->servir($this->questions()->first(), juste: false);
+
+        // Aucune correction consultée : rien n'a été payé.
+        $reponse = $this->ouvrirMiroir($item)->assertCreated();
+
+        $this->assertNull(
+            $reponse->json('meta.cause'),
+            'Ouvrir un miroir n\'achète pas le diagnostic qu\'il vérifie.'
+        );
+        $this->assertTrue($reponse->json('meta.cause_locked'));
+
+        $this->assertSame(
+            0,
+            (int) CauseRevealCounter::where('user_id', $this->candidat->id)->value('revealed_total'),
+            'Et il ne consomme rien non plus : un geste de navigation ne se facture pas.'
+        );
+    }
+
+    public function test_le_miroir_livre_une_cause_deja_acquise(): void
+    {
+        $this->peupler(4);
+        $item = $this->servir($this->questions()->first(), juste: false);
+
+        // La correction : la cause est payée, une unité consommée.
+        $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/attempts/{$item->attempt->uuid}/correction")
+            ->assertOk();
+
+        $reponse = $this->ouvrirMiroir($item)->assertCreated();
+
+        $this->assertSame('confusion_notions', $reponse->json('meta.cause'));
+        $this->assertFalse($reponse->json('meta.cause_locked'));
+
+        $this->assertSame(
+            1,
+            (int) CauseRevealCounter::where('user_id', $this->candidat->id)->value('revealed_total'),
+            'Une cause acquise se relit sans repayer.'
+        );
+    }
+
+    public function test_un_abonne_voit_la_cause_du_miroir_sans_correction_prealable(): void
+    {
+        $this->peupler(4);
+        $item = $this->servir($this->questions()->first(), juste: false);
+
+        AccessGrantRecord::create([
+            'user_id' => $this->candidat->id,
+            'capability' => AccessGrant::CAUSE_REVEAL,
+            'starts_at' => now()->subDay(), 'origin' => 'purchase',
+        ]);
+
+        $reponse = $this->ouvrirMiroir($item)->assertCreated();
+
+        $this->assertSame('confusion_notions', $reponse->json('meta.cause'));
+        $this->assertFalse($reponse->json('meta.cause_locked'));
     }
 
     public function test_ouvrir_deux_fois_reprend_le_miroir_sans_en_creer_un_second(): void

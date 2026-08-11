@@ -54,8 +54,13 @@ plutôt que Y parce que Z » vaut mieux qu'une question posée à mi-parcours.
 
 ## Règles de conception non négociables
 
-- **404, jamais 403.** Une ressource d'un autre candidat est introuvable, pas
-  interdite. Le filtre par `user_id` fait foi.
+- **404, jamais 403 — pour ce qui appartient à AUTRUI.** Une ressource d'un
+  autre candidat ou d'un autre organisme est introuvable, pas interdite : le
+  filtre par `user_id` fait foi. La règle vise l'ÉNUMÉRATION — un 403 y
+  confirmerait une existence.
+  **Une permission de personnel refusée répond 403 explicite** (`RequirePermission`,
+  PAS-9). Le refusé sait déjà que la surface d'administration existe ; lui
+  répondre « introuvable » masquerait la raison sans rien protéger.
 - **Le mur payant est un champ, pas une route.** Précédent à suivre :
   `CorrectionResource` rend la justification et ferme la cause avec
   `cause_locked`. Une route entière réservée serait invendable sous la règle 404.

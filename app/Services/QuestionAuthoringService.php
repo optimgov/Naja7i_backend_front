@@ -54,7 +54,10 @@ final class QuestionAuthoringService
                  * certifier sa propre source. */
                 $question->contentSources()->attach($source->id, [
                     'locator' => $locator,
-                    'verification' => 'unverified',
+                    /* L'état de la SOURCE au moment où on la cite. Une source
+                     * déjà contrôlée n'a pas à l'être une seconde fois parce
+                     * qu'une question de plus s'y appuie (DET-46). */
+                    'verification' => $source->estVerifiee() ? 'verified' : 'unverified',
                 ]);
             }
 

@@ -263,6 +263,130 @@ class ChaineEditorialeTest extends TestCase
         $this->assertSame('Un énoncé corrigé avant relecture ?', $reponse->json('data.stem'));
     }
 
+    // --- Le contrôle documentaire (DET-46) -------------------------------------
+
+    /**
+     * VÉRIFIER QUALIFIE LA SOURCE, PAS LA CITATION.
+     *
+     * Une source est citée par plusieurs questions ; la vérifier une fois
+     * profite à toutes. En faire un acte par question ferait recontrôler vingt
+     * fois le même arrêté sans garantir que les vingt verdicts concordent.
+     */
+    public function test_verifier_une_source_profite_a_toutes_ses_citations(): void
+    {
+        $premiere = $this->rediger(['stem' => 'La première question qui cite cet arrêté ?'])->json('data.uuid');
+        $seconde = $this->rediger(['stem' => 'La seconde question qui cite le même arrêté ?'])->json('data.uuid');
+
+        foreach ([$premiere, $seconde] as $uuid) {
+            $this->assertSame(
+                'unverified',
+                $this->agirComme($this->relecteur)->getJson("/api/v1/admin/questions/{$uuid}")
+                    ->json('data.sources.0.verification'),
+                'Citer une source n\'est pas la vérifier.'
+            );
+        }
+
+        $reponse = $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify");
+
+        $reponse->assertOk();
+        $this->assertSame(2, $reponse->json('meta.citations_updated'));
+
+        /* QUI et QUAND, et c'est la valeur du champ : une vérification anonyme
+         * n'engage personne. */
+        $this->assertNotNull($reponse->json('data.verified_at'));
+        $this->assertSame($this->relecteur->uuid, $reponse->json('data.verified_by_uuid'));
+
+        foreach ([$premiere, $seconde] as $uuid) {
+            $this->assertSame(
+                'verified',
+                $this->agirComme($this->relecteur)->getJson("/api/v1/admin/questions/{$uuid}")
+                    ->json('data.sources.0.verification')
+            );
+        }
+    }
+
+    public function test_une_question_redigee_apres_verification_cite_une_source_verifiee(): void
+    {
+        $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify")
+            ->assertOk();
+
+        $uuid = $this->rediger()->assertCreated()->json('data.uuid');
+
+        $this->assertSame(
+            'verified',
+            $this->agirComme($this->relecteur)->getJson("/api/v1/admin/questions/{$uuid}")
+                ->json('data.sources.0.verification'),
+            'Une source déjà contrôlée n\'a pas à l\'être une seconde fois parce qu\'une question de plus s\'y appuie.'
+        );
+    }
+
+    /**
+     * La chaîne va désormais jusqu'au bout — c'était l'objet de DET-46.
+     *
+     * Avant le PAS-28, rien ne posait `verification = 'verified'` : un
+     * rédacteur pouvait écrire, faire relire, faire valider, et la publication
+     * pour diagnostic était refusée sans qu'aucune surface ne lève le blocage.
+     */
+    public function test_la_chaine_va_de_la_redaction_a_la_publication_pour_diagnostic(): void
+    {
+        $uuid = $this->rediger()->assertCreated()->json('data.uuid');
+
+        $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify")
+            ->assertOk();
+
+        $question = Question::where('uuid', $uuid)->firstOrFail();
+        $this->menerJusquAValidation($question);
+
+        $reponse = $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/questions/{$uuid}/publish", ['for_diagnostic' => true]);
+
+        $reponse->assertOk();
+        $this->assertSame('published', $reponse->json('data.status'));
+        $this->assertTrue($reponse->json('data.eligible_for_diagnostic'));
+    }
+
+    public function test_verifier_une_source_exige_la_permission_de_relire(): void
+    {
+        $this->agirComme($this->auteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify")
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'PERMISSION_DENIED');
+    }
+
+    /**
+     * Les citations d'une question PUBLIÉE ne bougent pas.
+     *
+     * Elles sont gelées depuis la contre-revue du PAS-12, et pour une raison
+     * qui tient toujours : la correction déjà servie s'appuyait sur l'état
+     * d'alors. Vérifier une source après coup ne rend donc pas rétroactivement
+     * une question éligible au diagnostic — il faut une nouvelle version.
+     */
+    public function test_la_verification_ne_degele_pas_une_citation_publiee(): void
+    {
+        $uuid = $this->rediger()->assertCreated()->json('data.uuid');
+        $question = Question::where('uuid', $uuid)->firstOrFail();
+
+        $this->menerJusquAValidation($question);
+        app(QuestionTransitionService::class)->publish($question->fresh());
+
+        $reponse = $this->agirComme($this->relecteur)
+            ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify");
+
+        $reponse->assertOk();
+        $this->assertSame(
+            0, $reponse->json('meta.citations_updated'),
+            'La citation gelée est laissée telle quelle, et la vérification aboutit quand même.'
+        );
+
+        $this->assertSame(
+            'unverified',
+            $question->fresh()->contentSources->first()->pivot->verification
+        );
+    }
+
     // --- Autorisation ----------------------------------------------------------
 
     public function test_sans_permission_la_redaction_est_refusee(): void

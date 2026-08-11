@@ -508,17 +508,13 @@ file de relecture sert le plus ancien d'abord.
 service d'assemblage n'a pas d'avis ; `QuestionIntegrityChecker` répond, et ses
 motifs sont rendus dans `meta.publication_blockers` à chaque lecture.
 
-**Divergence signalée, non tranchée :** la consigne demandait 404 pour un
-rédacteur sans permission. `RequirePermission` rend 403 `PERMISSION_DENIED`
-depuis le PAS-9, couvert par les tests du PAS-11, et la règle « 404 jamais
-403 » porte sur la ressource d'un autre CANDIDAT, pas sur une permission de
-personnel. Le comportement existant est conservé ; changer le middleware
-toucherait toute la surface d'administration.
+**Portée de la règle 404/403, précisée au PAS-28 :** une permission de
+personnel refusée répond 403 explicite. `METHODE.md` §7.2 dit désormais ce que
+la règle vise — l'énumération de ce qui appartient à autrui — au lieu de
+laisser sa portée se deviner.
 
-**Bloquant connu (DET-46) :** aucun chemin applicatif ne pose
-`verification = 'verified'`. La chaîne va jusqu'à la validation pédagogique
-puis bute sur la publication pour diagnostic. Il manque une décision, pas du
-code.
+**Bloquant levé au PAS-28 (DET-46) :** la vérification d'une source est
+`POST admin/sources/{uuid}/verify`.
 
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;

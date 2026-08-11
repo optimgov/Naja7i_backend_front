@@ -30,6 +30,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 14 | Gardes sur les nœuds du graphe d'autorisation : portée d'un rôle distribué immuable, is_staff et platform_only figés après distribution | `c628b2b` |
 | 14.1 | Critère 3 porté par un test d'entrelacement ; tests de verrou ramenés à ce qu'ils prouvent ; DET-29 | `168f870` |
 | 14.2 | Sens du changement de portée : la garde contrôle global → organisme, seul chemin créant l'état interdit | `e367c61` |
+| — | SHA du PAS-14.2 au journal et au backlog | `ff42e9d` |
+| — | Catalogue public : les épreuves d'une famille et leur coefficient, PAS-4.1 rendu visible | `91e5920` |
 
 ## Lots frontend
 

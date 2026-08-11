@@ -189,6 +189,28 @@ PHPUnit s'arrêtant à la première assertion en défaut. Il tombait pour la bon
 cause en la rapportant par le mauvais symptôme — le motif relevé aux PAS-13 et
 PAS-14, cette fois dans l'ordre des assertions.
 
+### Catalogue public — épreuves et coefficients d'une famille · `91e5920`
+**Origine :** application du FRONT-2, contrainte n°3 en échec.
+**Nature :** exposition manquante, pas défaut de données. Les coefficients 8, 12
+et 20 existaient en base depuis le PAS-4.1 et `AttemptResource` les servait déjà
+sur une tentative, mais `GET /api/v1/catalogue/familles/{slug}` n'exposait
+aucune épreuve. La correction structurelle du PAS-4.1 ne pouvait donc pas
+atteindre l'écran, et la ligne 6 de la recette FRONT-2 — celle qui vérifie que
+la spécialité pèse 20 contre 8 pour les sciences de l'éducation — ne pouvait pas
+passer.
+
+**Acceptation :** `exams` sur la famille, liste blanche stricte de trois champs
+— code, nom localisé, coefficient. Durée, langues et format relèvent de la fiche
+d'épreuve et non de la famille ; les exposer ici ouvrirait un second contrat sur
+les mêmes données. Aucune autre resource ne les exposait avant ce lot, vérifié.
+
+**Trouvé en route :** `exams` ne porte pas d'`exam_family_id` — une épreuve
+appartient à un PARCOURS, et le parcours à la famille. La relation est donc un
+`hasManyThrough` par `Track`, non une colonne ajoutée : le chemin manquait, pas
+la donnée. Et `Exam` n'emploie pas `IsCatalogueEntry` : il porte son propre
+`scopePublished` mais aucun `scopeOrdered`, d'où un ordre explicite dans la
+fermeture de chargement (DET-30).
+
 > **Lignée correctrice ouverte au PAS-10.** PAS-10, PAS-11, PAS-12 et PAS-13
 > forment une même lignée thématique — les invariants imposés par la base — et
 > elle doit se clore au PAS-14. Elle dépasse le plafond de deux rounds du §8 :

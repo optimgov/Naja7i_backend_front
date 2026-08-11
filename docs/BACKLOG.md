@@ -211,6 +211,23 @@ la donnée. Et `Exam` n'emploie pas `IsCatalogueEntry` : il porte son propre
 `scopePublished` mais aucun `scopeOrdered`, d'où un ordre explicite dans la
 fermeture de chargement (DET-30).
 
+### PAS-15 — Composition d'une session d'entraînement · `5043886`
+**Périmètre :** `TrainingComposer`, `AttemptService::startTraining()`,
+`POST me/training/{examCode}`, index unique partiel d'unicité de session.
+
+**Acceptation :** le périmètre demandé n'est JAMAIS élargi — une série courte
+plutôt qu'un mini-diagnostic déguisé, `meta` disant combien et pourquoi ; sous
+cinq questions, 409 avec un code propre et le nombre disponible ;
+anti-répétition en base par rang — jamais vue, puis manquée, puis réussie en
+dernier recours signalé ; aucun chronomètre ; une seule session ouverte par
+candidat, tous concours confondus ; sans `node_uuid`, le périmètre vient de
+l'ordonnance, ce qui referme la boucle du produit.
+
+**Réemploi :** passation, soumission, correction, maîtrise et quota de causes
+sont ceux du diagnostic, inchangés. Un entraînement soumis alimente donc la
+maîtrise — sans quoi le profil se figerait au premier diagnostic et le plan à
+90 jours ne montrerait jamais de progrès.
+
 > **Lignée correctrice ouverte au PAS-10.** PAS-10, PAS-11, PAS-12 et PAS-13
 > forment une même lignée thématique — les invariants imposés par la base — et
 > elle doit se clore au PAS-14. Elle dépasse le plafond de deux rounds du §8 :

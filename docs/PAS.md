@@ -32,6 +32,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 14.2 | Sens du changement de portée : la garde contrôle global → organisme, seul chemin créant l'état interdit | `e367c61` |
 | — | SHA du PAS-14.2 au journal et au backlog | `ff42e9d` |
 | — | Catalogue public : les épreuves d'une famille et leur coefficient, PAS-4.1 rendu visible | `91e5920` |
+| — | SHA du catalogue public au journal, DET-30 | `3550e22` |
+| 15 | Composition d'une session d'entraînement : périmètre jamais élargi, anti-répétition en base, sans chronomètre | `5043886` |
 
 ## Lots frontend
 

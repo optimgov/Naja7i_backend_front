@@ -646,12 +646,19 @@ docker compose up -d                                  # PostgreSQL 16 + Redis
 php artisan migrate && php artisan test               # séquentiel
 ```
 
-La suite tourne **en séquentiel, en ~117 s** (PAS-20). Elle n'est toujours pas
-parallélisable — Collision exige `brianium/paratest`, absent des dépendances —
-et **ce n'est plus le sujet**. Mesurée au PAS-20, la lenteur ne venait pas du
-séquentiel : 67 % du temps était du montage, dont l'essentiel tenait à deux
-causes réparables sans aucune dépendance (semis rejoué à chaque test, argon2id
-au coût de production). L'interblocage sur les suppressions de tables décrit
-au §6 reste **non reproduit et non vérifié** : le vérifier suppose d'installer
+La suite tourne **en séquentiel**. Elle n'est toujours pas parallélisable —
+Collision exige `brianium/paratest`, absent des dépendances — et **ce n'est
+plus le sujet**. Mesurée au PAS-20, la lenteur ne venait pas du séquentiel :
+67 % du temps était du montage, dont l'essentiel tenait à deux causes
+réparables sans aucune dépendance (semis rejoué à chaque test, argon2id au coût
+de production). L'interblocage sur les suppressions de tables décrit au §6
+reste **non reproduit et non vérifié** : le vérifier suppose d'installer
 paratest, ce que la mesure ne justifie plus. Voir DET-28. La CI exécute la
 suite en séquentiel.
+
+**Aucune durée n'est citée ici, et c'est délibéré.** Le PAS-25 a établi que les
+écarts observés sont de l'attente d'hôte et non du travail — le CPU reste
+constant quand l'horloge varie du simple au décuple. La méthode de mesure, avec
+sa fourchette, vit dans `CLAUDE.md` (section « Conventions du dépôt ») et
+NULLE PART AILLEURS : deux endroits portant le même chiffre finissent toujours
+par diverger, et c'est le défaut qu'on vient de corriger sur `AGENTS.md`.

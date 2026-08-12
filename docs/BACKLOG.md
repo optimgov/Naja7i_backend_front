@@ -609,6 +609,40 @@ règle 404 vaut pour les ressources d'un autre CANDIDAT (§1).
 
 **Reste du lot A4 :** la surface des sources et celle de la couverture.
 
+### A4b — Le registre des sources, et la couverture en accueil · `2db4f6c`
+**Périmètre :** `SourceResource` et ses trois pages, `Couverture` (page
+d'accueil du panneau), `App\Filament\Libelles`, `Source::COLONNES_DE_SENS` et
+`Source::questions()`, `User` implémente `HasName`, retrait du tableau de bord
+de Filament.
+
+**Acceptation :** `/admin` sert la couverture, ordonnée par candidats en attente
+— vérifié à travers l'interface, et la mutation qui réordonne la collection
+après le service la fait rougir ; un couple que personne n'attend n'y figure
+pas ; les deux langues sont comptées séparément ; un candidat n'y accède pas.
+Côté sources : la vérification passe par `SourceVerificationService`, enregistre
+qui et quand, et propage aux citations modifiables ; le bouton disparaît pour
+qui n'a pas `questions.review` et pour une source déjà vérifiée ; modifier un
+champ d'identification annule la vérification ET SE VOIT sans rechargement ;
+modifier un repère de lecture ne coûte rien.
+
+**Les deux sens de chaque garantie**, comme la note de méthode de l'audit
+tournée 2 le demande : « l'invalidation se voit » est testée avec « ce qui ne
+doit rien coûter ne coûte rien », faute de quoi un écran qui crierait à chaque
+enregistrement passerait pour juste.
+
+**`Source::COLONNES_DE_SENS` décrit, elle ne décide pas.** La règle est dans le
+déclencheur du PAS-29 ; cette liste permet au formulaire d'annoncer le coût
+AVANT l'enregistrement. Un test la confronte à la base colonne par colonne et
+dans les deux sens, pour qu'elle ne devienne pas une seconde source de vérité.
+
+**Un défaut que seule une requête HTTP complète a montré :** Filament exige un
+nom d'utilisateur, nos comptes s'identifient par leur e-mail (PAS-2), et toute
+page du panneau échouait au rendu. Les tests de composants Livewire ne rendent
+pas la mise en page — deux tests font désormais une vraie requête.
+
+**Lot A4 clos.** Hors périmètre et inchangés : import JSON/CSV en volume,
+gestion des rôles et des comptes du personnel.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
@@ -624,7 +658,6 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 | Profil candidat | Situation, objectif, échéance | Non ouvert |
 | Module Opportunités | Veille, annonces, alertes | Non ouvert |
 | Commercial et CMI | Offres, commandes, paiement | Non ouvert |
-| Back-office Filament — sources et couverture | Vérification documentaire, trous de la banque (DET-41) | Ouvert — seconde moitié du lot A4 |
 | Import de questions en volume | JSON/CSV, prévalidation, rejet détaillé ligne à ligne | Non ouvert — n'a de sens qu'une fois la rédaction unitaire (PAS-27) éprouvée |
 | Journal d'audit administratif | Traçabilité des actions back-office | **Non planifié — voir §7** |
 | Row-Level Security PostgreSQL | Isolation au niveau base | Différée au gate B2B (ADR-0002) |

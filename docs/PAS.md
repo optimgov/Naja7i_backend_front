@@ -65,6 +65,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 30 | DET-45 tranché : le miroir désigné l'emporte sur le couple, avec repli quand la désignation n'est pas servable | `88fbcf5` |
 | — | SHA du PAS-30 au journal et au backlog, DET-45 clos, DET-48 | `73a1c39` |
 | A4a | Back-office éditorial, première moitié : le panneau, la rédaction, la relecture — Filament ne porte aucune règle métier, l'écriture est détournée vers les services | `3ab2355` |
+| — | SHA de l'A4a au journal et au backlog, DET-48 arbitrée, question d'infrastructure `/admin` | `3447920` |
+| A4b | Back-office éditorial, seconde moitié : le registre des sources signé et daté, l'invalidation visible sans rechargement, et la couverture en page d'accueil — DET-41 close | `2db4f6c` |
 
 ## Lots frontend
 
@@ -75,7 +77,6 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 
 ## À venir
 
-Simulateur, profil candidat, module opportunités, commercial et CMI,
-seconde moitié du lot A4 — sources et couverture —, import de questions en
-volume.
+Simulateur, profil candidat, module opportunités, commercial et CMI, import de
+questions en volume, dégel du miroir désigné (DET-48).
 Voir `docs/BACKLOG.md`.

@@ -320,6 +320,80 @@ class QuestionAdminController extends Controller
         ]);
     }
 
+    /*
+     * ================================================================
+     * Les transitions intermédiaires de la chaîne — PAS-33.
+     *
+     * `publish` et `retire` avaient leur route depuis le PAS-11 ; les trois
+     * étapes qui les précèdent n'existaient qu'en Filament. Un appelant
+     * programmatique — le semis de la banque de recette, en particulier — ne
+     * pouvait donc pas mener une question du brouillon à la publication sans
+     * passer sous l'API.
+     *
+     * AUCUNE RÈGLE NOUVELLE N'EST ÉCRITE ICI. Ces trois méthodes appellent
+     * `QuestionTransitionService` et traduisent son refus en réponse HTTP.
+     * L'autorisation est portée par le middleware déclaré sur la route, comme
+     * pour les deux existantes : aucun `if` d'autorisation dans le corps.
+     * ================================================================
+     */
+
+    /** Le rédacteur envoie son brouillon à la relecture. */
+    public function submit(Request $request, string $uuid): JsonResponse
+    {
+        return $this->transiter($uuid, fn (Question $q) => $this->transitions->submitForReview($q));
+    }
+
+    /** Le relecteur atteste avoir relu. Son identité est enregistrée. */
+    public function review(Request $request, string $uuid): JsonResponse
+    {
+        return $this->transiter($uuid, fn (Question $q) => $this->transitions->markReviewed($q, $request->user()));
+    }
+
+    /**
+     * Validation pédagogique — et JAMAIS par l'auteur.
+     *
+     * La règle vit dans le service (METHODE §7.2) et y reste. Elle s'oppose
+     * donc à cette route comme elle s'oppose au bouton du back-office : ni
+     * l'une ni l'autre ne la porte, toutes deux la subissent.
+     */
+    public function validatePedagogy(Request $request, string $uuid): JsonResponse
+    {
+        return $this->transiter($uuid, fn (Question $q) => $this->transitions->validate($q, $request->user()));
+    }
+
+    /**
+     * Le squelette commun : trouver, tenter, traduire le refus.
+     *
+     * UN SEUL CODE D'ERREUR POUR DEUX REFUS DIFFÉRENTS, et c'est délibéré. Le
+     * service lève un `RuntimeException` aussi bien pour « transition interdite
+     * depuis cet état » que pour « le valideur est l'auteur ». Les distinguer
+     * demanderait de lire le TEXTE du message, ce qui casserait le jour où sa
+     * formulation change — un couplage plus fragile que l'information gagnée.
+     * Le message, lui, est rendu tel quel : il dit lequel des deux s'applique.
+     *
+     * @param  callable(Question): Question  $acte
+     */
+    private function transiter(string $uuid, callable $acte): JsonResponse
+    {
+        $question = Question::where('uuid', $uuid)->first();
+
+        if ($question === null) {
+            return ApiError::make('RESOURCE_NOT_FOUND', __('errors.not_found'), 404);
+        }
+
+        try {
+            $apres = $acte($question);
+        } catch (RuntimeException $e) {
+            return ApiError::make('QUESTION_TRANSITION_REFUSED', $e->getMessage(), 422);
+        }
+
+        /* La ressource complète, et non le seul statut : une transition change
+         * ce qui bloque la SUIVANTE, et `rendre()` porte déjà les deux listes
+         * de blocages. Un appelant qui enchaîne la chaîne — c'est le cas du
+         * semis de recette — s'épargne une lecture entre chaque étape. */
+        return $this->rendre($apres);
+    }
+
     public function retire(Request $request, string $uuid): JsonResponse
     {
         $question = Question::where('uuid', $uuid)->first();

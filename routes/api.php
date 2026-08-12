@@ -191,6 +191,26 @@ Route::prefix('v1')->group(function () {
         Route::get('questions/{uuid}', [QuestionAdminController::class, 'show'])
             ->middleware('permission:questions.view');
 
+        /*
+         * PAS-33 — les trois étapes qui MANQUAIENT entre la rédaction et la
+         * publication. Elles existaient dans le service depuis le PAS-5 et dans
+         * Filament depuis A4a, mais pas en routes : un appelant programmatique
+         * ne pouvait pas mener une question du brouillon au publié.
+         *
+         * CHACUNE SOUS SA PROPRE PERMISSION, et ce ne sont pas les mêmes
+         * métiers : soumettre est un geste d'auteur, relire un geste de
+         * réviseur, valider un geste que le référentiel du PAS-9 distingue
+         * depuis toujours par `questions.validate`.
+         */
+        Route::post('questions/{uuid}/submit', [QuestionAdminController::class, 'submit'])
+            ->middleware('permission:questions.create');
+
+        Route::post('questions/{uuid}/review', [QuestionAdminController::class, 'review'])
+            ->middleware('permission:questions.review');
+
+        Route::post('questions/{uuid}/validate', [QuestionAdminController::class, 'validatePedagogy'])
+            ->middleware('permission:questions.validate');
+
         Route::post('questions/{uuid}/publish', [QuestionAdminController::class, 'publish'])
             ->middleware('permission:questions.publish');
 

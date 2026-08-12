@@ -711,6 +711,42 @@ qu'un les renvoie tous.
 profil d'un autre candidat est introuvable » ; rendre le modèle entier fait
 rougir la liste blanche.
 
+### PAS-33 — Les transitions manquantes de la chaîne, par l'API · `1a198f3`
+**Périmètre :** `POST admin/questions/{uuid}/{submit,review,validate}`,
+`QuestionAdminController::{submit,review,validatePedagogy,transiter}`. Aucune
+modification de service.
+
+**L'inventaire qui a ouvert le pas.** `QuestionTransitionService` sert cinq
+actes : `submitForReview`, `markReviewed`, `validate`, `publish`, `retire`. Les
+deux derniers avaient leur route depuis le PAS-11 ; les trois premiers
+n'existaient qu'en Filament depuis A4a. Ce sont ceux-là, et rien d'autre, que ce
+pas expose.
+
+**Acceptation :** la chaîne se parcourt de bout en bout par l'API, chaque étape
+par le métier qui la porte, `reviewer_id` et `validator_id` enregistrés ; chaque
+route sous SA permission, 403 sans elle (règle du PAS-28) ; l'auteur ne valide
+pas sa propre question par la route non plus, et un second éditeur le peut ;
+une transition invalide depuis l'état courant est refusée en 422
+`QUESTION_TRANSITION_REFUSED` sans laisser la question à mi-chemin ; un uuid
+inconnu reste 404.
+
+**Un seul code d'erreur pour deux refus**, délibérément : le service lève un
+`RuntimeException` dans les deux cas, et les distinguer supposerait de lire le
+texte du message — un couplage qui casserait à la première reformulation, pour
+une information que le message porte déjà.
+
+**Ce que la recette exige, et qu'on découvre en la jouant :** publier POUR LE
+DIAGNOSTIC demande une source vérifiée, et citer une source ne la vérifie pas
+(DET-46). Le semis devra donc appeler `POST admin/sources/{uuid}/verify` — route
+du PAS-28 — avant de publier. Le test de bout en bout le fait, et c'est la
+recette de référence.
+
+**Deux manques signalés et NON comblés (DET-50) :** le refus motivé n'existe pas
+— les arêtes de retour sont déclarées dans la table des transitions mais aucune
+méthode publique ne les emprunte, donc renvoyer une question à son rédacteur est
+impossible par quelque chemin que ce soit, Filament compris — et
+`retire(?string $reason)` accepte un motif qu'il n'écrit nulle part.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

@@ -71,6 +71,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 31 | DET-48 : le miroir désigné sort du gel du contenu publié — le pointeur est de l'usage, et rien d'autre ne le suit | `49f8b4b` |
 | — | SHA du PAS-31 au journal et au backlog, DET-48 close | `8a8c086` |
 | 32 | Le profil candidat : l'épreuve préparée se déclare, la déduction est remplacée et non doublée — DET-42 close | `64df5af` |
+| — | SHA du PAS-32 au journal et au backlog, DET-42 close | `dc69ed1` |
+| 33 | Les trois transitions manquantes de la chaîne éditoriale passent par l'API, chacune sous sa permission — le semis de recette quitte tinker ; DET-50 signalée | `1a198f3` |
 
 ## Lots frontend
 

@@ -581,6 +581,34 @@ comportement par défaut, rien n'étant désigné dans la banque actuelle.
 gelé après publication. Le miroir se désigne à la rédaction, ou par une
 nouvelle version.
 
+### A4a — Le panneau, la rédaction, la relecture · `3ab2355`
+**Périmètre :** Filament 4 et le panneau `admin` (`AdminPanelProvider`),
+`QuestionResource` et ses trois pages, `QuestionPolicy`, `SourcePolicy`,
+`SourceObserver`, `User::canAccessPanel()`.
+
+**Acceptation :** un rédacteur crée, amende et fait circuler une question sans
+écrire de PHP ; l'écriture passe par `QuestionAuthoringService` et les cinq
+transitions par `QuestionTransitionService` — vérifié par un test qui
+n'observe QUE des faits produits par le service (`sibling_group` neuf, source
+citée `unverified`, cause retirée de la bonne réponse), et par la mutation qui
+laisse Filament écrire le modèle et le fait rougir ; un candidat n'entre pas
+dans le panneau ; l'auteur ne VOIT pas le bouton de validation de sa propre
+question ; les motifs de `QuestionIntegrityChecker` s'affichent en permanence
+sans rien empêcher ; le formulaire d'une question publiée est fermé et DIT
+pourquoi ; aucune action de suppression nulle part.
+
+**Deux ajouts au panneau, dont un indispensable :** ses routes sont des routes
+WEB et ne traversent pas le groupe `api`. Sans `ResolveTenant`, la première
+lecture de `memberships` lève « aucun tenant résolu » et le panneau ne s'ouvre
+pas. `SetLocale` suit, le back-office étant bilingue.
+
+**Ce que les policies font, et ne font pas :** elles décident de ce qu'on
+MONTRE, jamais de ce qui se produit. Retirer une policy ne casse aucune
+garantie ; retirer un service les casse toutes. Le 403 est correct ici — la
+règle 404 vaut pour les ressources d'un autre CANDIDAT (§1).
+
+**Reste du lot A4 :** la surface des sources et celle de la couverture.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
@@ -596,7 +624,7 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 | Profil candidat | Situation, objectif, échéance | Non ouvert |
 | Module Opportunités | Veille, annonces, alertes | Non ouvert |
 | Commercial et CMI | Offres, commandes, paiement | Non ouvert |
-| Back-office Filament | Rédaction, révision, publication | Non ouvert — lot A4 |
+| Back-office Filament — sources et couverture | Vérification documentaire, trous de la banque (DET-41) | Ouvert — seconde moitié du lot A4 |
 | Import de questions en volume | JSON/CSV, prévalidation, rejet détaillé ligne à ligne | Non ouvert — n'a de sens qu'une fois la rédaction unitaire (PAS-27) éprouvée |
 | Journal d'audit administratif | Traçabilité des actions back-office | **Non planifié — voir §7** |
 | Row-Level Security PostgreSQL | Isolation au niveau base | Différée au gate B2B (ADR-0002) |

@@ -63,6 +63,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 29 | Une source modifiée cesse d'être vérifiée : invalidation et rétrogradation des citations en base — mesure d'attente, DET-47 reste ouverte pour le versionnement | `0de348d` |
 | — | SHA du PAS-29 au journal et au backlog, DET-47 endiguée mais ouverte | `64e0d51` |
 | 30 | DET-45 tranché : le miroir désigné l'emporte sur le couple, avec repli quand la désignation n'est pas servable | `88fbcf5` |
+| — | SHA du PAS-30 au journal et au backlog, DET-45 clos, DET-48 | `73a1c39` |
+| A4a | Back-office éditorial, première moitié : le panneau, la rédaction, la relecture — Filament ne porte aucune règle métier, l'écriture est détournée vers les services | `3ab2355` |
 
 ## Lots frontend
 
@@ -74,5 +76,6 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 ## À venir
 
 Simulateur, profil candidat, module opportunités, commercial et CMI,
-back-office Filament (lot A4), import de questions en volume.
+seconde moitié du lot A4 — sources et couverture —, import de questions en
+volume.
 Voir `docs/BACKLOG.md`.

@@ -671,6 +671,46 @@ formulaire ne s'ouvre pas pour autant, `QuestionPolicy::update()` le fermant
 depuis A4a parce que toutes les autres colonnes y sont gelées. L'intention est
 tenue par une action dédiée ; le champ, lui, dit où aller.
 
+### Profil candidat — DET-42 close · `64df5af`
+**Périmètre :** `GET`/`PUT me/profile` dans le groupe `auth:sanctum` +
+`verified.api`, table `candidate_profiles` (isolée par tenant),
+`CandidateProfile`, `CandidateProfileResource`, `ProfileController`,
+`User::candidateProfile()`.
+
+**Trois champs et une règle**, périmètre volontairement minimal : `exam_code`
+(épreuve publiée, exigée), `objective` et `target_date` (optionnels). Ni
+préférences d'interface, ni fuseau — DET-33 a déjà sa clé de configuration —, ni
+avatar. Chacun de ces champs attend un demandeur.
+
+**Acceptation :** un profil absent rend les mêmes clés à `null` et non une 404 ;
+la forme de la réponse est identique avec et sans profil ; `PUT` rejoué donne le
+même état et une seule ligne ; une épreuve non publiée ou inconnue est refusée
+en 422 avec le message ambigu du PAS-4 ; le profil d'un autre candidat est
+introuvable, et une charge utile portant `user_id` n'écrit pas chez autrui ; le
+profil est porté par le tenant ; la ressource est une liste blanche stricte
+éprouvée sur les clés rendues.
+
+**CONTRAT POUR LE FRONTEND — il peut supprimer sa déduction (sa dette D-F15).**
+`GET me/profile` est désormais la SEULE réponse à « quelle épreuve je
+prépare ». `GET me/attempts` continue de dire quelle épreuve a été TOUCHÉE en
+dernier, et c'est tout ce qu'elle dit. Quand `exam_code` est nul — compte neuf,
+ou candidat qui n'a jamais déclaré —, le frontend peut PROPOSER cette dernière
+épreuve travaillée comme suggestion à confirmer d'un clic ; ce clic fait un
+`PUT me/profile`. Ce qu'il ne doit plus faire : l'appliquer sans confirmation,
+ni la conserver dans une trace locale. Une déduction silencieuse serait une
+seconde vérité, et c'est le défaut que ce pas ferme.
+
+**`PUT` remplace, il ne fusionne pas.** Les trois champs sont écrits à chaque
+appel ; un champ de plan absent est remis à `null`. C'est la sémantique du
+verbe, et elle évite la question sans réponse d'un `PATCH` — « comment j'efface
+mon objectif ? ». Le `GET` rendant les trois champs, un client qui n'en change
+qu'un les renvoie tous.
+
+**Les trois mutations :** retirer `Exam::published()` fait rougir le refus d'une
+épreuve non publiée ; lire sans borner au candidat authentifié fait rougir « le
+profil d'un autre candidat est introuvable » ; rendre le modèle entier fait
+rougir la liste blanche.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
@@ -683,7 +723,6 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 |---|---|---|
 | Séries d'entraînement ciblées | Composition adaptative | Non ouvert |
 | Simulateur d'examen | Chronomètre, barème, rapport | Non ouvert |
-| Profil candidat | Situation, objectif, échéance | Non ouvert |
 | Module Opportunités | Veille, annonces, alertes | Non ouvert |
 | Commercial et CMI | Offres, commandes, paiement | Non ouvert |
 | Import de questions en volume | JSON/CSV, prévalidation, rejet détaillé ligne à ligne | Non ouvert — n'a de sens qu'une fois la rédaction unitaire (PAS-27) éprouvée |

@@ -69,6 +69,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | A4b | Back-office éditorial, seconde moitié : le registre des sources signé et daté, l'invalidation visible sans rechargement, et la couverture en page d'accueil — DET-41 close | `2db4f6c` |
 | — | SHA de l'A4b au journal et au backlog, DET-41 close, DET-49 | `fea7762` |
 | 31 | DET-48 : le miroir désigné sort du gel du contenu publié — le pointeur est de l'usage, et rien d'autre ne le suit | `49f8b4b` |
+| — | SHA du PAS-31 au journal et au backlog, DET-48 close | `8a8c086` |
+| 32 | Le profil candidat : l'épreuve préparée se déclare, la déduction est remplacée et non doublée — DET-42 close | `64df5af` |
 
 ## Lots frontend
 
@@ -79,6 +81,6 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 
 ## À venir
 
-Simulateur, profil candidat, module opportunités, commercial et CMI, import de
-questions en volume.
+Simulateur, module opportunités, commercial et CMI, import de questions en
+volume.
 Voir `docs/BACKLOG.md`.

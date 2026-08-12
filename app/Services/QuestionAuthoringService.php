@@ -102,6 +102,43 @@ final class QuestionAuthoringService
         });
     }
 
+    /**
+     * Désigner la question miroir — un acte à part, et pas un amendement.
+     *
+     * POURQUOI CE N'EST PAS `amender()`. Cette méthode-là refuse une question
+     * publiée, et ce refus doit rester entier : c'est lui qui empêche qu'un
+     * énoncé déjà servi soit récrit par la porte de derrière. Or le pointeur de
+     * miroir n'est plus du contenu depuis DET-48 — il désigne l'USAGE, comme
+     * `eligible_for_diagnostic`. Deux actes différents, deux méthodes ; élargir
+     * `amender()` d'une exception aurait fait dépendre une garantie forte du
+     * contenu exact d'un tableau d'attributs.
+     *
+     * CE QUE CETTE MÉTHODE NE VÉRIFIE PAS, ET OÙ CELA SE VÉRIFIE. Elle ne
+     * contrôle ni que la désignée existe, ni qu'elle diffère de la question
+     * elle-même : la clé étrangère et `questions_mirror_not_self` le tiennent en
+     * base depuis le PAS-5, et les redoubler ici créerait une seconde règle à
+     * maintenir. Elle ne contrôle pas non plus la langue ni le statut de la
+     * désignée : `QuestionsSoeurs::designee()` l'exige À LA LECTURE et se replie
+     * sur le couple sinon (PAS-30) — désigner d'avance une sœur encore en
+     * relecture est légitime, et refuser ici l'interdirait.
+     *
+     * LE RETRAIT RESTE UN MUR. `assert_retired_question_frozen` refuse toute
+     * écriture sur une question retirée, celle-ci comprise. Le dire ici évite
+     * de rendre une erreur de base à un rédacteur qui n'y comprendrait rien.
+     */
+    public function designerMiroir(Question $question, ?Question $miroir): Question
+    {
+        if ($question->status === 'retired') {
+            throw new RuntimeException(
+                'Une question retirée n\'est plus servie : lui désigner un miroir ne désignerait rien.'
+            );
+        }
+
+        $question->update(['mirror_question_id' => $miroir?->id]);
+
+        return $question->fresh();
+    }
+
     /** @param  list<array<string, mixed>>  $options */
     private function ecrireOptions(Question $question, array $options): void
     {

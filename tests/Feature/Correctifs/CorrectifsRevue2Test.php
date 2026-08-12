@@ -337,12 +337,20 @@ class CorrectifsRevue2Test extends TestCase
             'difficulty' => ['difficulty', 'difficulty = 4'],
             'cognitive_level' => ['cognitive_level', "cognitive_level = 'application'"],
             'remediation_id' => ['remediation_id', 'remediation_id = NULL'],
-            /* `mirror_question_id` doit viser une VRAIE modification. Le gel
-             * compare la ligne entière : écrire NULL sur une colonne déjà nulle
-             * ne produit aucune différence, et le trigger a raison de se taire.
-             * Le fixture pose donc un miroir avant publication, pour que le
-             * retrait en soit un. */
-            'mirror_question_id' => ['mirror_question_id', 'mirror_question_id = NULL'],
+            /*
+             * `mirror_question_id` A QUITTÉ CETTE LISTE — DET-48, tranchée.
+             *
+             * Elle y figurait depuis le PAS-10, et le gel la couvrait bel et
+             * bien : ce n'est pas un test qui était faux, c'est la règle qui a
+             * changé. Le pointeur désigne l'USAGE de la question — quelle autre
+             * question retendra le même piège — et non ce qu'un candidat a lu ;
+             * `eligible_for_diagnostic`, absent de cette liste depuis toujours,
+             * en est le précédent.
+             *
+             * La colonne est désormais éprouvée DANS LES DEUX SENS par
+             * `DesignationMiroirTest` : elle se modifie sur une question
+             * publiée, et rien d'autre ne le peut avec elle.
+             */
             'delayed_review_days' => ['delayed_review_days', 'delayed_review_days = 7'],
             'author_id' => ['author_id', 'author_id = NULL'],
             'validator_id' => ['validator_id', 'validator_id = NULL'],

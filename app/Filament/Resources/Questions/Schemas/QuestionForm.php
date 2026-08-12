@@ -124,6 +124,7 @@ class QuestionForm
                     ->options(['fr' => 'Français', 'ar' => 'العربية'])
                     ->default('fr')
                     ->required()
+                    ->live()
                     ->helperText('Une question est monolingue. La version arabe est une question distincte.')
                     ->disabled(fn (?Model $record) => self::gelee($record)),
 
@@ -154,25 +155,38 @@ class QuestionForm
                 /*
                  * DET-45 : le miroir DÉSIGNÉ l'emporte sur le choix par couple.
                  *
-                 * Verrouillé après publication — `mirror_question_id` tombe
-                 * sous le gel du contenu (DET-48). Le champ DIT pourquoi plutôt
-                 * que d'être grisé sans explication : un rédacteur qui ne
-                 * comprend pas un verrou le contourne ou abandonne.
+                 * PLUS DE VERROU APRÈS PUBLICATION — DET-48 tranchée. Le
+                 * pointeur désigne l'USAGE de la question, pas ce qu'elle dit :
+                 * le déclencheur de gel l'exempte désormais comme il exempte
+                 * `eligible_for_diagnostic`. Ce champ n'a donc plus de raison
+                 * d'être grisé, et il ne l'est plus.
+                 *
+                 * Sur une question publiée, ce formulaire ne s'ouvre pas —
+                 * `QuestionPolicy::update()` le ferme parce que TOUT LE RESTE y
+                 * est gelé. La redésignation passe alors par l'action
+                 * `designer_miroir` de la liste, qui n'expose que cette colonne.
+                 * Le champ le dit, pour que le rédacteur sache où aller.
+                 *
+                 * La langue est filtrée en plus de la compétence : une question
+                 * d'une autre langue ne pourra JAMAIS servir de miroir —
+                 * `QuestionsSoeurs::designee()` l'exige à la lecture — et
+                 * l'offrir au choix serait proposer une désignation morte.
                  */
                 Select::make('mirror_question_id')
                     ->label('Question miroir désignée')
                     ->options(fn (?Model $record, $get) => Question::query()
                         ->where('competency_node_id', $get('competency_node_id'))
+                        ->when($get('locale') !== null, fn ($q) => $q->where('locale', $get('locale')))
                         ->when($record !== null, fn ($q) => $q->whereKeyNot($record->getKey()))
                         ->orderBy('id')
                         ->pluck('stem', 'id'))
                     ->searchable()
-                    ->disabled(fn (?Model $record) => self::gelee($record))
-                    ->helperText(fn (?Model $record) => self::gelee($record)
-                        ? 'Verrouillé : le contenu d\'une question publiée est gelé (ADR-0015 §5). '
-                          .'Pour désigner un autre miroir, créez une nouvelle version.'
-                        : 'Facultatif. À défaut, le miroir est choisi parmi les questions '
-                          .'de la même compétence qui tendent le même piège.'),
+                    ->helperText(
+                        'Facultatif. À défaut, le miroir est choisi parmi les questions de la '
+                        .'même compétence qui tendent le même piège. Il reste modifiable APRÈS '
+                        .'publication, depuis l\'action « Question miroir » de la liste : la '
+                        .'désignation n\'est pas du contenu (DET-48).'
+                    ),
             ]);
     }
 

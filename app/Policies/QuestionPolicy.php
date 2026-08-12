@@ -83,6 +83,26 @@ class QuestionPolicy
             && $question->status === 'pedagogically_validated';
     }
 
+    /**
+     * Désigner la question miroir APRÈS publication — DET-48.
+     *
+     * L'acte n'existe que pour les questions publiées : tant que le contenu est
+     * ouvert, le champ est dans le formulaire de rédaction, sous
+     * `questions.create` comme le reste de ce qu'on y saisit.
+     *
+     * `questions.publish`, et pas `questions.create`. Sur une question déjà
+     * servie, changer la désignation change ce que des candidats recevront en
+     * vérification de leur erreur — c'est la même classe de décision que les
+     * drapeaux d'éligibilité, que `publish()` gouverne, et c'est précisément le
+     * précédent sur lequel l'arbitrage DET-48 s'appuie. Laisser tout auteur la
+     * modifier après coup aurait dégelé plus que la colonne.
+     */
+    public function designateMirror(User $user, Question $question): bool
+    {
+        return $this->peut($user, 'questions.publish')
+            && $question->status === 'published';
+    }
+
     public function retire(User $user, Question $question): bool
     {
         return $this->peut($user, 'questions.retire')

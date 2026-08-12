@@ -4,7 +4,10 @@ namespace App\Filament\Resources\Questions\Tables;
 
 use App\Models\CompetencyNode;
 use App\Models\Question;
+use App\Services\QuestionAuthoringService;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -93,11 +96,61 @@ class QuestionsTable
                     ->relationship('author', 'email'),
             ])
             ->recordActions([
+                self::designerLeMiroir(),
                 EditAction::make(),
             ])
             /* Aucune action de masse, et surtout aucune suppression : une
              * question ne s'efface pas, elle se retire — `restrictOnDelete` sur
              * `attempt_items.question_id` l'impose déjà en base. */
             ->toolbarActions([]);
+    }
+
+    /**
+     * Redésigner le miroir d'une question PUBLIÉE — DET-48.
+     *
+     * POURQUOI UNE ACTION ET PAS LE FORMULAIRE. Le champ vit dans le formulaire
+     * de rédaction, mais la page d'édition ne s'ouvre pas sur une question
+     * publiée : `QuestionPolicy::update()` la ferme, parce que tout le reste y
+     * est gelé. Rouvrir la page pour cette seule colonne aurait exposé
+     * quatorze champs que la base refuse — un écran plein de pièges. L'acte est
+     * donc servi comme la vérification d'une source l'est : une action nommée,
+     * un seul champ, un seul appel de service.
+     *
+     * L'ÉCRITURE PASSE PAR `QuestionAuthoringService::designerMiroir()`. Rien
+     * n'est écrit ici, et le gel du contenu reste tenu par le déclencheur : si
+     * cette action tentait autre chose que cette colonne, la base la refuserait.
+     */
+    private static function designerLeMiroir(): Action
+    {
+        return Action::make('designer_miroir')
+            ->label('Question miroir')
+            ->icon('heroicon-o-arrows-right-left')
+            ->modalHeading('Désigner la question qui vérifiera celle-ci')
+            ->modalDescription(
+                'La désignation n\'est pas du contenu : elle ne change rien à ce qu\'un '
+                .'candidat a lu, seulement quelle question lui retendra le même piège après '
+                .'une erreur. Elle se modifie donc après publication (DET-48).'
+            )
+            ->visible(fn (Question $record) => auth()->user()->can('designateMirror', $record))
+            ->fillForm(fn (Question $record) => ['mirror_question_id' => $record->mirror_question_id])
+            ->schema([
+                Select::make('mirror_question_id')
+                    ->label('Question miroir désignée')
+                    ->options(fn (Question $record) => Question::query()
+                        ->where('competency_node_id', $record->competency_node_id)
+                        ->where('locale', $record->locale)
+                        ->whereKeyNot($record->getKey())
+                        ->orderBy('id')
+                        ->pluck('stem', 'id'))
+                    ->searchable()
+                    ->helperText(
+                        'Même compétence et même langue. À défaut de désignation, le miroir '
+                        .'est choisi parmi les questions qui tendent le même piège. Une '
+                        .'désignée qui n\'est pas servable — brouillon, retirée — laisse ce '
+                        .'repli opérer plutôt que de refuser.'
+                    ),
+            ])
+            ->action(fn (Question $record, array $data) => app(QuestionAuthoringService::class)
+                ->designerMiroir($record, Question::find($data['mirror_question_id'] ?? null)));
     }
 }

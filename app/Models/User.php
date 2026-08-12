@@ -5,7 +5,10 @@ namespace App\Models;
 use App\Models\Concerns\HasPublicUuid;
 use App\Notifications\ResetPasswordNotification;
 use App\Services\EmailVerificationService;
+use App\Services\PermissionResolver;
 use App\Tenancy\TenantContext;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -20,7 +23,7 @@ use RuntimeException;
  * middleware EnsureEmailIsVerified et le réglage naja7i.email_verification_gate
  * — l'interface ne fait que rendre le compte « vérifiable ».
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     use HasPublicUuid, Notifiable;
 
@@ -108,6 +111,23 @@ class User extends Authenticatable implements MustVerifyEmail
      * Désormais : la méthode EXIGE que le contexte courant soit la plateforme.
      * Elle ne fournit plus de tenant_id : le trait le pose.
      */
+    /**
+     * L'entrée du back-office éditorial — lot A4.
+     *
+     * LE PANNEAU N'EST PAS UNE PERMISSION DE PLUS. Il n'ouvre rien par
+     * lui-même : chaque ressource est gardée par sa policy, et chaque écriture
+     * par les services. Ce contrôle-ci ne fait qu'éviter d'ouvrir à un candidat
+     * une porte où il ne verrait que des refus — `questions.view` est le plus
+     * petit droit qui rende le panneau utile.
+     *
+     * Filament exige cette méthode hors environnement local, et c'est heureux :
+     * sans elle, tout compte authentifié entrerait.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return in_array('questions.view', app(PermissionResolver::class)->forUser($this), true);
+    }
+
     public function grantCandidateRole(): Membership
     {
         $context = app(TenantContext::class);

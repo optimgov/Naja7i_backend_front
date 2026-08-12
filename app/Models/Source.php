@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
+use App\Observers\SourceObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * D'où deux sources différentes sur une question : celle du blueprint, et
  * celle qui fonde réellement la correction.
  */
+#[ObservedBy(SourceObserver::class)]
 class Source extends Model
 {
     use HasPublicUuid;

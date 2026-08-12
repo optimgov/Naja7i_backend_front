@@ -654,6 +654,17 @@ l'ancienne garde contre les deux contournements).
 
 ---
 
+## 6 bis. Questions ouvertes d'infrastructure
+
+Elles ne bloquent aucun lot, et se poseront au premier déploiement. Écrites ici
+pour n'être ni découvertes ni tranchées dans l'urgence.
+
+| Question | Pourquoi elle se pose | Quand |
+|---|---|---|
+| **`/admin` est-il exposé publiquement ou réservé au réseau interne ?** | Le panneau du lot A4 ouvre une route WEB, alors que toute la surface antérieure est sous `/api/v1` derrière le BFF. Exposé, il devient une cible d'authentification supplémentaire ; interne, il demande un accès réseau au personnel éditorial. La décision est d'infrastructure, pas de code — le panneau fonctionne dans les deux cas. | Premier déploiement |
+
+---
+
 ## 7. Ce que ce plan ne prévoit pas, et pourquoi
 
 **Journal d'audit administratif chaîné et ancrage WORM.** Aucun lot ne le

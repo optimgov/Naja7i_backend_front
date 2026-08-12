@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Questions\Schemas;
 
+use App\Filament\Libelles;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
 use App\Models\Question;
@@ -213,7 +214,7 @@ class QuestionForm
                             ->helperText('Obligatoire sur CHAQUE option, y compris la bonne.'),
                         Select::make('cause')
                             ->label('Cause de l\'erreur')
-                            ->options(self::causes())
+                            ->options(Libelles::causes())
                             /* La cause est INTERDITE sur la bonne réponse — une
                              * garde en base le refuse depuis le PAS-5. On la
                              * masque plutôt que de laisser la base répondre. */
@@ -255,21 +256,6 @@ class QuestionForm
                     ->dehydrated()
                     ->visible(fn (?Model $record) => $record === null),
             ]);
-    }
-
-    /** @return array<string, string> */
-    private static function causes(): array
-    {
-        return [
-            'confusion_notions' => 'Confusion entre notions',
-            'lecture_enonce' => 'Lecture de l\'énoncé',
-            'regle_mal_appliquee' => 'Règle mal appliquée',
-            'connaissance_absente' => 'Connaissance absente',
-            'source_perimee' => 'Source périmée',
-            'calcul' => 'Calcul',
-            'piege_formulation' => 'Piège de formulation',
-            'indetermine' => 'Indéterminé',
-        ];
     }
 
     /** Le contenu d'une question publiée ou retirée est gelé (ADR-0015 §5). */

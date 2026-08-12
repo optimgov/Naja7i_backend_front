@@ -7,6 +7,7 @@ use App\Observers\SourceObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * Registre des sources. Une source PROUVE quelque chose de précis — et
@@ -35,6 +36,37 @@ class Source extends Model
     ];
 
     protected $hidden = ['id', 'verified_by'];
+
+    /**
+     * Colonnes dont la modification ANNULE la vérification (PAS-29).
+     *
+     * LA RÈGLE N'EST PAS ICI. Elle est dans le déclencheur
+     * `sources_verification_invalidee`, qui l'applique quel que soit le chemin
+     * d'écriture — Filament, artisan, psql. Cette liste ne fait que la DÉCRIRE,
+     * pour que le back-office puisse prévenir AVANT l'enregistrement au lieu de
+     * laisser découvrir après.
+     *
+     * Une description peut mentir en dérivant de ce qu'elle décrit. Un test la
+     * confronte donc colonne par colonne au comportement réel de la base, dans
+     * les deux sens : chacune de ces colonnes annule, et une colonne absente
+     * de la liste n'annule pas.
+     */
+    public const COLONNES_DE_SENS = [
+        'code', 'kind', 'title_fr', 'title_ar',
+        'authority_fr', 'authority_ar', 'session_label', 'url',
+    ];
+
+    /**
+     * Les questions qui CITENT cette source — l'inverse de
+     * `Question::contentSources()`. Sert au back-office à dire ce qu'une
+     * modification va coûter : une source citée par trente questions ne se
+     * corrige pas comme une source citée par aucune.
+     */
+    public function questions(): BelongsToMany
+    {
+        return $this->belongsToMany(Question::class, 'question_sources')
+            ->withPivot('locator', 'verification');
+    }
 
     /** Le relecteur qui a contrôlé cette source. */
     public function verificateur(): BelongsTo

@@ -8,6 +8,7 @@ use App\Services\EmailVerificationService;
 use App\Services\PermissionResolver;
 use App\Tenancy\TenantContext;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,7 +24,7 @@ use RuntimeException;
  * middleware EnsureEmailIsVerified et le réglage naja7i.email_verification_gate
  * — l'interface ne fait que rendre le compte « vérifiable ».
  */
-class User extends Authenticatable implements FilamentUser, MustVerifyEmail
+class User extends Authenticatable implements FilamentUser, HasName, MustVerifyEmail
 {
     use HasPublicUuid, Notifiable;
 
@@ -126,6 +127,22 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     public function canAccessPanel(Panel $panel): bool
     {
         return in_array('questions.view', app(PermissionResolver::class)->forUser($this), true);
+    }
+
+    /**
+     * UN COMPTE NAJA7I N'A PAS DE NOM, et c'est une décision du PAS-2 : il
+     * s'identifie par son e-mail, jamais par un état civil qu'on n'a pas
+     * demandé. Filament, lui, affiche un nom dans son menu de compte et exige
+     * une chaîne — sans cette méthode, `getUserName()` reçoit null et TOUTE
+     * page du panneau échoue au rendu.
+     *
+     * Le défaut n'apparaissait pas dans les tests de composants Livewire, qui
+     * ne rendent pas la mise en page du panneau. Il a fallu une requête HTTP
+     * complète sur `/admin` pour le voir — d'où le test qui la fait.
+     */
+    public function getFilamentName(): string
+    {
+        return $this->email;
     }
 
     public function grantCandidateRole(): Membership

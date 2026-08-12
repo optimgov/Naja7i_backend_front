@@ -67,6 +67,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | A4a | Back-office éditorial, première moitié : le panneau, la rédaction, la relecture — Filament ne porte aucune règle métier, l'écriture est détournée vers les services | `3ab2355` |
 | — | SHA de l'A4a au journal et au backlog, DET-48 arbitrée, question d'infrastructure `/admin` | `3447920` |
 | A4b | Back-office éditorial, seconde moitié : le registre des sources signé et daté, l'invalidation visible sans rechargement, et la couverture en page d'accueil — DET-41 close | `2db4f6c` |
+| — | SHA de l'A4b au journal et au backlog, DET-41 close, DET-49 | `fea7762` |
+| 31 | DET-48 : le miroir désigné sort du gel du contenu publié — le pointeur est de l'usage, et rien d'autre ne le suit | `49f8b4b` |
 
 ## Lots frontend
 
@@ -78,5 +80,5 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 ## À venir
 
 Simulateur, profil candidat, module opportunités, commercial et CMI, import de
-questions en volume, dégel du miroir désigné (DET-48).
+questions en volume.
 Voir `docs/BACKLOG.md`.

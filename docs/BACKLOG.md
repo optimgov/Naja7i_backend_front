@@ -643,6 +643,34 @@ pas la mise en page — deux tests font désormais une vraie requête.
 **Lot A4 clos.** Hors périmètre et inchangés : import JSON/CSV en volume,
 gestion des rôles et des comptes du personnel.
 
+### DET-48 — Le dégel du miroir désigné · `49f8b4b`
+**Périmètre :** migration `000460` (redéfinition d'`assert_published_question_frozen`),
+`QuestionAuthoringService::designerMiroir()`, `QuestionPolicy::designateMirror()`,
+action `designer_miroir` de `QuestionsTable`, champ du formulaire de rédaction.
+
+**Acceptation :** la désignation se modifie sur une question publiée, à travers
+l'interface ; le reste du contenu — énoncé, justification, difficulté,
+remédiation — demeure gelé ; une question retirée reste un mur ; une désignation
+posée après publication est effectivement SERVIE par `QuestionsSoeurs` ; un
+auteur sans `questions.publish` ne voit pas l'action, et elle ne s'offre pas sur
+un brouillon, où le champ est déjà dans le formulaire.
+
+**Les deux mutations :** élargir l'exemption du déclencheur à `stem` fait rougir
+« le reste du contenu demeure gelé » ; l'annuler fait rougir « la désignation se
+modifie sur une question publiée ». Chacune ne touche que son test.
+
+**Un test du PAS-10 a été retiré de sa liste, délibérément.**
+`mirror_question_id` figurait parmi les colonnes gelées et le gel la couvrait :
+ce n'est pas un test qui était faux, c'est la règle qui a changé. Le
+remplacement est écrit à l'emplacement de l'ancienne entrée pour que la
+disparition ne se lise pas comme un oubli.
+
+**Ce que le brief demandait et qui n'a pas pu être livré tel quel :** « le champ
+cesse d'être en lecture seule sur une question publiée » — il l'est, mais le
+formulaire ne s'ouvre pas pour autant, `QuestionPolicy::update()` le fermant
+depuis A4a parce que toutes les autres colonnes y sont gelées. L'intention est
+tenue par une action dédiée ; le champ, lui, dit où aller.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

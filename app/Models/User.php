@@ -12,6 +12,7 @@ use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use RuntimeException;
@@ -44,6 +45,20 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
     public function memberships(): HasMany
     {
         return $this->hasMany(Membership::class);
+    }
+
+    /**
+     * Ce que le candidat DÉCLARE préparer — DET-42.
+     *
+     * `hasOne` et non `hasMany` : l'unicité est tenue en base par
+     * `candidate_profiles_unique` sur (tenant, candidat). La relation est
+     * elle-même filtrée par le scope de tenant du modèle lié — un compte peut
+     * donc préparer une épreuve en B2C et une autre dans un centre partenaire
+     * sans que les deux se voient.
+     */
+    public function candidateProfile(): HasOne
+    {
+        return $this->hasOne(CandidateProfile::class);
     }
 
     /** Méthodes de connexion du compte : mot de passe, Google, Facebook (PAS-2). */

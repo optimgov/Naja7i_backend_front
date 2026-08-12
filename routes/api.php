@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\MemoireController;
 use App\Http\Controllers\Api\V1\ParcoursController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ProgressionController;
 use App\Http\Controllers\Api\V1\QuestionAdminController;
 use App\Http\Controllers\Api\V1\SourceAdminController;
@@ -143,6 +144,22 @@ Route::prefix('v1')->group(function () {
         // PAS-8 — Restitution : maîtrise par compétence et ordonnance.
         Route::get('me/mastery/{examCode}', [ProgressionController::class, 'mastery']);
         Route::get('me/plan/{examCode}', [ProgressionController::class, 'plan']);
+
+        /*
+         * Le profil candidat — DET-42. L'épreuve préparée se DÉCLARE.
+         *
+         * Ces deux routes remplacent une déduction, elles ne s'ajoutent pas à
+         * côté : `GET me/attempts` dit quelle épreuve a été TOUCHÉE en dernier,
+         * `GET me/profile` dit laquelle est PRÉPARÉE. La première ne sert plus
+         * qu'à proposer une suggestion à confirmer quand la seconde est nulle.
+         *
+         * Pas de `no-store` : rien ici n'est calculé à l'instant de la réponse,
+         * contrairement au chronomètre d'une tentative.
+         */
+        Route::get('me/profile', [ProfileController::class, 'show']);
+
+        Route::put('me/profile', [ProfileController::class, 'update'])
+            ->middleware('throttle:30,1');   // une déclaration n'est pas un geste répété
     });
 
     /*

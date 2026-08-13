@@ -78,3 +78,4 @@ plutôt que Y parce que Z » vaut mieux qu'une question posée à mi-parcours.
 - Préfère `git -C <chemin> <commande>` à `cd <chemin> && git <commande>`.
 - Une seule autre session peut travailler sur le dépôt frontend en parallèle. Ne
   va jamais y vérifier quoi que ce soit sans y avoir été invité.
+- Pour LIRE un fichier ou en extraire un passage : Read, grep -n -A/-B, head, tail — jamais sed pour lire. Le détecteur de sécurité de sed déclenche une demande d'approbation même sur un sed inoffensif, et chaque demande interrompt le travail.

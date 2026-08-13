@@ -73,6 +73,8 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 32 | Le profil candidat : l'épreuve préparée se déclare, la déduction est remplacée et non doublée — DET-42 close | `64df5af` |
 | — | SHA du PAS-32 au journal et au backlog, DET-42 close | `dc69ed1` |
 | 33 | Les trois transitions manquantes de la chaîne éditoriale passent par l'API, chacune sous sa permission — le semis de recette quitte tinker ; DET-50 signalée | `1a198f3` |
+| — | SHA du PAS-33 au journal et au backlog, DET-50 | `f753665` |
+| 34 | Les limiteurs de débit prennent un nom : un seau par geste au lieu d'un seau par IP, et un profil de recette qui ne touche ni la file d'envoi ni la sécurité | `c6fe6ca` |
 
 ## Lots frontend
 

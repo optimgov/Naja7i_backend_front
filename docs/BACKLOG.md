@@ -747,6 +747,38 @@ méthode publique ne les emprunte, donc renvoyer une question à son rédacteur 
 impossible par quelque chemin que ce soit, Filament compris — et
 `retire(?string $reason)` accepte un motif qu'il n'écrit nulle part.
 
+### PAS-34 — Les limiteurs de débit prennent un nom · `c6fe6ca`
+**Périmètre :** `config/naja7i.php` (`rate_limits`), `AppServiceProvider`,
+`routes/api.php` (treize déclarations), `tests/Feature/RateLimitProfileTest.php`.
+Aucun contrôleur, aucun service, aucune migration.
+
+**Ce qui a ouvert le pas.** La première exécution de la recette frontend en
+intégration continue — un `429` à la création du deuxième compte candidat, à la
+cinquième requête publique du passage, aucun plafond atteint.
+
+**La cause, et elle datait du PAS-2.** `throttle:6,1` est un limiteur ANONYME :
+`ThrottleRequests` retombe sur `resolveRequestSignature`, `sha1(domaine|ip)`
+sans session et `sha1(user_id)` avec. La route n'entre pas dans la clé — toutes
+les routes partageaient un seau, chacune le comparant à son propre plafond.
+
+**Un défaut de produit était caché dedans.** `reponse` (120/min) et
+`ouverture-serie` (10/min) partageaient le seau du candidat authentifié : onze
+réponses fermaient l'ouverture d'une nouvelle série. Personne ne l'avait vu
+parce que rien ne le mesurait.
+
+**Acceptation :** deux routes publiques ne partagent plus un compteur ; le seuil
+reste par identité et non global ; le profil par défaut est `production` et
+refuse au septième essai comme avant ; un profil mal orthographié retombe sur
+`production` ; `reponse` porte la même valeur dans les deux profils ; les
+limiteurs de sécurité — `LoginThrottle`, renvoi de vérification — restent réels
+SOUS le profil de recette.
+
+**Les mutations :** retirer `->by()` fait rougir « le seuil est par identité » ;
+revenir aux `throttle:N,1` anonymes fait rougir « deux routes publiques ne
+partagent plus un compteur ». Un préfixe de clé écrit à la main s'est révélé
+INERTE sous mutation — le nom du limiteur entre déjà dans la clé par
+`md5($nom.$limit->key)` — et il est parti.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

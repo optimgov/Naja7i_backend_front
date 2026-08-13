@@ -40,34 +40,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // la préférence du compte via $request->user().
         $middleware->api(append: [ResolveTenant::class, SetLocale::class]);
 
-        /*
-         * PROXYS DE CONFIANCE — sans quoi la limitation de tentatives ne
-         * protège plus rien.
-         *
-         * En production, l'API ne voit jamais le candidat : la requête traverse
-         * Caddy puis le BFF Nitro, qui la relaie de serveur à serveur en
-         * posant `X-Forwarded-For`. Tant que ce proxy n'est pas déclaré de
-         * confiance, `$request->ip()` renvoie l'adresse d'un conteneur —
-         * LA MÊME pour tout le monde.
-         *
-         * Conséquence exacte sur ce produit : `login_throttle.per_ip` autorise
-         * 30 tentatives par quart d'heure (config/naja7i.php). Trente échecs
-         * cumulés, d'où qu'ils viennent, verrouilleraient la connexion de la
-         * plateforme entière. Et la preuve de recueil des consentements
-         * enregistrerait cette même adresse pour chaque candidat.
-         *
-         * La valeur vient de l'environnement : en local, aucun proxy n'est de
-         * confiance, ce qui est la bonne valeur par défaut. En production,
-         * `TRUSTED_PROXIES=*` est acceptable parce que l'API n'a AUCUN port
-         * publié — rien d'autre que le BFF ne peut l'atteindre.
-         */
-        $proxies = env('TRUSTED_PROXIES');
-        if ($proxies !== null && $proxies !== '') {
-            $middleware->trustProxies(
-                at: $proxies === '*' ? '*' : array_map('trim', explode(',', (string) $proxies)),
-            );
-        }
-
         /* `permission:<code>` porte l'autorisation fine de l'ADR-0009. Elle est
          * déclarée sur la ROUTE et non dans la méthode : une action protégée
          * doit l'être avant que le contrôleur ne s'exécute, et le contrôle

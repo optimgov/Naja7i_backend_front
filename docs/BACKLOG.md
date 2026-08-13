@@ -779,6 +779,55 @@ partagent plus un compteur ». Un préfixe de clé écrit à la main s'est rév�
 INERTE sous mutation — le nom du limiteur entre déjà dans la clé par
 `md5($nom.$limit->key)` — et il est parti.
 
+### PAS-35 — L'examen blanc · `b2fc0e0`
+**Périmètre :** `SimulationController`, `SimulationReport`,
+`SimulationReportResource`, `AttemptExpired`, `AttemptService::startSimulation`
+et `::closeIfExpired`, index partiel `attempts_single_open_simulation`, deux
+routes, traductions FR/AR. `DiagnosticComposer` réemployé SANS MODIFICATION.
+
+**L'inventaire qui a ouvert le pas, et qui a contredit la consigne.** Le lot
+demandait une note « sur le barème réel (coefficients du blueprint) ».
+`BlueprintModel` ne porte ni sections, ni durée, ni barème : c'est un
+enregistrement de provenance, et ses trois champs `official_*` sont nuls par
+construction — le modèle ET la migration le disent, cette dernière ajoutant que
+les inventer « serait la faute la plus coûteuse de ce projet ». Vérifié en base :
+`official_question_count` NUL sur les trois épreuves, `official_scoring_note_fr`
+= « Barème détaillé non précisé par le descriptif officiel ».
+
+| Ce que le lot supposait | Où ça vit réellement | Verdict |
+|---|---|---|
+| sections et poids « du blueprint » | `competency_nodes.weight_percent` (ADR-0014) | existe → réemployé |
+| durée « du blueprint » | `exams.duration_minutes` | existe → réemployé |
+| barème / coefficients par question | nulle part, et explicitement non publié | **n'existe pas → non inventé** |
+| nombre de questions officiel | `official_question_count`, NUL partout | n'existe pas → convention du produit, déclarée |
+
+**Acceptation :** la série suit `weight_percent` et non la maîtrise — deux
+candidats aux maîtrises opposées reçoivent la même répartition ; sans durée
+officielle l'ouverture est refusée (`SIMULATION_DURATION_UNKNOWN`) ; une réponse
+après l'échéance est refusée par `ATTEMPT_EXPIRED`, code distinct
+d'`ATTEMPT_CLOSED` ; la tentative expirée est close par le SERVEUR, via
+`submit()`, et alimente maîtrise et calendrier comme toute autre série ; les
+cinq patrons de concurrence tiennent (clé rejouée, clé réutilisée refusée,
+une seule ouverte, index en base, 201/200, interception nommée) ; R06 intact —
+aucun score avant soumission ; le rapport n'expose ni `is_correct`, ni
+`rationale`, ni `cause`.
+
+**Le rapport rend un POURCENTAGE PONDÉRÉ, jamais une note sur 20.** Le barème
+n'est pas public : le contrat sert `official.scoring_note` telle quelle et
+annonce `not_official_scale`. Chaque section porte `asked`, le score porte
+`weight_covered` — aucun score sans son volume d'évidence. Le seuil officiel est
+CITÉ quand le descriptif le donne, jamais comparé au candidat : citer informe,
+comparer prédirait.
+
+**Les cinq mutations :** composer depuis l'ordonnance fait rougir la
+répartition ; inverser l'ordre des `catch` fait disparaître `ATTEMPT_EXPIRED` ;
+rendre `closeIfExpired` inerte fait rougir la clôture serveur ; retirer
+l'exigence de durée fait rougir le refus ; retirer l'index de la migration fait
+rougir l'unicité. Trois défauts de mes propres tests ont été trouvés en
+chemin — un nœud PARENT choisi comme domaine lourd alors qu'il ne porte aucun
+item, et deux scans de mots interdits qui mordaient sur une citation officielle
+et sur un démenti.
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

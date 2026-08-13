@@ -86,4 +86,62 @@ return [
     | d'en déclarer une seconde.
     */
     'timezone_candidat' => env('TIMEZONE_CANDIDAT', 'Africa/Casablanca'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Limitation de débit des routes — DEUX PROFILS, ET UNE CLÉ PAR LIMITEUR
+    |--------------------------------------------------------------------------
+    | Ces seuils étaient écrits en clair dans `routes/api.php` sous la forme
+    | `throttle:6,1`. Deux défauts, découverts par la première exécution de la
+    | recette de bout en bout en intégration continue :
+    |
+    | 1. LE COMPTEUR ÉTAIT PARTAGÉ. Pour une requête sans session, la signature
+    |    de `ThrottleRequests` est `sha1(domaine|ip)` — elle ne contient PAS la
+    |    route. Toutes les routes publiques comptaient donc dans le MÊME seau,
+    |    chacune le comparant à son propre plafond : le plus bas des plafonds
+    |    (`register`, 6) fermait la porte à tous les autres. Cinq requêtes
+    |    d'ouverture de session suffisaient à faire refuser une inscription.
+    |    Chaque limiteur nommé porte maintenant son propre espace de clé.
+    |
+    | 2. AUCUN RÉGLAGE POSSIBLE PAR ENVIRONNEMENT. La recette rejoue en quelques
+    |    secondes ce qu'un candidat fait en une heure ; elle attendait donc la
+    |    fenêtre, 260 s d'attente pure sur 521. Le profil `recette` relève les
+    |    seuils de TRANSPORT — et eux seuls.
+    |
+    | CE QUE LE PROFIL `recette` NE RELÈVE JAMAIS :
+    |
+    |   - `reponse`, la route qu'écoule la file d'envoi hors connexion. Elle
+    |     garde 120/min dans tous les profils : c'est la seule route dont un
+    |     vrai 429 a déjà produit un faux vert, et la recette doit continuer de
+    |     rencontrer un limiteur réel.
+    |   - les limiteurs de SÉCURITÉ, qui ne sont pas ici : `LoginThrottle`
+    |     (trois agrégats, `login_throttle` ci-dessus) et le limiteur par
+    |     adresse du renvoi de vérification (3 par 900 s, dans son contrôleur).
+    |     Ceux-là vivent dans le domaine, pas dans le transport, et restent
+    |     réels en recette comme en production. Le profil ne les voit pas.
+    |
+    | `production` est le défaut. Aucun environnement ne bascule sans le dire.
+    */
+    'rate_limits' => [
+        'profile' => env('RATE_LIMIT_PROFILE', 'production'),
+
+        'limits' => [
+            // route publique                  produit   recette
+            'demonstration' => ['production' => 30, 'recette' => 600],
+            'email-verify' => ['production' => 10, 'recette' => 600],
+            'email-resend' => ['production' => 6, 'recette' => 600],
+            'password-request' => ['production' => 6, 'recette' => 600],
+            'password-reset' => ['production' => 10, 'recette' => 600],
+            'register' => ['production' => 6, 'recette' => 600],
+            'login' => ['production' => 20, 'recette' => 600],
+
+            // ouverture d'une série : diagnostic, entraînement, séance mémoire
+            'ouverture-serie' => ['production' => 10, 'recette' => 600],
+            'miroir' => ['production' => 20, 'recette' => 600],
+            'profil' => ['production' => 30, 'recette' => 600],
+
+            // JAMAIS relevé — voir l'encadré ci-dessus.
+            'reponse' => ['production' => 120, 'recette' => 120],
+        ],
+    ],
 ];

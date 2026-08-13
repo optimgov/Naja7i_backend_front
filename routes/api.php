@@ -55,7 +55,7 @@ Route::prefix('v1')->group(function () {
      * disant que rien n'a été répondu ni enregistré (ADR-0018 §5).
      */
     Route::get('demonstration/correction', [DemonstrationController::class, 'correction'])
-        ->middleware('throttle:30,1');
+        ->middleware('throttle:demonstration');
 
     // Vérification d'e-mail et mot de passe oublié : routes PUBLIQUES. Le
     // candidat clique le lien depuis son application de messagerie, souvent
@@ -63,20 +63,20 @@ Route::prefix('v1')->group(function () {
     // du jeton opaque, pas de la session — et pas non plus d'une URL signée,
     // dont la signature ne survivrait pas au relais de Nitro (ADR-0008 §4).
     Route::post('auth/email/verify', [EmailVerificationController::class, 'verify'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:email-verify');
 
     Route::post('auth/email/resend', [EmailVerificationController::class, 'resend'])
-        ->middleware('throttle:6,1');
+        ->middleware('throttle:email-resend');
 
     Route::post('auth/password/request', [PasswordResetController::class, 'request'])
-        ->middleware('throttle:6,1');
+        ->middleware('throttle:password-request');
 
     Route::post('auth/password/reset', [PasswordResetController::class, 'reset'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:password-reset');
 
     Route::middleware('guest')->group(function () {
-        Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:6,1');
-        Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:20,1');
+        Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:register');
+        Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
     });
 
     // --- Session ouverte, e-mail pas nécessairement vérifié ----------------
@@ -116,20 +116,20 @@ Route::prefix('v1')->group(function () {
             Route::post('me/attempts/{uuid}/submit', [ParcoursController::class, 'submit']);
 
             Route::post('me/diagnostics/{examCode}', [ParcoursController::class, 'startDiagnostic'])
-                ->middleware('throttle:10,1');
+                ->middleware('throttle:ouverture-serie');
 
             // Entraînement ciblé : ce que l'ordonnance recommande devient cliquable.
             Route::post('me/training/{examCode}', [ParcoursController::class, 'startTraining'])
-                ->middleware('throttle:10,1');
+                ->middleware('throttle:ouverture-serie');
 
             /* F05 — la question miroir. À la demande, jamais servie d'office :
              * la correction n'en annonce que l'EXISTENCE. */
             Route::post('me/mirrors/{itemUuid}', [ParcoursController::class, 'startMirror'])
-                ->middleware('throttle:20,1');
+                ->middleware('throttle:miroir');
         });
 
         Route::put('me/attempts/{uuid}/items/{itemUuid}', [ParcoursController::class, 'answer'])
-            ->middleware('throttle:120,1');   // une réponse toutes les 30 s en rythme soutenu
+            ->middleware('throttle:reponse');   // une réponse toutes les 30 s en rythme soutenu
 
         Route::get('me/attempts/{uuid}/correction', [ParcoursController::class, 'correction']);
 
@@ -139,7 +139,7 @@ Route::prefix('v1')->group(function () {
         Route::get('me/memory/{examCode}/due', [MemoireController::class, 'due']);
 
         Route::post('me/memory/{examCode}/session', [MemoireController::class, 'startSession'])
-            ->middleware('throttle:10,1');
+            ->middleware('throttle:ouverture-serie');
 
         // PAS-8 — Restitution : maîtrise par compétence et ordonnance.
         Route::get('me/mastery/{examCode}', [ProgressionController::class, 'mastery']);
@@ -159,7 +159,7 @@ Route::prefix('v1')->group(function () {
         Route::get('me/profile', [ProfileController::class, 'show']);
 
         Route::put('me/profile', [ProfileController::class, 'update'])
-            ->middleware('throttle:30,1');   // une déclaration n'est pas un geste répété
+            ->middleware('throttle:profil');   // une déclaration n'est pas un geste répété
     });
 
     /*

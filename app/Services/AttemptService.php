@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\AttemptExpired;
 use App\Exceptions\IdempotencyKeyReused;
 use App\Exceptions\MirrorAlreadyOpen;
 use App\Exceptions\MirrorNotApplicable;
@@ -255,6 +256,168 @@ final class AttemptService
                 $idempotencyKey,
             );
         }
+    }
+
+    /**
+     * Ouvre un EXAMEN BLANC, ou rend celui déjà ouvert.
+     *
+     * @return array{attempt: Attempt, creee: bool}
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     * IL COMPOSE COMME LE DIAGNOSTIC, PAS COMME L'ENTRAÎNEMENT.
+     *
+     * `DiagnosticComposer` est réemployé tel quel : il répartit les questions
+     * selon les POIDS OFFICIELS des sous-domaines (`weight_percent`, ADR-0014),
+     * par la méthode des plus forts restes. C'est exactement ce qu'un examen
+     * blanc doit faire — REPRODUIRE l'épreuve.
+     *
+     * `TrainingComposer` fait l'inverse, et délibérément : il vise les domaines
+     * faibles de l'ordonnance. L'employer ici rendrait un examen blanc qui
+     * s'acharne sur les lacunes du candidat — plus dur que le concours, et
+     * faux sur ce qu'il prétend mesurer. Le test de mutation le vérifie :
+     * composer depuis l'ordonnance fait rougir la répartition par poids.
+     *
+     * On complète au niveau de l'épreuve quand un sous-domaine manque de
+     * questions, comme le diagnostic et pour la même raison : une série
+     * incomplète serait moins représentative qu'une série complétée.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     * LE CHRONOMÈTRE EST DUR, ET SA SOURCE EST OFFICIELLE.
+     *
+     * `expires_at` vient de `exams.duration_minutes`, qui n'est renseigné que
+     * lorsqu'une source officielle l'établit — le référentiel interdit de le
+     * déduire d'une autre spécialité. Sans durée connue, ON REFUSE D'OUVRIR :
+     * un examen blanc sans échéance ne reproduit rien, et une durée inventée
+     * serait exactement la faute que la migration des blueprints nomme comme
+     * la plus coûteuse du projet.
+     *
+     * C'est la seule tentative dont l'échéance ne se discute pas. Le
+     * diagnostic accepte une durée optionnelle ; l'entraînement et la révision
+     * n'en ont aucune.
+     */
+    public function startSimulation(
+        User $user,
+        Exam $exam,
+        string $locale,
+        string $idempotencyKey,
+        int $total,
+    ): array {
+        if ($exam->duration_minutes === null) {
+            throw new RuntimeException(
+                "L'épreuve {$exam->code} n'a pas de durée officielle : un examen blanc ne peut pas être chronométré."
+            );
+        }
+
+        $empreinte = $this->empreinte('simulation', $exam->id, ['total' => $total]);
+
+        $existante = $this->rejeu($user, $idempotencyKey, $empreinte);
+
+        if ($existante !== null) {
+            return ['attempt' => $existante, 'creee' => false];
+        }
+
+        /* PORTÉE GLOBALE, comme l'index qui la garde : une seule simulation
+         * ouverte, toutes épreuves confondues. Voir la migration pour la
+         * raison — deux échéances dures qui courent en parallèle. */
+        $ouverte = fn () => Attempt::where('user_id', $user->id)
+            ->where('kind', 'simulation')
+            ->open()
+            ->first();
+
+        $enCours = $ouverte();
+
+        /*
+         * UNE SIMULATION EXPIRÉE NE BLOQUE PAS LA SUIVANTE, elle se clôt.
+         *
+         * Le diagnostic se contente de l'ignorer et d'en ouvrir un autre —
+         * l'index partiel le lui permet, `status` restant `in_progress`. Ici
+         * c'est intenable : l'index est global, et une épreuve abandonnée le
+         * mois dernier interdirait tout examen blanc à vie. On la clôt donc
+         * par le chemin normal, celui qui alimente maîtrise et calendrier.
+         */
+        if ($enCours !== null) {
+            if (! $enCours->hasExpired()) {
+                return ['attempt' => $enCours, 'creee' => false];
+            }
+
+            $this->submit($enCours);
+        }
+
+        $questions = $this->composer->compose($exam, $locale, $total);
+
+        if ($questions->count() < $total) {
+            throw new RuntimeException(
+                "Série incomplète : {$questions->count()} questions disponibles sur {$total} pour l'épreuve {$exam->code}."
+            );
+        }
+
+        try {
+            $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $questions) {
+                $attempt = Attempt::create([
+                    'user_id' => $user->id,
+                    'exam_id' => $exam->id,
+                    'locale' => $locale,
+                    'idempotency_key' => $idempotencyKey,
+                    'idempotency_fingerprint' => $empreinte,
+                    'kind' => 'simulation',
+                    'status' => 'in_progress',
+                    'started_at' => now(),
+                    'last_activity_at' => now(),
+                    'expires_at' => now()->addMinutes($exam->duration_minutes),
+                    'item_count' => $questions->count(),
+                ]);
+
+                foreach ($questions as $i => $question) {
+                    AttemptItem::create([
+                        'attempt_id' => $attempt->id,
+                        'question_id' => $question->id,
+                        'competency_node_id' => $question->competency_node_id,
+                        'position' => $i + 1,
+                    ]);
+                }
+
+                return $attempt->fresh('items');
+            });
+
+            return ['attempt' => $attempt, 'creee' => true];
+        } catch (QueryException $e) {
+            // Deux ouvertures simultanées : l'index a tranché, on rend le gagnant.
+            return [
+                'attempt' => $this->gagnante(
+                    $e,
+                    ['attempts_single_open_simulation', 'attempts_tenant_user_idempotency_unique'],
+                    fn () => $ouverte()?->load('items')
+                        ?? Attempt::where('user_id', $user->id)
+                            ->where('idempotency_key', $idempotencyKey)->first()?->load('items'),
+                    $empreinte,
+                    $idempotencyKey,
+                ),
+                'creee' => false,
+            ];
+        }
+    }
+
+    /**
+     * Clôt une tentative dont l'échéance est passée, et le dit.
+     *
+     * LE SERVEUR FAIT FOI, ET IL AGIT — il ne se contente pas de refuser.
+     * Sans cela, une tentative expirée resterait `in_progress` indéfiniment :
+     * elle n'alimenterait ni la maîtrise ni le calendrier mémoire, et
+     * l'index « une seule simulation ouverte » resterait pris.
+     *
+     * `submit()` fait déjà tout le travail — il pose `expired` plutôt que
+     * `submitted` quand l'échéance est passée, fige la correction, recalcule
+     * la maîtrise et replanifie la mémoire. On ne réécrit donc pas la clôture,
+     * on l'appelle : une tentative expirée est soumise elle aussi, et par le
+     * MÊME chemin, dans la MÊME transaction.
+     */
+    public function closeIfExpired(Attempt $attempt): Attempt
+    {
+        if ($attempt->status !== 'in_progress' || ! $attempt->hasExpired()) {
+            return $attempt;
+        }
+
+        return $this->submit($attempt);
     }
 
     /**
@@ -712,8 +875,23 @@ final class AttemptService
                 );
             }
 
+            /*
+             * L'ÉCHÉANCE EST DURE, ET LE REFUS PORTE SON PROPRE NOM.
+             *
+             * `AttemptExpired` et non plus un `RuntimeException` nu : l'écran
+             * d'examen doit distinguer « votre temps est écoulé, cette réponse
+             * est perdue » de « cette série est déjà terminée ». La file
+             * d'envoi hors connexion aussi — une réponse mise en file avant
+             * l'échéance et écoulée après doit se présenter comme un refus
+             * explicable, pas comme une erreur de saisie.
+             *
+             * On lève DANS la transaction, après le verrou : l'état lu est
+             * celui qui fait foi. La clôture serveur est déclenchée par
+             * l'appelant, hors de cette transaction — la rendre ici
+             * ré-entrerait dans `submit()`, qui verrouille la même ligne.
+             */
             if ($attempt->hasExpired()) {
-                throw new RuntimeException('Cette tentative a expiré.');
+                throw new AttemptExpired;
             }
 
             // 3. Puis l'item.

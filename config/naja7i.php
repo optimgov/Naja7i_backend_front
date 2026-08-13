@@ -89,6 +89,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Examen blanc
+    |--------------------------------------------------------------------------
+    | LE NOMBRE DE QUESTIONS N'EST PAS OFFICIEL, ET C'EST TOUT LE PROBLÈME.
+    |
+    | `blueprints.official_question_count` est NUL pour les trois épreuves, et
+    | `official_scoring_note_fr` dit explicitement « Barème détaillé non précisé
+    | par le descriptif ». Les descriptifs 2025 donnent les domaines et leurs
+    | poids, jamais le format de l'épreuve.
+    |
+    | Le simulateur a pourtant besoin d'un nombre. On l'externalise ici plutôt
+    | que de l'écrire en dur, et le rapport publie l'absence de barème officiel
+    | à côté du score : le candidat sait que la LONGUEUR est une convention du
+    | produit, quand la RÉPARTITION, elle, suit les poids officiels.
+    |
+    | Le jour où un descriptif donne le nombre réel, cette clé devient une
+    | lecture de `official_question_count` — et le simulateur cesse d'avoir une
+    | convention à assumer.
+    */
+    'simulation' => [
+        'default_question_count' => env('SIMULATION_QUESTION_COUNT', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Limitation de débit des routes — DEUX PROFILS, ET UNE CLÉ PAR LIMITEUR
     |--------------------------------------------------------------------------
     | Ces seuils étaient écrits en clair dans `routes/api.php` sous la forme

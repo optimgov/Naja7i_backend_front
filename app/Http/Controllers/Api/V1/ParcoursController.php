@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\AccessGrant;
+use App\Exceptions\AttemptExpired;
 use App\Exceptions\IdempotencyKeyReused;
 use App\Exceptions\MirrorAlreadyOpen;
 use App\Exceptions\MirrorNotApplicable;
@@ -363,6 +364,30 @@ class ParcoursController extends Controller
                 $validated['confidence'],
                 $validated['elapsed_ms'] ?? null,
                 $validated['client_reported_at'] ?? null,
+            );
+        } catch (AttemptExpired $e) {
+            /*
+             * AVANT le `RuntimeException` dont il hérite — troisième occurrence
+             * de cet ordre dans ce contrôleur, et toujours la même raison :
+             * l'exception la plus précise se capture en premier, sinon elle se
+             * déguise en la plus générale.
+             *
+             * LE SERVEUR CLÔT CE QU'IL REFUSE. Refuser la réponse sans clore la
+             * tentative la laisserait `in_progress` pour toujours : elle
+             * n'alimenterait ni maîtrise ni calendrier, et l'index « une seule
+             * simulation ouverte » resterait pris. La clôture passe par
+             * `submit()`, donc par la même transaction que d'habitude — une
+             * tentative expirée est soumise elle aussi.
+             *
+             * Hors de la transaction d'`answer()`, qui verrouille la même ligne.
+             */
+            $this->attempts->closeIfExpired($attempt);
+
+            return ApiError::make(
+                'ATTEMPT_EXPIRED',
+                __('parcours.tentative_expiree'),
+                409,
+                ['attempt_uuid' => $attempt->uuid, 'item_uuid' => $item->uuid],
             );
         } catch (RuntimeException $e) {
             return ApiError::make('ATTEMPT_CLOSED', $e->getMessage(), 409);

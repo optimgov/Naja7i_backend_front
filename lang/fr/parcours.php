@@ -15,4 +15,9 @@ return [
     'cle_idempotence_reutilisee' => 'Cette demande a déjà servi pour une autre opération. Relancez-la avec une nouvelle clé.',
     'revision_rien_echu' => "Vous êtes à jour : aucune révision n'est prévue aujourd'hui.",
     'revision_sans_question_soeur' => "Vos révisions du jour n'ont pas encore de question disponible. La banque s'étoffe ; rien ne vous manque de votre côté.",
+    'simulation_indisponible' => "L'examen blanc n'est pas encore disponible pour cette épreuve : la banque ne compte pas assez de questions publiées.",
+    'simulation_duree_inconnue' => "La durée officielle de cette épreuve n'est pas encore établie. Un examen blanc ne peut pas être chronométré sans elle.",
+    'simulation_base_de_notation' => "Cette note porte sur une série composée selon les poids officiels des domaines de l'épreuve. Elle mesure ce que vous avez démontré aujourd'hui, sur cette série.",
+    'simulation_bareme_non_officiel' => "Le barème officiel du concours n'est pas public : cette note est exprimée en pourcentage pondéré, elle n'est pas une note sur 20.",
+    'tentative_expiree' => "Le temps imparti est écoulé. Cette réponse n'a pas été enregistrée, et l'épreuve a été clôturée.",
 ];

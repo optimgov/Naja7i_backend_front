@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ProgressionController;
 use App\Http\Controllers\Api\V1\QuestionAdminController;
+use App\Http\Controllers\Api\V1\SimulationController;
 use App\Http\Controllers\Api\V1\SourceAdminController;
 use Illuminate\Support\Facades\Route;
 
@@ -126,6 +127,20 @@ Route::prefix('v1')->group(function () {
              * la correction n'en annonce que l'EXISTENCE. */
             Route::post('me/mirrors/{itemUuid}', [ParcoursController::class, 'startMirror'])
                 ->middleware('throttle:miroir');
+
+            /*
+             * L'EXAMEN BLANC. Sous `no-store` comme tout ce qui rend une
+             * tentative, et pour une raison plus aiguë qu'ailleurs : son
+             * `seconds_remaining` décompte une échéance DURE. Une réponse
+             * rejouée depuis un cache rendrait un chronomètre faux à un
+             * candidat qui compose contre la montre.
+             */
+            Route::post('me/simulations/{examCode}', [SimulationController::class, 'start'])
+                ->middleware('throttle:ouverture-serie');
+
+            /* Le rapport peut CLORE la tentative quand l'échéance est passée :
+             * il écrit, donc il ne se met pas en cache non plus. */
+            Route::get('me/simulations/{uuid}/report', [SimulationController::class, 'show']);
         });
 
         Route::put('me/attempts/{uuid}/items/{itemUuid}', [ParcoursController::class, 'answer'])

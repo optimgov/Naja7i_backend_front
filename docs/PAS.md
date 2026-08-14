@@ -77,6 +77,9 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 34 | Les limiteurs de débit prennent un nom : un seau par geste au lieu d'un seau par IP, et un profil de recette qui ne touche ni la file d'envoi ni la sécurité | `c6fe6ca` |
 | — | SHA du PAS-34 au journal et au backlog, DET-51 | `fc05630` |
 | 35 | L'examen blanc : composition aux poids officiels, chronomètre dur pris sur la durée officielle, clôture serveur, et une note pondérée qui n'invente aucun barème | `b2fc0e0` |
+| — | SHA du PAS-35 au journal et au backlog, DET-52 et DET-53 | `1d0e915` |
+| — | DET-54 signalée : les citations officielles n'existent qu'en français | `3eee115` |
+| 36 | DET-54 close : les deux citations officielles gagnent leur colonne arabe, servies par `localized()` avec repli français | `1308240` |
 
 ## Lots frontend
 

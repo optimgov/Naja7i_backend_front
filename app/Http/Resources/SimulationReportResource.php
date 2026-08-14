@@ -44,8 +44,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *    au-dessus du seuil » prédit.
  *
  * 2. AUCUNE NOTE SUR 20. Le barème n'est pas public. Les trois épreuves portent
- *    `official_scoring_note_fr` = « Barème détaillé non précisé par le
- *    descriptif », et `official_question_count` est NUL partout. La migration
+ *    `official_scoring_note` = « Barème détaillé non précisé par le
+ *    descriptif » — servi par `localized()` depuis DET-54, donc en arabe quand
+ *    la traduction existe — et `official_question_count` est NUL partout. La migration
  *    des blueprints tranche : inventer ces valeurs « serait la faute la plus
  *    coûteuse de ce projet ». Le rapport rend donc un POURCENTAGE PONDÉRÉ, et
  *    publie la note d'absence de barème à côté — l'absence est une information,
@@ -112,8 +113,11 @@ class SimulationReportResource extends JsonResource
                  * produit préfère le vide à l'invention. Un client qui les
                  * reçoit nuls doit dire « non précisé », jamais combler. */
                 'question_count' => $blueprint?->official_question_count,
-                'scoring_note' => $blueprint?->official_scoring_note_fr,
-                'admission_threshold_note' => $blueprint?->official_admission_threshold_note_fr,
+                /* `localized()` et non le champ `_fr` en dur (DET-54) : ces deux
+                 * citations ont désormais leur colonne arabe, et le repli reste
+                 * le français quand la traduction manque. */
+                'scoring_note' => $blueprint?->localized('official_scoring_note'),
+                'admission_threshold_note' => $blueprint?->localized('official_admission_threshold_note'),
                 'blueprint_version' => $blueprint?->version,
             ],
 

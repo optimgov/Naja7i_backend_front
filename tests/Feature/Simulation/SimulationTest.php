@@ -563,6 +563,69 @@ class SimulationTest extends TestCase
         $this->assertStringContainsString('Aucune prédiction', $corps['meta']['disclaimer']);
     }
 
+    public function test_les_citations_officielles_suivent_la_langue_du_candidat(): void
+    {
+        /*
+         * DET-54. Ces deux citations n'existaient qu'en français : un candidat
+         * arabophone lisait « Barème détaillé non précisé par le descriptif
+         * officiel » sur une page en arabe. `dir="auto"` rendait le mélange
+         * LISIBLE, ce qui masquait le défaut sans le corriger.
+         */
+        $arabophone = $this->compte('arabophone@naja7i.ma');
+        $arabophone->update(['locale' => 'ar']);
+
+        $attempt = $this->service()->startSimulation(
+            $arabophone, $this->epreuve, 'fr', (string) Str::uuid7(), 12
+        )['attempt'];
+
+        $this->service()->submit($attempt);
+
+        $this->flushSession();
+
+        $corps = $this->actingAs($arabophone)
+            ->getJson("/api/v1/me/simulations/{$attempt->uuid}/report")
+            ->assertOk()->json('data.official');
+
+        $this->assertSame(
+            'سلّم التنقيط المفصّل غير محدَّد في الوصف الرسمي.',
+            $corps['scoring_note'],
+        );
+        $this->assertSame(
+            'عتبة القبول غير محدَّدة في الوصف الرسمي.',
+            $corps['admission_threshold_note'],
+        );
+    }
+
+    public function test_le_francais_reste_le_repli_quand_l_arabe_manque(): void
+    {
+        /*
+         * Ajouter la colonne n'oblige pas à la remplir : les blueprints restent
+         * vides tant qu'aucune source ne les établit. Une citation vraie mais
+         * pas encore traduite vaut mieux que rien — c'est ce que faisait déjà
+         * le produit, à ceci près qu'il n'avait alors aucune autre issue.
+         */
+        $this->epreuve->currentBlueprint->update([
+            'official_scoring_note_ar' => null,
+            'official_admission_threshold_note_ar' => null,
+        ]);
+
+        $arabophone = $this->compte('sans-traduction@naja7i.ma');
+        $arabophone->update(['locale' => 'ar']);
+
+        $attempt = $this->service()->startSimulation(
+            $arabophone, $this->epreuve, 'fr', (string) Str::uuid7(), 12
+        )['attempt'];
+
+        $this->service()->submit($attempt);
+        $this->flushSession();
+
+        $corps = $this->actingAs($arabophone)
+            ->getJson("/api/v1/me/simulations/{$attempt->uuid}/report")
+            ->assertOk()->json('data.official');
+
+        $this->assertStringContainsString('Barème détaillé', $corps['scoring_note']);
+    }
+
     public function test_le_rapport_renvoie_vers_l_ordonnance(): void
     {
         $attempt = $this->ouvrir(12);

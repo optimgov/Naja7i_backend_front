@@ -294,7 +294,9 @@ class Crmef2025Seeder extends Seeder
             'version' => '2025-11',
             'official_question_count' => null,             // non établi par la source
             'official_scoring_note_fr' => 'Barème détaillé non précisé par le descriptif officiel.',
+            'official_scoring_note_ar' => 'سلّم التنقيط المفصّل غير محدَّد في الوصف الرسمي.',
             'official_admission_threshold_note_fr' => 'Seuil d\'admission non précisé par le descriptif officiel.',
+            'official_admission_threshold_note_ar' => 'عتبة القبول غير محدَّدة في الوصف الرسمي.',
             'coverage_note_fr' => $note,
             'status' => 'published', 'published_at' => now(),
         ]);

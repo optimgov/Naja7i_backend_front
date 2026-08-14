@@ -13,6 +13,7 @@ use App\Services\QuestionAuthoringService;
 use App\Services\QuestionIntegrityChecker;
 use App\Services\QuestionTransitionService;
 use App\Support\ApiError;
+use App\Support\UniqueViolation;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -104,12 +105,58 @@ class QuestionAdminController extends Controller
      */
     public function update(Request $request, string $uuid): JsonResponse
     {
+        /*
+         * L'AMENDEMENT A SON PROPRE CONTRAT — audit tournée 3, BLOC-3.
+         *
+         * Cette méthode reprenait TOUTES les règles de rédaction en changeant
+         * `required` en `sometimes`. `exam_code`, `locale`, `remediation_uuid`,
+         * `source_code` et `source_locator` étaient donc VALIDÉS — puis
+         * ignorés, le tableau transmis au service n'en reprenant aucun.
+         * `PATCH {"locale":"ar"}` répondait 200 avec `fr` en base.
+         *
+         * Un succès partiel silencieux est pire qu'un refus : le rédacteur
+         * relit un brouillon qui n'est pas celui qui est persisté, et rien ne
+         * le lui dit. SOIT LE CHAMP EST APPLIQUÉ, SOIT LA REQUÊTE EST REFUSÉE
+         * EN LE NOMMANT.
+         *
+         * Ce qui n'est PAS amendable, et pourquoi :
+         *
+         *   `exam_code`       déplacer une question vers une autre épreuve
+         *                     laisserait son nœud de compétence pointer sur
+         *                     l'arbre de l'ancienne. Ce n'est pas un
+         *                     amendement, c'est une recréation.
+         *   `source_code`     citer une source engage la vérification
+         *   `source_locator`  documentaire (DET-46) : une citation se pose et
+         *                     se contrôle par son propre acte, pas au détour
+         *                     d'un PATCH d'énoncé.
+         */
+        $amendables = [
+            'competency_node_uuid', 'locale', 'stem', 'explanation',
+            'kind', 'difficulty', 'remediation_uuid', 'options',
+            'options.*.content', 'options.*.is_correct',
+            'options.*.rationale', 'options.*.cause',
+        ];
+
         $regles = collect($this->reglesDeRedaction())
+            ->only($amendables)
             ->map(fn (array $r) => array_map(
                 fn ($contrainte) => $contrainte === 'required' ? 'sometimes' : $contrainte,
                 $r
             ))
             ->all();
+
+        /* `options.*.content` et consorts restent `required` DANS une option
+         * fournie : amender les options les remplace en bloc, et une option
+         * sans justification n'est pas un amendement partiel, c'est une option
+         * invalide. */
+        foreach (['options.*.content', 'options.*.is_correct', 'options.*.rationale'] as $cle) {
+            $regles[$cle] = $this->reglesDeRedaction()[$cle];
+        }
+
+        /* Les champs non amendables sont REFUSÉS et nommés, jamais avalés. */
+        $regles['exam_code'] = ['prohibited'];
+        $regles['source_code'] = ['prohibited'];
+        $regles['source_locator'] = ['prohibited'];
 
         $validated = $request->validate($regles);
 
@@ -119,12 +166,16 @@ class QuestionAdminController extends Controller
             return ApiError::make('RESOURCE_NOT_FOUND', __('errors.not_found'), 404);
         }
 
-        $attributs = array_filter([
-            'stem' => $validated['stem'] ?? null,
-            'explanation' => $validated['explanation'] ?? null,
-            'difficulty' => $validated['difficulty'] ?? null,
-            'kind' => $validated['kind'] ?? null,
-        ], fn ($v) => $v !== null);
+        /* `array_key_exists` et non `?? null` : `difficulty` est nullable, et
+         * l'effacer explicitement est un amendement légitime qu'un filtre sur
+         * la nullité aurait avalé. */
+        $attributs = [];
+
+        foreach (['stem', 'explanation', 'difficulty', 'kind', 'locale'] as $champ) {
+            if (array_key_exists($champ, $validated)) {
+                $attributs[$champ] = $validated[$champ];
+            }
+        }
 
         if (isset($validated['competency_node_uuid'])) {
             $noeud = CompetencyNode::where('uuid', $validated['competency_node_uuid'])->first();
@@ -134,6 +185,18 @@ class QuestionAdminController extends Controller
             }
 
             $attributs['competency_node_id'] = $noeud->id;
+        }
+
+        /* La remédiation est RÉSOLUE puis transmise, comme la compétence. Elle
+         * était validée et perdue en route. */
+        if (isset($validated['remediation_uuid'])) {
+            $remediation = Remediation::where('uuid', $validated['remediation_uuid'])->first();
+
+            if ($remediation === null) {
+                return ApiError::make('RESOURCE_NOT_FOUND', __('errors.not_found'), 404);
+            }
+
+            $attributs['remediation_id'] = $remediation->id;
         }
 
         try {
@@ -154,6 +217,28 @@ class QuestionAdminController extends Controller
              * panne et se relance : on ne déguise pas une erreur de base en
              * refus métier.
              */
+            /*
+             * L'UNICITÉ DE LA BONNE RÉPONSE EST UN REFUS MÉTIER, PAS UNE PANNE.
+             *
+             * `question_options_single_correct` est un index unique partiel :
+             * deux options `is_correct` sur la même question le violent, en
+             * SQLSTATE 23505 et non P0001. Il sortait donc en 500, avec la
+             * requête et ses valeurs liées — alors que le rédacteur a
+             * simplement coché deux bonnes réponses.
+             *
+             * Trouvé en écrivant le test « un amendement qui échoue ne laisse
+             * rien derrière lui » : la transaction annulait bien, mais la
+             * réponse mentait sur la nature du refus.
+             */
+            if (UniqueViolation::on($e, 'question_options_single_correct')) {
+                return ApiError::make(
+                    'VALIDATION_FAILED',
+                    __('validation.une_seule_bonne_reponse'),
+                    422,
+                    [['field' => 'options', 'messages' => [__('validation.une_seule_bonne_reponse')]]],
+                );
+            }
+
             if (($e->errorInfo[0] ?? null) !== 'P0001') {
                 throw $e;
             }

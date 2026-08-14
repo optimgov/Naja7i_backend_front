@@ -223,14 +223,20 @@ class DesignationMiroirTest extends TestCase
 
         $selecteur = app(QuestionsSoeurs::class);
 
+        /* La cause est désormais un argument : une désignation n'est servie que
+         * si elle tend LE piège raté (audit tournée 3, BLOC-2). Le fixture de
+         * ce test donne `calcul` au distracteur A de chaque question, c'est
+         * donc celle-là qu'on demande. */
+        $cause = 'calcul';
+
         $this->assertNull(
-            $selecteur->designee($publiee->fresh(), 'fr'),
+            $selecteur->designee($publiee->fresh(), 'fr', $cause),
             'Rien n\'est désigné au départ : le repli par couple ferait foi.'
         );
 
         app(QuestionAuthoringService::class)->designerMiroir($publiee, $choisie);
 
-        $servie = $selecteur->designee($publiee->fresh(), 'fr');
+        $servie = $selecteur->designee($publiee->fresh(), 'fr', $cause);
 
         $this->assertNotNull($servie);
         $this->assertSame($choisie->id, $servie->id);

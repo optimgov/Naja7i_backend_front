@@ -237,4 +237,5 @@ return [
         'phone' => 'numéro de téléphone',
     ],
 
+    'une_seule_bonne_reponse' => 'Une question ne peut avoir qu’une seule bonne réponse.',
 ];

@@ -51,9 +51,30 @@ class CorrectionResource extends JsonResource
                 'position' => $option->position,
                 'content' => $option->content,
                 'is_correct' => $option->is_correct,
+                /* La justification est GRATUITE par conception : elle est le
+                 * contenu éditorial de la question, et la retirer ferait de la
+                 * correction un QCM ordinaire pour les comptes gratuits. */
                 'rationale' => $option->rationale,
-                // La cause n'est rendue que si le quota le permet.
-                'cause' => $this->causeVisible ? $option->cause : null,
+
+                /*
+                 * LA CAUSE DU SEUL DISTRACTEUR CHOISI — audit tournée 3, BLOC-1.
+                 *
+                 * F03 le dit en toutes lettres : « Lit la cause associée au
+                 * DISTRACTEUR CHOISI ». Cette ligne les rendait TOUTES dès que
+                 * le quota était ouvert — soit trois hypothèses d'erreur pour
+                 * une unité, sur des options que le candidat n'a pas prises.
+                 *
+                 * Une cause est une hypothèse sur CE QUE LE CANDIDAT A FAIT.
+                 * Sur une option qu'il n'a pas choisie, elle ne diagnostique
+                 * rien : elle vend le travail éditorial d'étiquetage.
+                 *
+                 * Si l'abonnement doit un jour ouvrir les causes des autres
+                 * distracteurs, ce sera une RÈGLE ÉCRITE — elle n'est pas dans
+                 * F03 aujourd'hui.
+                 */
+                'cause' => $this->causeVisible && $choisie !== null && $option->id === $choisie->id
+                    ? $option->cause
+                    : null,
             ])->values(),
             'cause_locked' => ! $this->causeVisible && $response?->is_correct === false,
 

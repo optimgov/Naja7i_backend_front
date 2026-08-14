@@ -31,19 +31,56 @@ class EditQuestion extends EditRecord
     protected static string $resource = QuestionResource::class;
 
     /**
+     * Les options sont hydratées à la lecture — le répéteur n'a plus de
+     * `->relationship()` pour le faire à notre place (audit tournée 3, BLOC-3).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['options'] = $this->record->options()
+            ->orderBy('position')
+            ->get(['content', 'is_correct', 'rationale', 'cause'])
+            ->map(fn ($o) => $o->only(['content', 'is_correct', 'rationale', 'cause']))
+            ->all();
+
+        return $data;
+    }
+
+    /**
+     * TOUT PASSE PAR LE SERVICE, ET DANS LA MÊME TRANSACTION.
+     *
+     * Cette méthode ne transmettait ni `locale` ni les OPTIONS. La langue était
+     * éditable au formulaire, acceptée à l'écran, et perdue en base — un succès
+     * partiel silencieux. Les options, elles, étaient sauvegardées par le
+     * répéteur AVANT d'arriver ici, hors du service : la cause posée sur la
+     * bonne réponse y survivait.
+     *
+     * `exam_id` reste absent, et volontairement : déplacer une question vers
+     * une autre épreuve laisserait son nœud de compétence pointer sur l'arbre
+     * de l'ancienne. L'API le refuse explicitement ; le formulaire le fige.
+     *
      * @param  array<string, mixed>  $data
      */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        return app(QuestionAuthoringService::class)->amender($record, [
-            'stem' => $data['stem'] ?? null,
-            'explanation' => $data['explanation'] ?? null,
-            'kind' => $data['kind'] ?? null,
-            'difficulty' => $data['difficulty'] ?? null,
-            'competency_node_id' => $data['competency_node_id'] ?? null,
-            'remediation_id' => $data['remediation_id'] ?? null,
-            'mirror_question_id' => $data['mirror_question_id'] ?? null,
-        ]);
+        $attributs = [];
+
+        foreach ([
+            'stem', 'explanation', 'kind', 'difficulty', 'locale',
+            'competency_node_id', 'remediation_id', 'mirror_question_id',
+        ] as $champ) {
+            if (array_key_exists($champ, $data)) {
+                $attributs[$champ] = $data[$champ];
+            }
+        }
+
+        return app(QuestionAuthoringService::class)->amender(
+            $record,
+            $attributs,
+            $data['options'] ?? null,
+        );
     }
 
     protected function getHeaderActions(): array

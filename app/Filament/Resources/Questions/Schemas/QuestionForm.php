@@ -214,7 +214,22 @@ class QuestionForm
             ->schema([
                 Repeater::make('options')
                     ->label('')
-                    ->relationship()
+                    /*
+                     * PAS DE `->relationship()` — audit tournée 3, BLOC-3.
+                     *
+                     * Avec lui, Filament sauvegarde la relation LUI-MÊME, avant
+                     * `handleRecordUpdate` et donc hors de
+                     * `QuestionAuthoringService::amender()`. L'affirmation d'A4a
+                     * — « l'écriture passe par le service » — était vraie à la
+                     * création et fausse à l'amendement des options : la cause
+                     * posée sur la bonne réponse survivait, et rien ne pouvait
+                     * plus la retirer.
+                     *
+                     * Les options sont donc hydratées à la lecture et passées à
+                     * `amender()` dans la MÊME transaction que les attributs.
+                     * Voir `EditQuestion::handleRecordUpdate` et
+                     * `CreateQuestion`.
+                     */
                     ->orderColumn('position')
                     ->minItems(2)->maxItems(6)
                     ->defaultItems(4)

@@ -282,6 +282,160 @@ class ParcoursHttpTest extends TestCase
         );
     }
 
+    /*
+     * ══════════════════════════════════════════════════════════════════════
+     * BLOC-1 DE L'AUDIT TOURNÉE 3 — F03 ÉTAIT CONTOURNABLE SANS RÉPONDRE.
+     *
+     * `$visible = ! $fausse || reveal(...)` : pour un item SANS RÉPONSE,
+     * `is_correct === false` vaut faux, donc `$fausse` est faux, donc
+     * `$visible` passait à vrai SANS toucher au quota. Et `CorrectionResource`
+     * sérialisait alors la cause de TOUTES les options.
+     *
+     * Un compte gratuit ouvrait une série, ne répondait à rien, soumettait, et
+     * lisait les trente causes. Le plafond protégeait le compteur, pas la
+     * charge utile.
+     *
+     * Ces trois tests étaient absents — l'ancien mesurait `cause_locked` et le
+     * compteur, jamais les VALEURS `cause` réellement rendues.
+     * ══════════════════════════════════════════════════════════════════════
+     */
+
+    /**
+     * L'uuid de la bonne option d'un item, LU EN BASE.
+     *
+     * La passation ne sert pas `is_correct` — c'est R06, et cette liste blanche
+     * est précisément ce qu'on ne veut pas assouplir pour arranger un test. Le
+     * test descend donc à la base, comme le ferait un correcteur.
+     */
+    private function bonneOption(array $item): string
+    {
+        return QuestionOption::whereHas(
+            'question',
+            fn ($q) => $q->where('uuid', $item['question']['uuid'])
+        )->where('is_correct', true)->value('uuid');
+    }
+
+    /*
+     * POURQUOI IL N'Y A PAS DE TEST SUR LA LIGNE DU CONTRÔLEUR.
+     *
+     * Le correctif du BLOC-1 tient en deux endroits : `$visible = $fausse &&
+     * reveal(...)` dans `ParcoursController`, et la cause du seul distracteur
+     * choisi dans `CorrectionResource`. La mutation qui rétablit `! $fausse ||`
+     * dans le contrôleur NE FAIT ROUGIR AUCUN TEST, et c'est vérifié, pas
+     * supposé.
+     *
+     * La raison est que trois gardes indépendantes rendent l'état inatteignable :
+     *
+     *   1. `QuestionAuthoringService` retire une cause posée sur la bonne
+     *      réponse — donc la bonne option n'en porte jamais à l'écriture ;
+     *   2. un déclencheur de base GÈLE les options d'une question publiée
+     *      (ADR-0015 §5) — donc on ne peut pas en poser une après coup ;
+     *   3. la ressource ne sert que la cause de l'option CHOISIE.
+     *
+     * Écrire quand même un test aurait demandé de désactiver le déclencheur
+     * dans la transaction de test — ce que PostgreSQL refuse d'ailleurs quand
+     * des événements sont en attente. Fabriquer un état que le produit interdit
+     * pour prouver une ligne, c'est tester le démontage, pas la règle.
+     *
+     * La ligne du contrôleur reste : elle énonce la règle LÀ OÙ ELLE SE DÉCIDE
+     * — une cause ne sort jamais sans acquisition — et elle tiendra le jour où
+     * l'une des trois gardes bougera. Ce commentaire existe pour qu'on ne la
+     * supprime pas un jour au motif qu'« aucun test ne la couvre ».
+     */
+
+    /** Toutes les valeurs `cause` non nulles servies par une correction. */
+    private function causesServies(array $donnees): array
+    {
+        return collect($donnees)
+            ->flatMap(fn (array $ligne) => collect($ligne['options'])->pluck('cause'))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    public function test_une_serie_soumise_sans_aucune_reponse_ne_livre_aucune_cause(): void
+    {
+        $attempt = $this->ouvrirDiagnostic();
+
+        // On ne répond à RIEN. C'est tout le scénario.
+        $this->actingAs($this->candidat)->postJson("/api/v1/me/attempts/{$attempt['uuid']}/submit");
+
+        $correction = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/attempts/{$attempt['uuid']}/correction")
+            ->assertOk();
+
+        $this->assertSame(
+            [],
+            $this->causesServies($correction->json('data')),
+            'Un item sans réponse n\'a aucune erreur à diagnostiquer : il ne peut pas livrer de cause.'
+        );
+
+        $this->assertSame(0, $correction->json('meta.cause_quota.revealed'));
+    }
+
+    public function test_une_bonne_reponse_ne_livre_aucune_cause(): void
+    {
+        $attempt = $this->ouvrirDiagnostic();
+
+        foreach ($attempt['items'] as $item) {
+            $juste = collect($item['question']['options'])->firstWhere('uuid', $this->bonneOption($item));
+
+            $this->actingAs($this->candidat)
+                ->putJson("/api/v1/me/attempts/{$attempt['uuid']}/items/{$item['item_uuid']}", [
+                    'option_uuid' => $juste['uuid'],
+                    'confidence' => 'sure',
+                ]);
+        }
+
+        $this->actingAs($this->candidat)->postJson("/api/v1/me/attempts/{$attempt['uuid']}/submit");
+
+        $correction = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/attempts/{$attempt['uuid']}/correction")
+            ->assertOk();
+
+        $this->assertSame([], $this->causesServies($correction->json('data')));
+        $this->assertSame(0, $correction->json('meta.cause_quota.revealed'));
+    }
+
+    public function test_une_reponse_fausse_ne_livre_que_la_cause_du_distracteur_choisi(): void
+    {
+        /*
+         * F03 : « Lit la cause associée au DISTRACTEUR CHOISI ». Rendre aussi
+         * celles des distracteurs non choisis livre un diagnostic que le
+         * candidat n'a pas demandé — et trois causes pour une unité de quota.
+         */
+        $attempt = $this->ouvrirDiagnostic();
+        $premier = $attempt['items'][0];
+
+        $choisie = collect($premier['question']['options'])
+            ->first(fn (array $o) => $o['uuid'] !== $this->bonneOption($premier));
+
+        $this->actingAs($this->candidat)
+            ->putJson("/api/v1/me/attempts/{$attempt['uuid']}/items/{$premier['item_uuid']}", [
+                'option_uuid' => $choisie['uuid'],
+                'confidence' => 'sure',
+            ]);
+
+        $this->actingAs($this->candidat)->postJson("/api/v1/me/attempts/{$attempt['uuid']}/submit");
+
+        $correction = $this->actingAs($this->candidat)
+            ->getJson("/api/v1/me/attempts/{$attempt['uuid']}/correction")
+            ->assertOk();
+
+        $this->assertCount(
+            1,
+            $this->causesServies($correction->json('data')),
+            'Une réponse fausse ouvre UNE cause : celle du distracteur choisi.'
+        );
+
+        $ligne = collect($correction->json('data'))
+            ->firstWhere('item_uuid', $premier['item_uuid']);
+
+        $portee = collect($ligne['options'])->firstWhere('uuid', $choisie['uuid']);
+
+        $this->assertNotNull($portee['cause'], 'La cause servie est celle de l\'option choisie.');
+    }
+
     public function test_la_justification_reste_visible_meme_quand_la_cause_est_verrouillee(): void
     {
         $attempt = $this->ouvrirDiagnostic();

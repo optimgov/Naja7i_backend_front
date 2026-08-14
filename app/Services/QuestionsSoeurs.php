@@ -120,7 +120,7 @@ final class QuestionsSoeurs
      * `mirror_question_id <> id` est garanti en base depuis le PAS-5 : la
      * désignée n'est jamais la question elle-même.
      */
-    public function designee(Question $source, string $locale): ?Question
+    public function designee(Question $source, string $locale, string $cause): ?Question
     {
         if ($source->mirror_question_id === null) {
             return null;
@@ -129,6 +129,30 @@ final class QuestionsSoeurs
         return Question::forDiagnostic()
             ->where('questions.id', $source->mirror_question_id)
             ->where('questions.locale', $locale)
+            /*
+             * MÊME COMPÉTENCE ET MÊME PIÈGE — audit tournée 3, BLOC-2.
+             *
+             * Cette méthode ne contrôlait que l'identifiant, le statut,
+             * l'éligibilité et la langue. Une désignée pouvait donc tendre un
+             * AUTRE piège que celui que le candidat venait de rater : l'écran
+             * annonçait une vérification de `confusion_notions` et servait une
+             * question sans ce distracteur.
+             *
+             * La conséquence n'était pas seulement trompeuse, elle était
+             * mesurable : `MemoryScheduler` fait avancer les couples portés par
+             * les distracteurs de la question RÉELLEMENT servie. Une réussite
+             * faisait donc progresser d'autres rendez-vous en laissant celui de
+             * la cause ratée exactement où il était. F05 cessait d'être une
+             * contre-épreuve.
+             *
+             * La désignation reste PRIORITAIRE (DET-45) — elle n'est simplement
+             * plus dispensée de vérifier ce qui fait qu'un miroir est un miroir.
+             */
+            ->where('questions.competency_node_id', $source->competency_node_id)
+            ->whereHas(
+                'options',
+                fn ($q) => $q->where('is_correct', false)->where('cause', $cause)
+            )
             ->with(['options' => fn ($q) => $q->where('is_correct', false)->whereNotNull('cause')])
             ->first();
     }

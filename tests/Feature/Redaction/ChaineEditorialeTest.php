@@ -607,6 +607,123 @@ class ChaineEditorialeTest extends TestCase
     }
 
     /** Mène une question jusqu'à la validation pédagogique, valideur ≠ auteur. */
+    /*
+     * ══════════════════════════════════════════════════════════════════════
+     * BLOC-3 DE L'AUDIT TOURNÉE 3 — LE PATCH RÉPONDAIT SUCCÈS SUR UN ÉTAT
+     * PARTIEL.
+     *
+     * `update()` transformait TOUTES les règles de rédaction en règles de
+     * `PATCH` — donc `exam_code`, `locale`, `remediation_uuid`, `source_code`
+     * et `source_locator` étaient VALIDÉS. Mais le tableau passé au service ne
+     * reprenait que l'énoncé, l'explication, la difficulté, le type et la
+     * compétence.
+     *
+     * `PATCH {"locale":"ar"}` répondait donc 200 avec `fr` toujours en base.
+     * Un succès partiel silencieux est pire qu'un refus : le rédacteur relit un
+     * brouillon qui n'est pas celui qui est persisté.
+     * ══════════════════════════════════════════════════════════════════════
+     */
+
+    public function test_amender_la_langue_l_applique_reellement(): void
+    {
+        $uuid = $this->rediger()->json('data.uuid');
+
+        $this->agirComme($this->auteur)
+            ->patchJson("/api/v1/admin/questions/{$uuid}", ['locale' => 'ar'])
+            ->assertOk()
+            ->assertJsonPath('data.locale', 'ar');
+
+        $this->assertSame('ar', Question::where('uuid', $uuid)->value('locale'));
+    }
+
+    public function test_amender_la_remediation_l_applique_reellement(): void
+    {
+        $uuid = $this->rediger()->json('data.uuid');
+
+        $autre = Remediation::create([
+            'competency_node_id' => $this->noeud->id, 'locale' => 'fr',
+            'title' => 'Autre remédiation', 'content' => 'x',
+            'estimated_minutes' => 9, 'status' => 'published',
+        ]);
+
+        $this->agirComme($this->auteur)
+            ->patchJson("/api/v1/admin/questions/{$uuid}", ['remediation_uuid' => $autre->uuid])
+            ->assertOk();
+
+        $this->assertSame(
+            $autre->id,
+            Question::where('uuid', $uuid)->value('remediation_id'),
+        );
+    }
+
+    public function test_un_champ_non_amendable_est_refuse_en_nommant_le_champ(): void
+    {
+        /*
+         * SOIT LE CHAMP EST APPLIQUÉ, SOIT LA REQUÊTE EST REFUSÉE EN LE NOMMANT.
+         *
+         * `exam_code` déplacerait la question vers une autre épreuve en laissant
+         * son nœud de compétence pointer sur l'arbre de l'ancienne. Le refuser
+         * est une décision ; le valider puis l'ignorer n'en est pas une.
+         */
+        $uuid = $this->rediger()->json('data.uuid');
+
+        $this->agirComme($this->auteur)
+            ->patchJson("/api/v1/admin/questions/{$uuid}", ['exam_code' => 'AUTRE-CODE'])
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'VALIDATION_FAILED');
+
+        $this->assertSame(
+            $this->epreuve->id,
+            Question::where('uuid', $uuid)->value('exam_id'),
+        );
+    }
+
+    public function test_amender_les_options_passe_par_le_service(): void
+    {
+        $uuid = $this->rediger()->json('data.uuid');
+
+        $this->agirComme($this->auteur)
+            ->patchJson("/api/v1/admin/questions/{$uuid}", [
+                'options' => [
+                    ['content' => 'A modifiée', 'is_correct' => false, 'rationale' => 'A est ainsi.', 'cause' => 'calcul'],
+                    ['content' => 'B modifiée', 'is_correct' => true, 'rationale' => 'B est ainsi.'],
+                    ['content' => 'C modifiée', 'is_correct' => false, 'rationale' => 'C est ainsi.', 'cause' => 'lecture_enonce'],
+                    ['content' => 'D modifiée', 'is_correct' => false, 'rationale' => 'D est ainsi.', 'cause' => 'connaissance_absente'],
+                ],
+            ])
+            ->assertOk();
+
+        $question = Question::where('uuid', $uuid)->with('options')->firstOrFail();
+
+        $this->assertTrue($question->options->contains('content', 'A modifiée'));
+
+        /* LA CAUSE POSÉE SUR LA BONNE RÉPONSE EST TOUJOURS RETIRÉE PAR LE
+         * SERVICE — l'amendement ne doit pas être une porte de contournement. */
+        $this->assertNull($question->options->firstWhere('is_correct', true)->cause);
+    }
+
+    public function test_un_amendement_qui_echoue_ne_laisse_rien_derriere_lui(): void
+    {
+        $uuid = $this->rediger()->json('data.uuid');
+        $avant = Question::where('uuid', $uuid)->value('stem');
+
+        /* Deux bonnes réponses : l'invariant de base refuse. L'énoncé envoyé
+         * dans la même requête ne doit pas survivre au refus. */
+        $this->agirComme($this->auteur)
+            ->patchJson("/api/v1/admin/questions/{$uuid}", [
+                'stem' => 'Un énoncé qui ne doit pas rester',
+                'options' => [
+                    ['content' => 'A', 'is_correct' => true, 'rationale' => 'A est ainsi.'],
+                    ['content' => 'B', 'is_correct' => true, 'rationale' => 'B est ainsi.'],
+                    ['content' => 'C', 'is_correct' => false, 'rationale' => 'C est ainsi.', 'cause' => 'calcul'],
+                    ['content' => 'D', 'is_correct' => false, 'rationale' => 'D est ainsi.', 'cause' => 'lecture_enonce'],
+                ],
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame($avant, Question::where('uuid', $uuid)->value('stem'));
+    }
+
     private function menerJusquAValidation(Question $question): void
     {
         $transitions = app(QuestionTransitionService::class);

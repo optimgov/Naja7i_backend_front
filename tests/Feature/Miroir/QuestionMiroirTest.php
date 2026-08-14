@@ -326,6 +326,145 @@ class QuestionMiroirTest extends TestCase
         return $transitions->publish($question->fresh(), forDiagnostic: true)->load('options');
     }
 
+    /**
+     * Une question publiée dont les distracteurs portent les causes DEMANDÉES.
+     *
+     * Le fixture ordinaire donne les mêmes trois causes à toutes les questions,
+     * ce qui rendait le BLOC-2 invisible : la désignée portait toujours la
+     * cause ratée par accident.
+     */
+    private function questionAuxCauses(array $causes, string $enonce): Question
+    {
+        $question = Question::create([
+            'exam_id' => $this->epreuve->id,
+            'competency_node_id' => $this->noeud->id,
+            'locale' => 'fr',
+            'sibling_group' => (string) Str::uuid7(),
+            'stem' => $enonce,
+            'explanation' => 'Justification.',
+            'remediation_id' => Remediation::where('competency_node_id', $this->noeud->id)->value('id'),
+            /* Un auteur PAR question : `utilisateur()` insère, et deux appels
+             * dans le même test violeraient l'unicité de l'e-mail. */
+            'author_id' => $this->utilisateur('auteur-'.md5($enonce).'@naja7i.ma')->id,
+        ]);
+
+        /* LES DISTRACTEURS D'ABORD, la bonne réponse en dernier — c'est la
+         * convention de `peupler()`, et `servir(juste: false)` prend l'option
+         * en POSITION 1. L'inverse ferait répondre juste au test qui veut
+         * répondre faux, et le miroir deviendrait « sans objet ». */
+        foreach ($causes as $i => $cause) {
+            QuestionOption::create([
+                'question_id' => $question->id, 'position' => $i + 1,
+                'content' => "Distracteur {$cause}", 'is_correct' => false,
+                'rationale' => 'r', 'cause' => $cause,
+            ]);
+        }
+
+        QuestionOption::create([
+            'question_id' => $question->id, 'position' => count($causes) + 1,
+            'content' => 'Bonne', 'is_correct' => true, 'rationale' => 'r', 'cause' => null,
+        ]);
+
+        $question->contentSources()->attach($this->source->id, ['verification' => 'verified']);
+
+        $transitions = app(QuestionTransitionService::class);
+        $transitions->submitForReview($question);
+        $transitions->markReviewed($question->fresh(), $this->valideur);
+        $transitions->validate($question->fresh(), $this->valideur);
+
+        return $transitions->publish($question->fresh(), forDiagnostic: true)->load('options');
+    }
+
+    /*
+     * ══════════════════════════════════════════════════════════════════════
+     * BLOC-2 DE L'AUDIT TOURNÉE 3 — LA DÉSIGNÉE POUVAIT TENDRE UN AUTRE PIÈGE.
+     *
+     * `designee()` contrôlait l'identifiant, le statut, l'éligibilité et la
+     * langue — jamais la CAUSE. Le candidat se trompait par confusion de
+     * notions, l'écran annonçait une vérification du même piège, et servait une
+     * question qui ne le portait pas. Une réussite faisait alors avancer
+     * d'autres rendez-vous en laissant celui de `confusion_notions` intact.
+     *
+     * L'ancien test ne pouvait pas le voir : son fixture donnait les mêmes
+     * trois causes aux deux questions.
+     * ══════════════════════════════════════════════════════════════════════
+     */
+
+    public function test_une_designee_sans_la_cause_ratee_cede_au_couple(): void
+    {
+        $this->peupler(4);
+
+        /* La désignée ne porte PAS `confusion_notions`. Une vraie sœur, si. */
+        $designee = $this->questionAuxCauses(
+            ['lecture_enonce', 'connaissance_absente', 'calcul'],
+            'Désignée qui tend un AUTRE piège',
+        );
+
+        $source = $this->avecMiroirDesigne($designee);
+        $item = $this->servir($source, juste: false);
+
+        $servie = Question::where(
+            'uuid',
+            $this->ouvrirMiroir($item)->assertCreated()->json('data.items.0.question.uuid')
+        )->with('options')->firstOrFail();
+
+        $this->assertNotSame(
+            $designee->id, $servie->id,
+            'Une désignée qui ne tend pas le piège raté n\'est pas un miroir.'
+        );
+
+        $this->assertTrue(
+            $servie->options->contains(fn ($o) => $o->cause === 'confusion_notions'),
+            'La question servie doit porter la cause que le candidat vient de rater.'
+        );
+    }
+
+    public function test_le_repli_sur_le_couple_est_signale(): void
+    {
+        $this->peupler(4);
+
+        $designee = $this->questionAuxCauses(
+            ['lecture_enonce', 'connaissance_absente', 'calcul'],
+            'Désignée hors cause, repli attendu',
+        );
+
+        $source = $this->avecMiroirDesigne($designee);
+        $item = $this->servir($source, juste: false);
+
+        $this->ouvrirMiroir($item)
+            ->assertCreated()
+            ->assertJsonPath('meta.designation_ecartee', true);
+    }
+
+    public function test_une_designee_sans_la_cause_et_sans_repli_refuse(): void
+    {
+        /* Aucune sœur ne porte la cause : on refuse plutôt que de servir un
+         * miroir qui ne vérifie rien. */
+        $this->peupler(1);
+
+        /* `calcul` n'est portée par AUCUNE autre question : ni la désignée, ni
+         * celles de `peupler()`. Le repli n'a donc rien à servir, et c'est
+         * exactement l'état qu'on veut éprouver. La source porte quatre options
+         * — la publication l'exige — dont `calcul` en tête, que `servir()`
+         * choisit comme mauvaise réponse. */
+        $designee = $this->questionAuxCauses(
+            ['lecture_enonce', 'connaissance_absente', 'regle_mal_appliquee'],
+            'Désignée hors cause, aucun repli',
+        );
+
+        $source = $this->questionAuxCauses(
+            ['calcul', 'lecture_enonce', 'connaissance_absente'],
+            'Source à cause rare',
+        );
+        $source->update(['mirror_question_id' => $designee->id]);
+
+        $item = $this->servir($source->fresh(), juste: false);
+
+        $this->ouvrirMiroir($item)
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'MIRROR_NOT_AVAILABLE');
+    }
+
     public function test_le_miroir_designe_l_emporte_sur_le_couple(): void
     {
         $this->peupler(4);

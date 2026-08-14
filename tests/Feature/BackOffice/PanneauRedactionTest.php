@@ -149,6 +149,101 @@ class PanneauRedactionTest extends TestCase
         );
     }
 
+    /*
+     * ══════════════════════════════════════════════════════════════════════
+     * BLOC-3 DE L'AUDIT TOURNÉE 3, VERSANT FILAMENT.
+     *
+     * Deux brèches dans « toute écriture passe par le service » :
+     *
+     *   1. `handleRecordUpdate` ne transmettait ni `locale` ni les OPTIONS ;
+     *   2. le répéteur portait `->relationship()`, donc Filament sauvegardait
+     *      les options LUI-MÊME, avant `handleRecordUpdate` et hors de
+     *      `amender()`.
+     *
+     * Résultat mesuré par l'audit : dans une même sauvegarde, le contenu d'une
+     * option passait bien, la langue non — sans la moindre erreur à l'écran.
+     *
+     * Le test A4a annoncé ne jouait que la CRÉATION, jamais l'amendement.
+     * ══════════════════════════════════════════════════════════════════════
+     */
+
+    public function test_l_amendement_filament_applique_la_langue(): void
+    {
+        $question = $this->rediger();
+
+        Livewire::actingAs($this->auteur)
+            ->test(EditQuestion::class, ['record' => $question->uuid])
+            ->fillForm([
+                'exam_id' => $this->epreuve->id,
+                'competency_node_id' => $this->noeud->id,
+                'locale' => 'ar',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('ar', $question->fresh()->locale);
+    }
+
+    public function test_l_amendement_filament_passe_les_options_par_le_service(): void
+    {
+        $question = $this->rediger();
+
+        $options = $this->saisie()['options'];
+        $options[0]['content'] = 'A modifiée';
+        /* Cause posée sur la BONNE réponse : le service doit la retirer. Si
+         * Filament écrit la relation lui-même, elle survivrait. */
+        $options[1]['cause'] = 'confusion_notions';
+
+        Livewire::actingAs($this->auteur)
+            ->test(EditQuestion::class, ['record' => $question->uuid])
+            ->fillForm([
+                'exam_id' => $this->epreuve->id,
+                'competency_node_id' => $this->noeud->id,
+                'options' => $options,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $fraiche = $question->fresh()->load('options');
+
+        $this->assertTrue(
+            $fraiche->options->contains('content', 'A modifiée'),
+            'L\'amendement des options doit être persisté.'
+        );
+
+        $this->assertNull(
+            $fraiche->options->firstWhere('is_correct', true)->cause,
+            'La cause sur la bonne réponse est retirée PAR LE SERVICE — sa survie '
+            .'signerait une écriture directe de Filament.'
+        );
+    }
+
+    public function test_l_amendement_filament_applique_langue_et_options_ensemble(): void
+    {
+        /* LE SCÉNARIO EXACT DE L'AUDIT : une seule sauvegarde qui change les
+         * deux. L'un passait, l'autre était perdu en silence. */
+        $question = $this->rediger();
+
+        $options = $this->saisie()['options'];
+        $options[0]['content'] = 'A vraiment modifiée';
+
+        Livewire::actingAs($this->auteur)
+            ->test(EditQuestion::class, ['record' => $question->uuid])
+            ->fillForm([
+                'exam_id' => $this->epreuve->id,
+                'competency_node_id' => $this->noeud->id,
+                'locale' => 'ar',
+                'options' => $options,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $fraiche = $question->fresh()->load('options');
+
+        $this->assertSame('ar', $fraiche->locale);
+        $this->assertTrue($fraiche->options->contains('content', 'A vraiment modifiée'));
+    }
+
     public function test_la_cause_envoyee_sur_la_bonne_reponse_est_ignoree(): void
     {
         $saisie = $this->saisie();

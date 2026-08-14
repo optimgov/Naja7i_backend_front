@@ -752,7 +752,14 @@ final class AttemptService
         /* DET-45 — LA DÉSIGNATION D'ABORD, LE COUPLE ENSUITE. Un miroir choisi
          * par un rédacteur est plus délibéré qu'un miroir déduit ; le repli sur
          * le couple couvre le reste de la banque, où rien n'est désigné. */
-        $miroir = $this->soeurs->designee($item->question, $locale);
+        $miroir = $this->soeurs->designee($item->question, $locale, $cause);
+
+        /* LE REPLI EST SIGNALÉ. Une désignation écartée n'est pas un détail
+         * d'implémentation : elle dit au rédacteur que son pointeur ne tend pas
+         * le piège annoncé, et à l'écran que le miroir servi n'est pas celui
+         * qui était prévu. Le taire laisserait une désignation caduque vivre
+         * indéfiniment sans que personne ne la corrige. */
+        $designationEcartee = $item->question->mirror_question_id !== null && $miroir === null;
 
         if ($miroir === null) {
             $vivier = $this->soeurs->vivier($exam, [$item->competency_node_id], $locale);
@@ -815,17 +822,22 @@ final class AttemptService
             'creee' => true,
             'cause' => $cause,
             'question_source_uuid' => $item->question->uuid,
+            'designation_ecartee' => $designationEcartee,
         ];
     }
 
     /** @return array{attempt: Attempt, creee: bool, cause: string, question_source_uuid: string} */
     private function repriseDeMiroir(Attempt $attempt, string $cause, AttemptItem $item): array
     {
+        /* Une reprise ne rejoue pas la sélection : le miroir est déjà choisi.
+         * On ne peut donc rien dire de la désignation, et affirmer `false`
+         * serait affirmer qu'elle a été retenue. */
         return [
             'attempt' => $attempt->load('items'),
             'creee' => false,
             'cause' => $cause,
             'question_source_uuid' => $item->question->uuid,
+            'designation_ecartee' => null,
         ];
     }
 

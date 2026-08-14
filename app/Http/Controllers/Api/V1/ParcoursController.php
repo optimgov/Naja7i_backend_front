@@ -468,16 +468,32 @@ class ParcoursController extends Controller
         $corrections = $items->map(function (AttemptItem $item) use ($user, $premium, $miroirs) {
             $fausse = $item->response?->is_correct === false;
 
-            /* Une bonne réponse — ou une question restée sans réponse — n'a
-             * aucune cause à débloquer. Sinon le service arbitre SEUL : il rend
-             * `true` si la cause est visible (déjà révélée, ou unité de quota
-             * réservée) et `false` si le quota est épuisé.
+            /*
+             * UNE CAUSE NE SORT JAMAIS SANS ACQUISITION — audit tournée 3, BLOC-1.
              *
-             * Le contrôleur ne consulte plus le plafond avant d'agir. C'est
-             * exactement ce contrôle en deux temps — lire l'état, puis écrire —
-             * qui laissait deux requêtes concurrentes révéler deux causes avec
-             * une seule unité restante (REVUE PAS-10 BLOC-3). */
-            $visible = ! $fausse || $this->reveals->reveal($user, $item->response, $premium);
+             * Cette ligne était `! $fausse || reveal(...)`, et le `!` était une
+             * fuite complète du mur payant. Pour un item SANS RÉPONSE,
+             * `is_correct === false` vaut faux — il n'y a pas de réponse à
+             * comparer — donc `$fausse` était faux, donc `$visible` passait à
+             * VRAI sans que le service soit seulement appelé. Un compte gratuit
+             * ouvrait une série, ne répondait à rien, soumettait, et lisait
+             * trente causes avec un compteur à zéro.
+             *
+             * Le plafond protégeait le compteur, pas la charge utile.
+             *
+             * `&&` et non `||` : il faut une erreur À DIAGNOSTIQUER, et une
+             * acquisition. Sans réponse comme sur une bonne réponse, il n'y a
+             * ni l'une ni l'autre — et attribuer une hypothèse d'erreur à qui
+             * n'a commis aucune erreur n'est pas seulement gratuit, c'est faux.
+             *
+             * Le service arbitre ensuite SEUL : il rend `true` si la cause est
+             * visible (déjà révélée, ou unité réservée) et `false` si le quota
+             * est épuisé. Le contrôleur ne consulte plus le plafond avant
+             * d'agir — ce contrôle en deux temps laissait deux requêtes
+             * concurrentes révéler deux causes avec une seule unité restante
+             * (REVUE PAS-10 BLOC-3).
+             */
+            $visible = $fausse && $this->reveals->reveal($user, $item->response, $premium);
 
             return (new CorrectionResource(
                 $item, $visible, in_array($item->id, $miroirs, strict: true)
@@ -594,6 +610,21 @@ class ParcoursController extends Controller
                 'cause_locked' => ! $causeOuverte,
                 // De quelle question ce miroir vérifie la leçon.
                 'source_question_uuid' => $miroir['question_source_uuid'],
+
+                /*
+                 * LE REPLI EST SIGNALÉ — audit tournée 3, BLOC-2.
+                 *
+                 * Vrai quand la question DÉSIGNÉE par le rédacteur a été
+                 * écartée parce qu'elle ne tend pas le piège raté, et qu'un
+                 * miroir du couple (compétence, cause) l'a remplacée.
+                 *
+                 * Le taire laisserait une désignation caduque vivre
+                 * indéfiniment : personne ne saurait que le pointeur posé par
+                 * un rédacteur ne vérifie plus ce qu'il annonce. `null` sur une
+                 * reprise — la sélection n'est pas rejouée, et affirmer `false`
+                 * affirmerait que la désignation a été retenue.
+                 */
+                'designation_ecartee' => $miroir['designation_ecartee'],
             ]])
             ->response()
             ->setStatusCode($miroir['creee'] ? 201 : 200);

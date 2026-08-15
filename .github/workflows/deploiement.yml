@@ -1,0 +1,179 @@
+name: Déploiement
+
+# QUI DÉCLENCHE QUOI
+#
+#   poussée sur main   → image construite, puis RECETTE automatiquement
+#   étiquette v*       → image construite, puis PRODUCTION après approbation
+#   lancement manuel   → l'environnement est choisi dans le formulaire
+#
+# L'approbation n'est pas décrite ici : elle vient de la règle de protection de
+# l'environnement GitHub « production » (Settings → Environments). Un `if:`
+# dans un workflow se contourne d'une poussée ; une règle d'environnement, non.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environnement:
+        description: Environnement cible
+        required: true
+        type: choice
+        options: [staging, production]
+        default: staging
+
+# Un déploiement à la fois par environnement, et SURTOUT pas d'annulation en
+# cours de route : une exécution interrompue entre la migration et la bascule
+# des conteneurs laisse le schéma en avance sur le code.
+concurrency:
+  group: deploiement-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/optimgov/naja7i-backend
+
+jobs:
+
+  # ------------------------------------------------------------------
+  # La CI existante, réutilisée telle quelle.
+  #
+  # Pas recopiée : dupliquer la suite de tests, c'est accepter qu'un jour la
+  # copie du déploiement soit plus permissive que celle des demandes de fusion.
+  # ------------------------------------------------------------------
+  controles:
+    name: Contrôles
+    uses: ./.github/workflows/ci.yml
+
+  # ------------------------------------------------------------------
+  # Construction et publication de l'image
+  # ------------------------------------------------------------------
+  image:
+    name: Image
+    needs: controles
+    runs-on: ubuntu-latest
+    outputs:
+      etiquette: ${{ steps.etiquette.outputs.valeur }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Connexion au registre
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # L'étiquette de déploiement est TOUJOURS `sha-<court>`, y compris pour
+      # une version : elle désigne un contenu, pas une intention. `v1.2.0` est
+      # posée en plus, pour la lisibilité humaine et le retour arrière.
+      - name: Calculer l'étiquette
+        id: etiquette
+        run: echo "valeur=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Construire et publier
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.etiquette.outputs.valeur }}
+            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}:{1}', env.IMAGE, github.ref_name) || '' }}
+          # Le cache de construction est porté par le registre plutôt que par
+          # le cache d'Actions : il survit aux sept jours d'éviction et se
+          # partage entre les branches.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:cache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:cache,mode=max
+          provenance: false
+
+      # Une image qui se construit n'est pas une image qui démarre. Ce contrôle
+      # attrape l'extension manquante, l'entrypoint non exécutable et le
+      # chemin absent — trois pannes qui, sinon, se découvrent en production.
+      - name: Vérifier que l'image démarre
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint php \
+            "${IMAGE}:${{ steps.etiquette.outputs.valeur }}" \
+            -r 'foreach (["pdo_pgsql","intl","bcmath","pcntl","Zend OPcache"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR, "Extension absente : $e\n"); exit(1); } } if (!defined("PASSWORD_ARGON2ID")) { fwrite(STDERR, "Argon2id absent\n"); exit(1); } echo "Extensions présentes\n";'
+          docker run --rm --entrypoint php \
+            "${IMAGE}:${{ steps.etiquette.outputs.valeur }}" \
+            artisan --version
+
+  # ------------------------------------------------------------------
+  # Recette
+  # ------------------------------------------------------------------
+  recette:
+    name: Recette
+    needs: image
+    # `github.ref` vaut « refs/heads/main » AUSSI lors d'un lancement manuel
+    # depuis main : sans le test sur `event_name`, choisir « production » dans
+    # le formulaire déploierait les deux environnements.
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environnement == 'staging'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://recette.naja7i.ma
+    steps:
+      - uses: actions/checkout@v4
+      - name: Déployer
+        uses: ./.github/actions/deployer
+        with:
+          hote: ${{ secrets.SERVEUR_HOTE }}
+          utilisateur: ${{ secrets.SERVEUR_UTILISATEUR }}
+          cle: ${{ secrets.SERVEUR_CLE }}
+          empreintes: ${{ secrets.SERVEUR_EMPREINTES }}
+          ghcr_jeton: ${{ secrets.GHCR_JETON }}
+          environnement: staging
+          composant: backend
+          etiquette: ${{ needs.image.outputs.etiquette }}
+          # Serveur auto-hébergé : SSH est souvent redirigé sur un autre
+          # port que 22. Laissez le secret vide si vous gardez 22.
+          port: ${{ secrets.SERVEUR_PORT_SSH || '22' }}
+
+  # ------------------------------------------------------------------
+  # Production
+  # ------------------------------------------------------------------
+  production:
+    name: Production
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.environnement == 'production'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://naja7i.ma
+    steps:
+      - uses: actions/checkout@v4
+      - name: Déployer
+        uses: ./.github/actions/deployer
+        with:
+          hote: ${{ secrets.SERVEUR_HOTE }}
+          utilisateur: ${{ secrets.SERVEUR_UTILISATEUR }}
+          cle: ${{ secrets.SERVEUR_CLE }}
+          empreintes: ${{ secrets.SERVEUR_EMPREINTES }}
+          ghcr_jeton: ${{ secrets.GHCR_JETON }}
+          environnement: production
+          composant: backend
+          etiquette: ${{ needs.image.outputs.etiquette }}
+          # Serveur auto-hébergé : SSH est souvent redirigé sur un autre
+          # port que 22. Laissez le secret vide si vous gardez 22.
+          port: ${{ secrets.SERVEUR_PORT_SSH || '22' }}
+
+      # Le script serveur vérifie la santé des conteneurs ; ceci vérifie le
+      # chemin complet, depuis Internet, TLS et bord compris. Les deux échouent
+      # pour des raisons différentes.
+      - name: Vérifier depuis l'extérieur
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://naja7i.ma/fr/connexion || echo 000)
+            if [ "$code" = 200 ]; then echo "OK après ${i} tentative(s)"; exit 0; fi
+            echo "tentative $i : HTTP $code"; sleep 6
+          done
+          echo "Le site public ne répond pas 200." >&2
+          exit 1

@@ -25,3 +25,6 @@ Thumbs.db
 
 # Permissions Claude Code, personnelles à la machine
 .claude/settings.local.json
+
+# Sauvegardes produites par installer.sh — à supprimer une fois la relecture faite.
+_a_supprimer/

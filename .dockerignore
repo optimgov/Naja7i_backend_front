@@ -1,0 +1,48 @@
+# Ce qui n'entre pas dans l'image du backend.
+#
+# Deux motifs comptent plus que les autres :
+#   - `.env` : le fichier local contient des identifiants de développement —
+#     mot de passe de base, clé applicative, accès SMTP. Une image qui
+#     l'embarque les publie sur GHCR, lisible par quiconque peut tirer
+#     l'image. (Les variables du conteneur, elles, l'emportent : Dotenv est
+#     chargé en mode immuable. Le risque est la fuite, pas l'écrasement.)
+#   - `vendor` : le poste de développement l'installe avec `--dev`. Copié tel
+#     quel, il ferait entrer PHPUnit, Faker et Pail dans l'image de production.
+
+.git
+.github
+.gitattributes
+.gitignore
+.editorconfig
+.DS_Store
+
+.env
+.env.*
+!.env.example
+
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/pail
+!storage/**/.gitignore
+
+tests
+.phpunit.result.cache
+.phpunit.cache
+phpunit.xml
+
+docs
+*.md
+docker-compose.yml
+.claude
+.idea
+.vscode
+.zed
+.fleet

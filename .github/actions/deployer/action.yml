@@ -1,0 +1,63 @@
+name: Déployer sur le serveur
+description: >
+  Ouvre une session SSH vers le serveur Naja7i et y lance naja7i-deploy.
+  Identique dans les deux dépôts ; seul le paramètre « composant » change.
+
+inputs:
+  hote:          {description: Adresse du serveur, required: true}
+  utilisateur:   {description: Compte de déploiement, required: true}
+  cle:           {description: Clé privée SSH, required: true}
+  empreintes:    {description: Contenu known_hosts du serveur, required: true}
+  ghcr_jeton:    {description: Jeton de lecture du registre, required: true}
+  environnement: {description: staging ou production, required: true}
+  composant:     {description: backend ou frontend, required: true}
+  etiquette:     {description: Étiquette d'image à déployer, required: true}
+  port:          {description: Port SSH, required: false, default: '22'}
+
+runs:
+  using: composite
+  steps:
+    - name: Préparer SSH
+      shell: bash
+      run: |
+        set -euo pipefail
+        install -d -m 700 ~/.ssh
+        printf '%s\n' "${{ inputs.cle }}" > ~/.ssh/id_deploiement
+        chmod 600 ~/.ssh/id_deploiement
+
+        # L'empreinte du serveur est ÉPINGLÉE, jamais acceptée à l'aveugle.
+        #
+        # `StrictHostKeyChecking=no` est l'usage répandu et c'est une erreur :
+        # il accepte n'importe quel hôte qui répond à cette adresse. Un
+        # détournement DNS suffirait alors à recevoir la clé de déploiement et
+        # le jeton du registre. La valeur vient du secret SERVEUR_EMPREINTES,
+        # produit une fois par `ssh-keyscan` et vérifié à la main.
+        printf '%s\n' "${{ inputs.empreintes }}" > ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Lancer le déploiement
+      shell: bash
+      env:
+        JETON: ${{ inputs.ghcr_jeton }}
+      run: |
+        set -euo pipefail
+
+        # Le jeton passe par l'ENTRÉE STANDARD, pas par la ligne de commande :
+        # les arguments d'un processus sont lisibles dans `ps` par tout compte
+        # de la machine, le temps que le déploiement dure.
+        printf '%s\n' "$JETON" | ssh \
+          -i ~/.ssh/id_deploiement \
+          -o StrictHostKeyChecking=yes \
+          -o UserKnownHostsFile=~/.ssh/known_hosts \
+          -o BatchMode=yes \
+          -o ConnectTimeout=15 \
+          -p "${{ inputs.port }}" \
+          "${{ inputs.utilisateur }}@${{ inputs.hote }}" \
+          "read -r jeton; \
+           GHCR_JETON=\"\$jeton\" GHCR_UTILISATEUR='${{ github.actor }}' \
+           /opt/naja7i/bin/naja7i-deploy '${{ inputs.environnement }}' '${{ inputs.composant }}' '${{ inputs.etiquette }}'"
+
+    - name: Effacer la clé
+      if: always()
+      shell: bash
+      run: rm -f ~/.ssh/id_deploiement

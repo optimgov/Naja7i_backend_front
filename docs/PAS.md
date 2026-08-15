@@ -80,6 +80,9 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | SHA du PAS-35 au journal et au backlog, DET-52 et DET-53 | `1d0e915` |
 | — | DET-54 signalée : les citations officielles n'existent qu'en français | `3eee115` |
 | 36 | DET-54 close : les deux citations officielles gagnent leur colonne arabe, servies par `localized()` avec repli français | `1308240` |
+| — | SHA du PAS-36 au journal, DET-54 close | `2f05d1c` |
+| — | Audit tournée 3 : les trois bloquants backend (F03 sans réponse, miroir hors cause, amendements partiels) | `c9b5ab2` |
+| 37 | Lot ABO — le chemin de revenu : offre, commande, coupon, adaptateur de paiement, et l'octroi comme conséquence | `À_REMPLIR` |
 
 ## Lots frontend
 

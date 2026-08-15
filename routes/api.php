@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AbonnementController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BanqueAdminController;
 use App\Http\Controllers\Api\V1\CatalogueController;
@@ -28,6 +29,15 @@ Route::prefix('v1')->group(function () {
 
     // --- Public -----------------------------------------------------------
     Route::get('legal/documents', [LegalController::class, 'documents']);
+
+    /*
+     * LES TARIFS SONT PUBLICS — décision du 11 août : la surface commerciale
+     * vit dans la zone publique. Un visiteur lit les prix avant de créer un
+     * compte, et la page est indexable. Exiger une session ici reviendrait à
+     * cacher le prix derrière une inscription.
+     */
+    Route::get('plans', [AbonnementController::class, 'plans'])
+        ->middleware('throttle:demonstration');
 
     /*
      * Catalogue public (PAS-4) : aucune authentification, aucun tenant requis
@@ -171,6 +181,35 @@ Route::prefix('v1')->group(function () {
          * Pas de `no-store` : rien ici n'est calculé à l'instant de la réponse,
          * contrairement au chronomètre d'une tentative.
          */
+        /*
+         * ────────────────────────── ABONNEMENT ──────────────────────────
+         *
+         * Aucune de ces routes ne décide d'un droit : elles ouvrent des
+         * commandes. Les droits sont posés par `AbonnementService` et lus par
+         * `AccessGrant` — le mur payant ignore que ces routes existent.
+         */
+        Route::get('me/subscription', [AbonnementController::class, 'etat']);
+        Route::get('me/orders', [AbonnementController::class, 'commandes']);
+
+        Route::post('me/orders/coupon', [AbonnementController::class, 'coupon'])
+            /* Un coupon se saisit à la main, et un code se devine par force
+             * brute : c'est le geste le plus sensible de cette surface. */
+            ->middleware('throttle:coupon');
+
+        /*
+         * LE PAIEMENT SIMULÉ N'EXISTE PAS EN PRODUCTION.
+         *
+         * La route n'est pas DÉCLARÉE là-bas : elle répond 404, ce qui est la
+         * vérité — cette porte n'existe pas. `SimulatedGateway` refuse en
+         * outre de s'instancier en production. Deux serrures, et c'est
+         * délibéré : celle-ci protège la porte, l'autre protège la maison si
+         * une porte est oubliée un jour.
+         */
+        if (! app()->environment('production')) {
+            Route::post('me/orders/simulated', [AbonnementController::class, 'simule'])
+                ->middleware('throttle:coupon');
+        }
+
         Route::get('me/profile', [ProfileController::class, 'show']);
 
         Route::put('me/profile', [ProfileController::class, 'update'])

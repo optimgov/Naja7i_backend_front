@@ -26,6 +26,6 @@ class DatabaseSeeder extends Seeder
     {
         // L'ordre compte : Crmef2025Seeder corrige et complète ce que
         // CatalogueSeeder a posé (parcours, épreuves séparées, matrices).
-        $this->call([CatalogueSeeder::class, Crmef2025Seeder::class]);
+        $this->call([CatalogueSeeder::class, Crmef2025Seeder::class, PlansSeeder::class]);
     }
 }

@@ -164,6 +164,13 @@ return [
             'miroir' => ['production' => 20, 'recette' => 600],
             'profil' => ['production' => 30, 'recette' => 600],
 
+            /* La saisie d'un coupon est le geste le plus sensible de la
+             * surface commerciale : un code se devine par force brute. Le
+             * seuil est BAS, et il est relevé en recette comme les autres
+             * limiteurs de transport — le vrai garde est l'entropie du code
+             * (~57 bits), pas ce compteur. */
+            'coupon' => ['production' => 10, 'recette' => 600],
+
             // JAMAIS relevé — voir l'encadré ci-dessus.
             'reponse' => ['production' => 120, 'recette' => 120],
         ],

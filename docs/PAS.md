@@ -83,6 +83,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | SHA du PAS-36 au journal, DET-54 close | `2f05d1c` |
 | — | Audit tournée 3 : les trois bloquants backend (F03 sans réponse, miroir hors cause, amendements partiels) | `c9b5ab2` |
 | 37 | Lot ABO — le chemin de revenu : offre, commande, coupon, adaptateur de paiement, et l'octroi comme conséquence | `e821f62` |
+| — | Corpus CRMEF du 15 août : l'extraction des 33 fichiers entre au dépôt, seule et avant tout usage | `62fbd17` |
 
 ## Lots frontend
 

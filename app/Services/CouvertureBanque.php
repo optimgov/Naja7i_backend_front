@@ -30,6 +30,30 @@ use Illuminate\Support\Collection;
  * lignes dont personne n'a besoin. Un couple qui n'a jamais fait échouer
  * personne n'est pas un trou.
  */
+/**
+ * DET-71 — POURQUOI CETTE REQUÊTE NE COMPARE PLUS D'HORLOGES.
+ *
+ * Elle filtrait `q.published_at is not null and q.published_at <= now()` en
+ * plus de `q.status = 'published'`. Un même fait — « cette question est
+ * publiée » — avait donc DEUX sources de vérité, et les deux ont fini par
+ * diverger.
+ *
+ * Le mécanisme, mesuré : `published_at` est écrit par PHP TRONQUÉ À LA SECONDE,
+ * tandis que `now()` vaut `transaction_timestamp()` — figé à l'ouverture de la
+ * transaction, avec ses microsecondes. Sous test, une question publiée juste
+ * après une frontière de seconde portait donc une date FUTURE au regard de la
+ * base et disparaissait du plan : `severity` passait de `no_sibling` à `none`,
+ * et le test rougissait une fois sur N sans qu'on sache pourquoi.
+ *
+ * AUCUNE PUBLICATION DIFFÉRÉE N'EXISTE DANS CE PRODUIT — vérifié plutôt que
+ * supposé : un seul écrivain (`QuestionTransitionService`, avec `now()`), la
+ * colonne hors de l'assignation de masse, et zéro ligne future en base. La
+ * condition ne protégeait donc rien : elle dupliquait le statut en y ajoutant
+ * une horloge.
+ *
+ * Le jour où une publication programmée deviendra une fonction réelle, la
+ * condition revient — mais avec `clock_timestamp()`, et pour cette fonction-là.
+ */
 final class CouvertureBanque
 {
     /**
@@ -164,8 +188,7 @@ final class CouvertureBanque
                and q.locale = ?
                and q.status = '{$publiable}'
                and q.retired_at is null
-               and q.published_at is not null
-               and q.published_at <= now()
+               -- Pas de condition sur published_at : voir l'en-tête, DET-71.
                and q.eligible_for_diagnostic = true
                and exists (
                    select 1 from question_options o

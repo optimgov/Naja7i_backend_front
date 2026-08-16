@@ -167,6 +167,16 @@ Elles ne se renégocient pas d'un pas à l'autre.
    ouverte. Cela vaut pour un fichier non suivi, une branche inconnue, un test
    instable, un avertissement de compilation. Une anomalie qui revient n'est
    pas du bruit de fond.
+10. **Vérifier la branche AVANT CHAQUE COMMIT, pas une fois en début de
+    session.** Le 16 août : « j'ai vérifié à 07:17, puis j'ai travaillé quatre
+    heures. » Entre les deux, les deux dépôts avaient basculé sur leur branche
+    de quarantaine, et quatre heures de travail y sont tombées — dont une suite
+    « verte » mesurée sur un arbre qui ne contenait pas le lot en cours. Une
+    vérification d'état n'est valable qu'à l'instant où on la fait ; tout ce
+    qu'on en déduit plus tard est une supposition. Deux crochets git locaux
+    portent désormais cette règle : `pre-commit` refuse les branches de
+    quarantaine, `post-checkout` journalise chaque basculement avec l'arbre des
+    processus qui l'a demandé.
 
 ---
 

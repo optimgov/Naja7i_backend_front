@@ -100,3 +100,19 @@ dit ne peut pas être arbitré.
 test Y »*, et *« ce défaut relevait du genre N »*. Si aucun genre ne convient,
 c'est peut-être un huitième — décrivez-le et ajoutez-le ici. Le bestiaire n'est
 clos que jusqu'au prochain cas.
+
+### Un cas vécu du genre 3 — le vert qui absout du code jamais exécuté
+
+**16 août 2026.** Une suite annoncée « 593 vertes » avait tourné sur l'arbre de
+travail d'une branche de quarantaine, sur laquelle le dépôt avait basculé sans
+que personne le demande. Cet arbre ne contenait PAS le lot en cours : les
+onze tests de l'import des annales n'existaient pas dedans, et le code qu'ils
+éprouvent non plus.
+
+Le vert était parfaitement exact — et il ne disait rien de ce qu'on croyait
+qu'il disait. Rejouée sur la bonne branche : 603 vertes, dix de plus.
+
+**Ce que le cas apprend :** un décompte de tests n'a de sens qu'accompagné de
+l'arbre sur lequel il a été mesuré. « La suite est verte » est une phrase
+incomplète ; « la suite est verte sur `main` à tel commit » est une mesure.
+C'est aussi pourquoi la règle permanente 10 existe.

@@ -130,10 +130,11 @@ class Question extends Model
 
     public function scopePublished(Builder $query): Builder
     {
+        /* `status = 'published'` suffit — DET-71. La comparaison d'horloges qui
+         * doublait ce fait a été retirée : voir `CouvertureBanque` pour le
+         * mécanisme mesuré et la raison. */
         return $query->where('questions.status', self::PUBLISHABLE)
-            ->whereNull('questions.retired_at')
-            ->whereNotNull('questions.published_at')
-            ->where('questions.published_at', '<=', now());
+            ->whereNull('questions.retired_at');
     }
 
     public function scopeForDiagnostic(Builder $query): Builder

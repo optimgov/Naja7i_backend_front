@@ -86,6 +86,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | Corpus CRMEF du 15 août : l'extraction des 33 fichiers entre au dépôt, seule et avant tout usage | `62fbd17` |
 | — | CRMEF-2 phase 1 : le rapprochement du corpus et de la base — voies, coefficients, les 40/30/30, six dettes | `d027f20` |
 | 38 | CRMEF-2 phase 2 : les trois faits imprimés — cinq options, pénalité négative, numérotation réelle | `11116a3` |
+| 39 | CRMEF-2 phase 3 : 53 annales en file éditoriale, sans corrigé et sans pouvoir en sortir | `887aa83` |
 
 ## Lots frontend
 

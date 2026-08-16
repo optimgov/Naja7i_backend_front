@@ -126,6 +126,31 @@ class PanneauAccesHttpTest extends TestCase
     }
 
     /**
+     * LA ROUTE DE LIVEWIRE — celle que le panneau ne couvre pas.
+     *
+     * Le formulaire de connexion de Filament est un composant Livewire : sa
+     * méthode `authenticate()` tourne sur `POST /livewire/update`, avec le
+     * groupe `web` et rien d'autre. Les middlewares déclarés sur le panneau
+     * n'y sont PAS appliqués — c'est ce que la trace de la 500 a montré, et
+     * c'est ce que ce test empêche de revenir.
+     *
+     * Il vaut pour tout ce que Livewire sert : la connexion, mais aussi chaque
+     * interaction avec un tableau, un formulaire ou une action du back-office.
+     */
+    public function test_la_route_de_livewire_resout_le_tenant(): void
+    {
+        $chaine = Route::getRoutes()->getByName('livewire.update')->gatherMiddleware();
+
+        $this->assertContains(
+            ResolveTenant::class,
+            $chaine,
+            'La route de mise à jour de Livewire doit résoudre le tenant : c’est elle '
+            .'qui exécute la connexion au back-office, pas les routes du panneau. '
+            .'Chaîne observée : '.implode(', ', $chaine)
+        );
+    }
+
+    /**
      * LA GARANTIE LARGE.
      *
      * Honnêteté sur sa portée : ce test-ci n'aurait PAS attrapé le défaut

@@ -35,6 +35,30 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureBffRequestsAreStateful::class,
         ]);
 
+        /*
+         * LE GROUPE `web` AUSSI — et c'est le back-office qui l'exige.
+         *
+         * Le formulaire de connexion de Filament est un composant Livewire :
+         * `Login::authenticate()` ne s'exécute PAS sur une route du panneau,
+         * mais sur `POST /livewire/update`, qui porte le groupe `web` et lui
+         * seul. Toute la configuration de middlewares du panneau — y compris
+         * ResolveTenant — lui est étrangère.
+         *
+         * Conséquence mesurée : `canAccessPanel()` y appelle PermissionResolver,
+         * qui réclame le tenant, et toute tentative de connexion au back-office
+         * rendait une 500 `NoTenantResolvedException`. La trace le montre sans
+         * ambiguïté — la pile de la requête fautive s'arrête à EncryptCookies,
+         * StartSession, VerifyCsrfToken, SubstituteBindings.
+         *
+         * Le résoudre au niveau du groupe plutôt qu'en rattrapant la route de
+         * Livewire est une GARANTIE plutôt qu'un correctif : toute route web
+         * présente ou future l'obtient, y compris celles qu'un paquet tiers
+         * enregistrerait sans nous demander notre avis. La résolution est
+         * triviale au lancement — une lecture du tenant plateforme — donc son
+         * coût est nul devant le risque qu'elle supprime.
+         */
+        $middleware->web(prepend: [ResolveTenant::class]);
+
         // ResolveTenant : aucune requête métier ne s'exécute sans tenant résolu
         // (PAS-1, ADR-0002). SetLocale vient APRÈS l'authentification, il lit
         // la préférence du compte via $request->user().

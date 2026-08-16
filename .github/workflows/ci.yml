@@ -12,8 +12,22 @@ on:
   pull_request:
     branches: [main]
 
+  # AJOUT CI/CD — ce workflow devient appelable par un autre.
+  #
+  # `deploiement.yml` l'invoque au lieu de recopier ses étapes. Une suite de
+  # tests dupliquée finit toujours par diverger de son original, et c'est la
+  # copie du déploiement qui devient la plus permissive des deux — exactement
+  # là où il faudrait qu'elle soit la plus stricte.
+  workflow_call:
+
+# `github.workflow` est dans la clé : appelé par `deploiement.yml`, ce
+# workflow prend le nom de l'APPELANT. Sans cela, la CI déclenchée par la
+# poussée sur main et celle appelée par le déploiement partagent le même
+# groupe — et « cancel-in-progress » fait annuler l'une par l'autre. Le job
+# de contrôle du déploiement mourait alors sans rien déployer, au hasard de
+# l'ordre de démarrage.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -84,6 +98,19 @@ jobs:
           # Une variable d'environnement du système l'emporte sur le .env et
           # sur phpunit.xml : la valeur ci-dessous gagne bien.
           PASSWORD_CHECK_COMPROMISED: 'false'
+
+      # AJOUT CI/CD — ces trois caches sont exactement ce que l'entrypoint de
+      # l'image construit à chaque démarrage de conteneur. Une configuration
+      # qui ne se met pas en cache (fichier de config qui lève, route
+      # dupliquée, écouteur d'événement introuvable) passe la suite de tests
+      # sans broncher, puis empêche TOUS les conteneurs de production de
+      # démarrer — au déploiement suivant, sans lien visible avec le commit.
+      - name: Vérifier que les caches de production se construisent
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan event:cache
+          php artisan config:clear
 
   script-demonstration:
     # DET-77 — Le script de démonstration est le premier contact d'un partenaire

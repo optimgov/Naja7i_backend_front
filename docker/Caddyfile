@@ -1,0 +1,41 @@
+# Caddy embarqué dans FrankenPHP — service interne uniquement.
+#
+# Ce serveur n'est jamais joignable depuis Internet : il n'écoute que sur le
+# réseau Docker interne, et seul le BFF Nitro l'appelle. Le TLS, les certificats
+# et les en-têtes de sécurité sont la responsabilité du Caddy de bord.
+
+{
+	frankenphp
+
+	# Aucun certificat ici : le chiffrement s'arrête au bord. Sans cette
+	# ligne, Caddy tenterait d'obtenir un certificat pour `:8000` et
+	# échouerait en boucle au démarrage.
+	auto_https off
+
+	# L'API d'administration de Caddy permet de reconfigurer le serveur à
+	# chaud. Rien n'en a besoin ici, et elle écouterait sur le réseau interne.
+	admin off
+
+	log {
+		format json
+	}
+}
+
+# Port fixé, pas de variable : FrankenPHP publie `SERVER_NAME` pour son
+# Caddyfile par défaut, que celui-ci remplace. Laisser croire que la variable
+# agit encore ferait perdre une heure le jour où quelqu'un la change.
+:8000 {
+	root /app/public
+	encode zstd gzip
+
+	# `php_server` sert les fichiers statiques existants et route tout le
+	# reste vers index.php — le routeur de Laravel.
+	php_server
+
+	log {
+		format json
+		# Les journaux partent sur la sortie standard : c'est le conteneur
+		# qui les collecte, jamais un fichier dans l'image.
+		output stderr
+	}
+}

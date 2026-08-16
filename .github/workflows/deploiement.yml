@@ -1,0 +1,185 @@
+name: Déploiement
+
+# QUI DÉCLENCHE QUOI
+#
+#   poussée sur main   → image construite, puis PRÉPRODUCTION automatiquement
+#   étiquette v*       → image construite, puis PRODUCTION après approbation
+#   lancement manuel   → l'environnement est choisi dans le formulaire
+#
+# L'approbation ne se lit pas ici : elle vient de la règle de protection de
+# l'environnement GitHub « production ». Un `if:` dans un workflow se contourne
+# d'une poussée ; une règle d'environnement, non.
+#
+# OÙ TOURNE QUOI — la décision structurante de ce fichier.
+#
+#   controles, image  →  exécuteurs GitHub (ubuntu-latest)
+#   recette           →  exécuteur AUTO-HÉBERGÉ, sur la VM de préproduction
+#
+# La VM n'a qu'une adresse privée (10.0.0.62) : GitHub ne peut pas l'atteindre.
+# L'exécuteur renverse le sens — il appelle GitHub depuis l'intérieur. Aucun
+# port entrant, aucune règle NAT, aucune clé SSH en circulation.
+#
+# ⚠ Les tests et la construction restent SUR GITHUB, jamais sur l'exécuteur
+# auto-hébergé. Un exécuteur dans votre réseau ne doit exécuter que du code
+# déjà fusionné et de confiance.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environnement:
+        description: Environnement cible
+        required: true
+        type: choice
+        options: [staging, production]
+        default: staging
+
+# Un déploiement à la fois, et SURTOUT pas d'annulation en cours de route :
+# une exécution interrompue entre la migration et la bascule des conteneurs
+# laisse le schéma en avance sur le code.
+concurrency:
+  group: deploiement-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/optimgov/naja7i-backend
+
+jobs:
+
+  # ------------------------------------------------------------------
+  # La CI existante, réutilisée telle quelle.
+  #
+  # Pas recopiée : dupliquer une suite de contrôles, c'est accepter qu'un jour
+  # la copie du déploiement soit plus permissive que celle des fusions.
+  # ------------------------------------------------------------------
+  controles:
+    name: Contrôles
+    uses: ./.github/workflows/ci.yml
+
+  # ------------------------------------------------------------------
+  # Construction et publication de l'image — sur GitHub
+  # ------------------------------------------------------------------
+  image:
+    name: Image
+    needs: controles
+    runs-on: ubuntu-latest
+    outputs:
+      etiquette: ${{ steps.etiquette.outputs.valeur }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Connexion au registre
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # L'étiquette est TOUJOURS `sha-<court>`, y compris pour une version :
+      # elle désigne un contenu, pas une intention. `v1.2.0` est posée en plus,
+      # pour la lisibilité humaine et le retour arrière.
+      - name: Calculer l'étiquette
+        id: etiquette
+        run: |
+          echo "valeur=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+
+      - name: Construire et publier
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.etiquette.outputs.valeur }}
+            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}:{1}', env.IMAGE, github.ref_name) || '' }}
+          # Cache porté par le registre plutôt que par celui d'Actions : il
+          # survit à l'éviction de sept jours et se partage entre branches.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:cache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:cache,mode=max
+          provenance: false
+
+      # Une image qui se construit n'est pas une image qui démarre. Ce contrôle
+      # attrape l'extension manquante, l'entrypoint non exécutable et le chemin
+      # absent — trois pannes qui, sinon, se découvrent en production.
+      - name: Vérifier que l'image démarre
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint php "${IMAGE}:${{ steps.etiquette.outputs.valeur }}" -m \
+            | grep -qE '^intl$' || { echo "Extension intl absente" >&2; exit 1; }
+          docker run --rm --entrypoint php "${IMAGE}:${{ steps.etiquette.outputs.valeur }}" \
+            -r 'exit(defined("PASSWORD_ARGON2ID") ? 0 : 1);' \
+            || { echo "Argon2id absent : le hachage retomberait sur bcrypt" >&2; exit 1; }
+          docker run --rm --entrypoint php "${IMAGE}:${{ steps.etiquette.outputs.valeur }}" artisan --version
+
+  # ------------------------------------------------------------------
+  # Préproduction — sur la VM
+  # ------------------------------------------------------------------
+  recette:
+    name: Préproduction
+    needs: image
+    # `github.ref` vaut « refs/heads/main » AUSSI lors d'un lancement manuel
+    # depuis main : sans le test sur `event_name`, choisir « production »
+    # déploierait les deux environnements.
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environnement == 'staging'
+    runs-on: [self-hosted, naja7i-preprod]
+    environment:
+      name: staging
+      url: https://naja7i.optimgov.com
+    steps:
+      # Aucun `checkout` : le script de déploiement vit sur la machine, et
+      # cloner le dépôt sur la VM y ferait entrer du code sans raison.
+
+      - name: Connexion au registre
+        run: |
+          set -euo pipefail
+          # Le jeton du workflow suffit : il porte `packages: read` sur ce
+          # dépôt. Pas de jeton personnel à créer, à stocker ni à renouveler.
+          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
+            | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+
+      - name: Déployer
+        run: /opt/naja7i/bin/naja7i-deploy staging backend '${{ needs.image.outputs.etiquette }}'
+
+      # Le script vérifie la santé des conteneurs ; ceci vérifie que le bord
+      # sert réellement quelque chose. Les deux échouent pour des raisons
+      # différentes, et `/sante` est exempté du mot de passe précisément pour
+      # rester interrogeable par une sonde.
+      - name: Vérifier le bord
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PORT_BORD:-80}/sante" || echo 000)
+            if [ "$code" = 200 ]; then echo "OK après ${i} tentative(s)"; exit 0; fi
+            echo "tentative $i : HTTP $code"; sleep 3
+          done
+          echo "Le bord ne répond pas 200 sur /sante." >&2
+          exit 1
+
+  # ------------------------------------------------------------------
+  # Production — pas encore d'environnement, le travail ne se déclenche que
+  # sur une étiquette de version. À activer le jour où la machine existe.
+  # ------------------------------------------------------------------
+  production:
+    name: Production
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.environnement == 'production'
+    runs-on: [self-hosted, naja7i-production]
+    environment:
+      name: production
+      url: https://naja7i.ma
+    steps:
+      - name: Connexion au registre
+        run: |
+          set -euo pipefail
+          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
+            | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+
+      - name: Déployer
+        run: /opt/naja7i/bin/naja7i-deploy production backend '${{ needs.image.outputs.etiquette }}'

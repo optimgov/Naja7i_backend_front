@@ -92,6 +92,7 @@ class ParcoursHttpTest extends TestCase
                     ['Option B', true,  'RATIONALE_SECRETE_B', null],
                     ['Option C', false, 'RATIONALE_SECRETE_C', 'lecture_enonce'],
                     ['Option D', false, 'RATIONALE_SECRETE_D', 'connaissance_absente'],
+                    ['Aucune des propositions précédentes', false, 'Elle est fausse puisqu’une autre proposition est correcte.', 'indetermine'],
                 ] as $p => [$c, $juste, $justif, $cause]) {
                     QuestionOption::create([
                         'question_id' => $question->id, 'position' => $p + 1,
@@ -562,13 +563,17 @@ class ParcoursHttpTest extends TestCase
             ]);
     }
 
-    public function test_la_demonstration_montre_les_quatre_justifications_et_les_causes(): void
+    /**
+     * Cinq options depuis le lot CRMEF-2 : l'épreuve réelle en imprime cinq
+     * depuis 2024, et la démonstration montre ce que le candidat verra.
+     */
+    public function test_la_demonstration_montre_toutes_les_justifications_et_les_causes(): void
     {
         $options = $this->getJson('/api/v1/demonstration/correction')->json('data.options');
 
-        $this->assertCount(4, $options);
-        $this->assertCount(3, collect($options)->whereNotNull('cause'),
-            'Les trois distracteurs portent leur cause : c\'est tout l\'intérêt de la démonstration.');
+        $this->assertCount(5, $options);
+        $this->assertCount(4, collect($options)->whereNotNull('cause'),
+            'Chaque distracteur porte sa cause : c\'est tout l\'intérêt de la démonstration.');
         $this->assertEmpty(collect($options)->where('rationale', null));
     }
 

@@ -82,6 +82,7 @@ class TentativesTest extends TestCase
                     ['Option B', true,  'B est juste parce que…',  null],
                     ['Option C', false, 'C est fausse parce que…', 'lecture_enonce'],
                     ['Option D', false, 'D est fausse parce que…', 'connaissance_absente'],
+                    ['Aucune des propositions précédentes', false, 'Elle est fausse puisqu’une autre proposition est correcte.', 'indetermine'],
                 ];
 
                 foreach ($options as $p => [$contenu, $juste, $justif, $cause]) {

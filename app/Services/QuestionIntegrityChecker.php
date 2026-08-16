@@ -19,6 +19,15 @@ use App\Models\QuestionOption;
 final class QuestionIntegrityChecker
 {
     /**
+     * Le plancher, quand l'épreuve ne déclare pas son nombre d'options.
+     *
+     * Ce n'est pas un nombre officiel — aucun descriptif ne le donne. C'est un
+     * seuil de STRUCTURE : sous quatre options, l'exercice n'est plus celui du
+     * concours, et le corpus n'en contient aucun exemple.
+     */
+    public const PLANCHER_OPTIONS = 4;
+
+    /**
      * Contrôles applicables à toute question, quel que soit son usage.
      *
      * @return list<string> motifs de blocage, vide si la question est saine
@@ -28,8 +37,32 @@ final class QuestionIntegrityChecker
         $issues = [];
         $options = $question->options;
 
-        if ($question->kind === 'qcm_single' && $options->count() !== 4) {
-            $issues[] = "Un QCM à réponse unique doit compter exactement 4 options, {$options->count()} trouvée(s).";
+        /*
+         * LE NOMBRE D'OPTIONS EST UNE PROPRIÉTÉ DE L'ÉPREUVE — corpus §4.2.1.
+         *
+         * Cette ligne exigeait EXACTEMENT quatre options. Depuis 2024, les
+         * sujets impriment « اقتُرحت لكل سؤال خمسة أجوبة (A ; B ; C ; D ; E) » :
+         * une question fidèle à l'épreuve réelle ne pouvait donc pas être
+         * publiée, et rien ne le disait — la garde refusait le contenu juste.
+         *
+         * Quand l'épreuve déclare son nombre, il est exigé À L'UNITÉ : la
+         * règle n'est pas affaiblie là où l'on sait. Sinon, un plancher de
+         * quatre, qui est l'ancienne règle rendue à son rôle réel — aucun sujet
+         * du corpus n'en compte moins, et une question à deux options reste
+         * refusée comme avant.
+         */
+        if ($question->kind === 'qcm_single') {
+            $attendu = $question->exam?->options_count;
+
+            if ($attendu !== null && $options->count() !== $attendu) {
+                $issues[] = "L'épreuve {$question->exam?->code} annonce {$attendu} options par question, "
+                    ."{$options->count()} trouvée(s).";
+            }
+
+            if ($attendu === null && $options->count() < self::PLANCHER_OPTIONS) {
+                $issues[] = 'Un QCM à réponse unique compte au moins '
+                    .self::PLANCHER_OPTIONS." options, {$options->count()} trouvée(s).";
+            }
         }
 
         $correctes = $options->where('is_correct', true);

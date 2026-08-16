@@ -29,13 +29,22 @@ class BlueprintModel extends Model
         'official_scoring_note_fr', 'official_scoring_note_ar',
         'official_admission_threshold_note_fr', 'official_admission_threshold_note_ar',
         'coverage_note_fr', 'coverage_note_ar', 'status', 'published_at',
+        /* F2 — la pénalité négative. `negative_marking` est à TROIS états :
+         * true = imprimée, false = le sujet imprime zéro, null = inconnu. */
+        'negative_marking', 'negative_marking_points',
     ];
 
     protected $hidden = ['id', 'exam_id', 'source_id'];
 
     protected function casts(): array
     {
-        return ['published_at' => 'datetime'];
+        return [
+            'published_at' => 'datetime',
+            /* `boolean` et non `bool` : la conversion de Laravel laisse passer
+             * `null`, qui est ici une VALEUR — « on ne sait pas » — et non
+             * l'absence de valeur. */
+            'negative_marking' => 'boolean',
+        ];
     }
 
     public function exam(): BelongsTo

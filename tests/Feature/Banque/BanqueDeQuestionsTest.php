@@ -150,6 +150,7 @@ class BanqueDeQuestionsTest extends TestCase
             ['Formative',    true,  'Elle intervient en cours d\'apprentissage pour réguler.',       null],
             ['Diagnostique', false, 'La diagnostique précède l\'apprentissage, elle ne l\'ajuste pas.', 'confusion_notions'],
             ['Certificative', false, 'La certificative délivre une reconnaissance officielle.',      'connaissance_absente'],
+            ['Aucune des propositions précédentes', false, 'Elle est fausse puisqu’une autre proposition est correcte.', 'indetermine'],
         ];
 
         foreach ($options as $i => [$contenu, $juste, $justification, $cause]) {

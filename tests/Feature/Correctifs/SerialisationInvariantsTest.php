@@ -155,8 +155,8 @@ class SerialisationInvariantsTest extends TestCase
             [$arrivee->id, $depart->options->first()->id]
         );
 
-        $this->assertSame(3, QuestionOption::where('question_id', $depart->id)->count());
-        $this->assertSame(5, QuestionOption::where('question_id', $arrivee->id)->count());
+        $this->assertSame(4, QuestionOption::where('question_id', $depart->id)->count());
+        $this->assertSame(6, QuestionOption::where('question_id', $arrivee->id)->count());
     }
 
     // ===================================================================
@@ -439,6 +439,7 @@ class SerialisationInvariantsTest extends TestCase
             ['B', true,  'B est juste.',  null],
             ['C', false, 'C est fausse.', 'lecture_enonce'],
             ['D', false, 'D est fausse.', 'connaissance_absente'],
+            ['Aucune des propositions précédentes', false, 'Elle est fausse puisqu’une autre proposition est correcte.', 'indetermine'],
         ] as $p => [$c, $juste, $justif, $cause]) {
             QuestionOption::create([
                 'question_id' => $question->id, 'position' => $p + 1,

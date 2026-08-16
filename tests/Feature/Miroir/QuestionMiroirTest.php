@@ -100,6 +100,7 @@ class QuestionMiroirTest extends TestCase
                 ['B', true, null],
                 ['C', false, 'lecture_enonce'],
                 ['D', false, 'connaissance_absente'],
+                ['Aucune des propositions précédentes', false, 'indetermine'],
             ] as $p => [$c, $juste, $cause]) {
                 QuestionOption::create([
                     'question_id' => $question->id, 'position' => $p + 1,
@@ -309,6 +310,7 @@ class QuestionMiroirTest extends TestCase
             ['B', true, null],
             ['C', false, 'lecture_enonce'],
             ['D', false, 'connaissance_absente'],
+            ['Aucune des propositions précédentes', false, 'indetermine'],
         ] as $p => [$c, $juste, $cause]) {
             QuestionOption::create([
                 'question_id' => $question->id, 'position' => $p + 1,
@@ -363,6 +365,15 @@ class QuestionMiroirTest extends TestCase
         QuestionOption::create([
             'question_id' => $question->id, 'position' => count($causes) + 1,
             'content' => 'Bonne', 'is_correct' => true, 'rationale' => 'r', 'cause' => null,
+        ]);
+
+        /* L'option E de l'épreuve réelle depuis 2024 — corpus §4.2.1. Elle vient
+         * APRÈS la bonne réponse : `servir(juste: false)` prend la position 1,
+         * qui doit rester un distracteur ordinaire. */
+        QuestionOption::create([
+            'question_id' => $question->id, 'position' => count($causes) + 2,
+            'content' => 'Aucune des propositions précédentes', 'is_correct' => false,
+            'rationale' => 'r', 'cause' => 'indetermine',
         ]);
 
         $question->contentSources()->attach($this->source->id, ['verification' => 'verified']);

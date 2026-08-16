@@ -128,6 +128,7 @@ class PanneauCouvertureTest extends TestCase
                 ['B', true, null],
                 ['C', false, $remplissage[0]],
                 ['D', false, $remplissage[1]],
+                ['Aucune des propositions précédentes', false, 'indetermine'],
             ] as $p => [$c, $juste, $c2]) {
                 QuestionOption::create([
                     'question_id' => $question->id, 'position' => $p + 1,

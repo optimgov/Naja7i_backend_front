@@ -310,7 +310,7 @@ class CorrectifsRevueTest extends TestCase
         $this->assertSame($v1->id, $v2->supersedes_id);
         $this->assertSame('draft', $v2->status);
         $this->assertSame($enonceOriginal, $v1->fresh()->stem);
-        $this->assertCount(4, $v2->options);
+        $this->assertCount(5, $v2->options);
     }
 
     // ===================================================================
@@ -446,6 +446,7 @@ class CorrectifsRevueTest extends TestCase
             ['B', true,  'B est juste.',  null],
             ['C', false, 'C est fausse.', 'lecture_enonce'],
             ['D', false, 'D est fausse.', 'connaissance_absente'],
+            ['Aucune des propositions précédentes', false, 'Elle est fausse puisqu’une autre proposition est correcte.', 'indetermine'],
         ] as $p => [$c, $juste, $justif, $cause]) {
             QuestionOption::create([
                 'question_id' => $question->id, 'position' => $p + 1,

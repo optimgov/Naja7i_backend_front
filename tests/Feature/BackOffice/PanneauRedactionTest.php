@@ -94,6 +94,7 @@ class PanneauRedactionTest extends TestCase
                 ['content' => 'B', 'is_correct' => true, 'rationale' => 'B est juste.', 'cause' => null],
                 ['content' => 'C', 'is_correct' => false, 'rationale' => 'C est fausse.', 'cause' => 'lecture_enonce'],
                 ['content' => 'D', 'is_correct' => false, 'rationale' => 'D est fausse.', 'cause' => 'connaissance_absente'],
+                ['content' => 'Aucune des propositions précédentes', 'is_correct' => false, 'rationale' => 'Elle est fausse puisqu’une autre proposition est correcte.', 'cause' => 'indetermine'],
             ],
         ], $remplace);
     }
@@ -132,7 +133,7 @@ class PanneauRedactionTest extends TestCase
 
         $this->assertSame('draft', $question->status, 'Une question naît brouillon.');
         $this->assertSame($this->auteur->id, $question->author_id);
-        $this->assertCount(4, $question->options);
+        $this->assertCount(5, $question->options);
 
         /* Ces trois faits ne viennent PAS du formulaire : ils viennent du
          * service, et leur absence signerait une écriture directe par

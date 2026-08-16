@@ -105,6 +105,10 @@ class ChaineEditorialeTest extends TestCase
                 ['content' => 'B', 'is_correct' => true, 'rationale' => 'B est juste.'],
                 ['content' => 'C', 'is_correct' => false, 'rationale' => 'C est fausse.', 'cause' => 'lecture_enonce'],
                 ['content' => 'D', 'is_correct' => false, 'rationale' => 'D est fausse.', 'cause' => 'connaissance_absente'],
+                /* L'option E de l'épreuve réelle depuis 2024 — corpus §4.2.1.
+                 * Sa cause est de MÉTHODE et non de connaissance : aucun des
+                 * huit codes ne la porte, `indetermine` le dit sans inventer. */
+                ['content' => 'Aucune des propositions précédentes', 'is_correct' => false, 'rationale' => 'Elle est fausse puisqu’une autre proposition est correcte.', 'cause' => 'indetermine'],
             ],
         ], $remplace);
     }
@@ -132,7 +136,7 @@ class ChaineEditorialeTest extends TestCase
 
         $question = Question::where('uuid', $reponse->json('data.uuid'))->firstOrFail();
         $this->assertSame($this->auteur->id, $question->author_id);
-        $this->assertCount(4, $question->options);
+        $this->assertCount(5, $question->options);
     }
 
     public function test_la_cause_est_refusee_sur_la_bonne_reponse(): void

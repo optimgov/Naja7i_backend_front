@@ -68,10 +68,37 @@ final class SimulationReport
         return [
             'sections' => $sections,
             'score' => $this->scorePondere($sections),
+            /*
+             * DEUX FAÇONS DE NE PAS AVOIR DE POINT, ET LE BARÈME RÉEL LES
+             * SÉPARE — corpus §4.2.2.
+             *
+             * Depuis 2025, les trois voies impriment : « تنقط الإجابة بنقطة
+             * واحدة (1ن)، وصفر (0) في حالة عدم الإجابة؛ يعتمد تنقيط سالب عن كل
+             * إجابة خاطئة أو ملغاة ». Une réponse fausse COÛTE ; une question
+             * laissée blanche ne rapporte rien mais ne coûte rien.
+             *
+             * `answered - correct` et `asked - answered` étaient déjà
+             * calculables par le client. Les servir explicitement n'est pas une
+             * commodité : c'est le contrat qui déclare que la distinction
+             * EXISTE, au lieu de laisser chaque écran la redécouvrir — et se
+             * tromper de soustraction une fois sur deux.
+             *
+             * AUCUN POINT N'EST CALCULÉ ICI, et c'est délibéré : le montant de
+             * la pénalité n'est imprimé sur aucun sujet du corpus. Seule son
+             * existence l'est. Le rapport rend donc des DÉNOMBREMENTS, et
+             * `official.negative_marking` dit si une pénalité s'applique.
+             * Multiplier par un montant supposé serait inventer un barème.
+             */
             'brut' => [
                 'asked' => $attempt->item_count,
                 'answered' => $items->filter(fn ($i) => $i->response !== null)->count(),
                 'correct' => $attempt->correct_count,
+                /* Répondues et fausses : ce sont celles qu'une pénalité frappe. */
+                'wrong' => $items->filter(
+                    fn ($i) => $i->response !== null && $i->response->is_correct === false
+                )->count(),
+                /* Laissées blanches : zéro point, jamais de pénalité. */
+                'unanswered' => $items->filter(fn ($i) => $i->response === null)->count(),
             ],
             /* LE RENVOI VERS L'ORDONNANCE — c'est ce qui rend le rapport
              * actionnable. Une note sans « et maintenant ? » n'apprend rien, et

@@ -255,8 +255,43 @@ class Crmef2025Seeder extends Seeder
             'languages_allowed' => ['ar', 'fr'],   // au choix du candidat
             'position' => 1, 'provenance' => 'official',
             'status' => 'published', 'published_at' => now(),
+
+            /*
+             * LA NUMÉROTATION RÉELLE, IMPRIMÉE. Le sujet de la voie B, session
+             * نونبر 2025, est dans le corpus (§1.4) : « من السؤال Q 61 إلى
+             * السؤال Q 120 ». Un examen blanc qui numérote 1, 2, 3 entraîne au
+             * report sur la mauvaise ligne d'une feuille commune à plusieurs
+             * blocs — et « un décalage d'une seule ligne invalide la totalité
+             * du bloc ».
+             *
+             * ─────────────────────────────────────────────────────────────
+             * CINQ OPTIONS, ET C'EST DÉCLARÉ MÊME SI ÇA DÉRANGE.
+             *
+             * Le même sujet imprime « خمسة (5) اختيارات لأجوبة مقترحة (A, B, C,
+             * D, E) واحد منها فقط ». Cette épreuve PRÉTEND être ce sujet : elle
+             * déclare donc cinq options.
+             *
+             * La première écriture de ce lot avait laissé la colonne nulle,
+             * parce que la déclarer rendait rouges sept tests de la suite. Le
+             * rouge disait vrai : notre banque de démonstration, écrite à quatre
+             * options sous l'ancienne règle, ne ressemble plus à l'épreuve
+             * réelle depuis 2024. Taire le fait pour retrouver du vert aurait
+             * fait du seeder le gardien d'une fiction confortable.
+             *
+             * La règle ne bloque QUE la publication et l'éligibilité, jamais
+             * l'existence : un brouillon à quatre options vit normalement, ce
+             * que deux tests prouvent des deux côtés. C'est ce qui permettra à
+             * l'import des annales de la phase 3 d'entrer sans se heurter à ce
+             * mur.
+             * ─────────────────────────────────────────────────────────────
+             */
+            'options_count' => 5,
+            'first_question_number' => 61,
         ])->tap(fn (Exam $e) => $this->blueprint($e, $source,
-            'Domaines et poids officiels. Le nombre de questions et le barème détaillé ne figurent pas dans le descriptif.'));
+            'Domaines et poids officiels. Le nombre de questions et le barème détaillé ne figurent pas dans le descriptif.',
+            /* « يعتمد تنقيط سالب عن كل إجابة خاطئة أو ملغاة » — la pénalité est
+             * imprimée. Son MONTANT ne l'est pas, et reste donc nul. */
+            penalite: true));
     }
 
     private function epreuveDidactique(Track $track, Specialty $francais, Source $source): Exam
@@ -287,11 +322,17 @@ class Crmef2025Seeder extends Seeder
             'Domaines et poids officiels. Le nombre de questions et le barème détaillé ne figurent pas dans le descriptif.'));
     }
 
-    private function blueprint(Exam $exam, Source $source, string $note): BlueprintModel
+    /**
+     * @param  bool|null  $penalite  true = pénalité imprimée sur le sujet ;
+     *                               false = le sujet imprime zéro pour une erreur ;
+     *                               null = aucun sujet ne le dit — le défaut.
+     */
+    private function blueprint(Exam $exam, Source $source, string $note, ?bool $penalite = null): BlueprintModel
     {
         return BlueprintModel::create([
             'exam_id' => $exam->id, 'source_id' => $source->id,
             'version' => '2025-11',
+            'negative_marking' => $penalite,
             'official_question_count' => null,             // non établi par la source
             'official_scoring_note_fr' => 'Barème détaillé non précisé par le descriptif officiel.',
             'official_scoring_note_ar' => 'سلّم التنقيط المفصّل غير محدَّد في الوصف الرسمي.',

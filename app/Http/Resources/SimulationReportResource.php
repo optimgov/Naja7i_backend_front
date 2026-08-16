@@ -119,6 +119,28 @@ class SimulationReportResource extends JsonResource
                 'scoring_note' => $blueprint?->localized('official_scoring_note'),
                 'admission_threshold_note' => $blueprint?->localized('official_admission_threshold_note'),
                 'blueprint_version' => $blueprint?->version,
+
+                /*
+                 * LA PÉNALITÉ NÉGATIVE — corpus §4.2.2, imprimée depuis 2025.
+                 *
+                 * TROIS ÉTATS SERVIS TELS QUELS. `null` n'est pas « pas de
+                 * pénalité » : c'est « le descriptif ne le dit pas », et le
+                 * client doit écrire « non précisé » plutôt que rassurer.
+                 *
+                 * `points` reste nul même quand `applies` vaut true : la valeur
+                 * n'est imprimée sur aucun sujet du corpus. Le produit dit donc
+                 * « une pénalité s'applique, son montant n'est pas publié » —
+                 * ce qui est exactement ce que l'on sait.
+                 *
+                 * Et rien de plus : pas de conseil de stratégie, pas de « vous
+                 * auriez dû vous abstenir ». Le rapport rend un chiffre, pas un
+                 * jugement — et le candidat a déjà déclaré sa certitude à
+                 * chaque question, ce qui lui appartient.
+                 */
+                'negative_marking' => [
+                    'applies' => $blueprint?->negative_marking,
+                    'points' => $blueprint?->negative_marking_points,
+                ],
             ],
 
             'meta' => [

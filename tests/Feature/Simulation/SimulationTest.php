@@ -87,6 +87,7 @@ class SimulationTest extends TestCase
                     ['Option B', true,  'RATIONALE_SECRETE_B', null],
                     ['Option C', false, 'RATIONALE_SECRETE_C', 'lecture_enonce'],
                     ['Option D', false, 'RATIONALE_SECRETE_D', 'connaissance_absente'],
+                    ['Aucune des propositions précédentes', false, 'Elle est fausse puisqu’une autre proposition est correcte.', 'indetermine'],
                 ] as $p => [$c, $juste, $justif, $cause]) {
                     QuestionOption::create([
                         'question_id' => $question->id, 'position' => $p + 1,

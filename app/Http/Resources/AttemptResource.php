@@ -54,6 +54,24 @@ class AttemptResource extends JsonResource
                 'code' => $this->exam->code,
                 'name' => $this->exam->localized('name'),
                 'coefficient' => $this->exam->coefficient,
+
+                /*
+                 * F3 — LE PREMIER NUMÉRO IMPRIMÉ DU BLOC. Corpus §4.2.4.
+                 *
+                 * Les blocs ne commencent pas à Q1 : le primaire répond de Q101
+                 * à Q125, le collège de Q61 à Q120, sur une feuille de réponses
+                 * COMMUNE à plusieurs blocs. Le corpus est net : « Un décalage
+                 * de report d'une seule ligne invalide la totalité du bloc. »
+                 *
+                 * Un examen blanc qui numérote 1, 2, 3 entraîne donc au report
+                 * sur la mauvaise ligne — il apprend un geste faux. Le client
+                 * numérote à partir d'ici quand la valeur existe.
+                 *
+                 * NUL = non documenté, et le client repart de 1 comme
+                 * aujourd'hui. Ce n'est pas un défaut : c'est l'aveu qu'on ne
+                 * connaît pas la numérotation de cette épreuve-là.
+                 */
+                'first_question_number' => $this->exam->first_question_number,
             ]),
             'items' => AttemptQuestionResource::collection($this->whenLoaded('items')),
         ];

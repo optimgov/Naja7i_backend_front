@@ -36,6 +36,9 @@ class Exam extends Model
         'track_id', 'specialty_id', 'code', 'name_fr', 'name_ar',
         'coefficient', 'duration_minutes', 'format', 'languages_allowed',
         'position', 'status', 'provenance', 'published_at',
+        /* Faits IMPRIMÉS sur les sujets — corpus §4.2. Nuls tant qu'aucun
+         * document ne les donne : ni l'un ni l'autre ne se devine. */
+        'options_count', 'first_question_number',
     ];
 
     protected $hidden = ['id', 'track_id', 'specialty_id'];

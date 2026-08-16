@@ -108,6 +108,7 @@ class AuditRevisionTest extends TestCase
                 ['B', true, null],
                 ['C', false, 'lecture_enonce'],
                 ['D', false, 'connaissance_absente'],
+                ['Aucune des propositions précédentes', false, 'indetermine'],
             ] as $p => [$c, $juste, $cause]) {
                 QuestionOption::create([
                     'question_id' => $question->id, 'position' => $p + 1,

@@ -79,6 +79,7 @@ class MaitriseTest extends TestCase
                     ['B', true,  'B est juste.',  null],
                     ['C', false, 'C est fausse.', 'lecture_enonce'],
                     ['D', false, 'D est fausse.', 'connaissance_absente'],
+                    ['Aucune des propositions précédentes', false, 'Elle est fausse puisqu’une autre proposition est correcte.', 'indetermine'],
                 ] as $p => [$c, $juste, $justif, $cause]) {
                     QuestionOption::create([
                         'question_id' => $question->id, 'position' => $p + 1,

@@ -158,6 +158,15 @@ Elles ne se renégocient pas d'un pas à l'autre.
    la vraie raison sans rien protéger.
 7. **Tests sur PostgreSQL réel**, jamais SQLite.
 8. **Les tests ne sont jamais modifiés pour passer.** C'est le code qui change.
+9. **Un état non suivi qui réapparaît se réexamine, il ne se qualifie pas.**
+   `?? _a_supprimer/` s'est affiché dans chaque `git status` d'une session
+   entière, et a été écarté chaque fois d'un mot — « la quarantaine ». Pendant
+   ce temps, onze fichiers de chaîne CI/CD entraient dans le dépôt sur une
+   branche que personne n'avait demandée. Nommer une anomalie n'est pas
+   l'expliquer : tant qu'on ne sait pas POURQUOI elle revient, elle reste
+   ouverte. Cela vaut pour un fichier non suivi, une branche inconnue, un test
+   instable, un avertissement de compilation. Une anomalie qui revient n'est
+   pas du bruit de fond.
 
 ---
 

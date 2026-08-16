@@ -170,6 +170,9 @@ class AbonnementTest extends TestCase
             60,
             'Trente jours à partir de la VALIDATION, pas de la saisie.'
         );
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     public function test_la_prolongation_empile_au_lieu_d_ecraser(): void
@@ -196,6 +199,9 @@ class AbonnementTest extends TestCase
             120,
             'Un candidat qui achète deux fois a deux fois.'
         );
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     // ═════════════════════════════════════════ 3. Les refus de coupon

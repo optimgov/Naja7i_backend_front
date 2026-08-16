@@ -225,9 +225,23 @@ class SimulationTest extends TestCase
 
         $this->travel($this->epreuve->duration_minutes + 1)->minutes();
 
-        $this->expectException(AttemptExpired::class);
-
-        $this->service()->answer($item, null, 'sure');
+        /*
+         * `try/finally` ET NON `expectException` : la première écriture posait
+         * `travelBack()` APRÈS l'appel qui lève, donc sur une ligne que
+         * l'exception rendait inatteignable. L'horloge restait figée, et
+         * c'était à un test ultérieur de le payer.
+         *
+         * Trouvé par l'assertion de fin de test, qui a désigné CE test-ci —
+         * c'est exactement ce qu'elle est là pour faire.
+         */
+        try {
+            $this->service()->answer($item, null, 'sure');
+            $this->fail('Une réponse après l’échéance devait être refusée.');
+        } catch (AttemptExpired) {
+            $this->assertTrue(true);
+        } finally {
+            $this->travelBack();
+        }
     }
 
     public function test_la_reponse_tardive_porte_son_propre_code(): void
@@ -251,6 +265,9 @@ class SimulationTest extends TestCase
             ])
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'ATTEMPT_EXPIRED');
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     public function test_la_confiance_reste_requise_en_examen_blanc(): void
@@ -286,6 +303,9 @@ class SimulationTest extends TestCase
         $this->assertSame('expired', $clos->status);
         $this->assertNotNull($clos->submitted_at, 'Une tentative expirée est soumise elle aussi.');
         $this->assertSame(1, $clos->correct_count, 'La correction est figée à la clôture, comme partout.');
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     public function test_l_examen_blanc_alimente_maitrise_et_calendrier(): void
@@ -390,6 +410,9 @@ class SimulationTest extends TestCase
 
         $this->assertNotSame($premiere->id, $seconde->id);
         $this->assertSame('expired', $premiere->fresh()->status);
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     public function test_l_ouverture_repond_201_puis_200(): void
@@ -690,6 +713,9 @@ class SimulationTest extends TestCase
 
         $this->assertSame('expired', $corps['status']);
         $this->assertSame('expired', $attempt->fresh()->status);
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     public function test_une_serie_sans_reponse_ne_rend_pas_zero_sur_l_absence(): void

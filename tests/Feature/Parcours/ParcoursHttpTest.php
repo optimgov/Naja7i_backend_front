@@ -835,6 +835,9 @@ class ParcoursHttpTest extends TestCase
             .'mais laissée de côté.'
         );
         $this->assertNotNull($reponse->json('data.0.last_activity_at'));
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     public function test_la_reponse_portant_un_chronometre_n_est_pas_stockable(): void

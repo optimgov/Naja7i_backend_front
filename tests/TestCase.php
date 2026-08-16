@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Carbon;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -36,4 +37,40 @@ abstract class TestCase extends BaseTestCase
      * serait annulée par la transaction comme le reste.
      */
     protected $seed = true;
+
+    /**
+     * AUCUN TEST NE LAISSE L'HORLOGE FIGÉE DERRIÈRE LUI.
+     *
+     * `travel()` et `travelTo()` posent `Carbon::setTestNow()`. Laravel 12 le
+     * remet à zéro dans son `tearDown` — vérifié dans
+     * `InteractsWithTestCaseLifecycle`, et sans garde conditionnelle. La fuite
+     * entre tests est donc déjà impossible aujourd'hui.
+     *
+     * CETTE ASSERTION N'EST PAS UNE CHASSE, C'EST UNE GARANTIE. Elle rend la
+     * famille entière impossible plutôt que d'en traquer un membre, et surtout
+     * elle DÉSIGNE LE TEST FAUTIF au lieu de faire échouer sa victime — un
+     * temps figé se paie toujours dans un test ultérieur, qui n'y est pour rien
+     * et qu'on accuse à tort. C'est exactement ce qui a coûté trois jours à
+     * DET-71 : un symptôme lu dans la mauvaise classe.
+     *
+     * Elle tourne AVANT le `tearDown` du framework, donc sur l'état que le test
+     * laisse réellement. Le jour où une version de Laravel cesse de nettoyer,
+     * ou qu'un test appelle `Carbon::setTestNow()` à la main, on l'apprend par
+     * son nom.
+     */
+    protected function tearDown(): void
+    {
+        $fige = Carbon::hasTestNow();
+        $valeur = $fige ? Carbon::getTestNow()?->toIso8601String() : null;
+
+        parent::tearDown();
+
+        if ($fige) {
+            $this->fail(
+                'Ce test laisse l’horloge figée à '.$valeur.'. `travel()` et '
+                .'`travelTo()` doivent être suivis de `travelBack()`, sans quoi '
+                .'un test ULTÉRIEUR échouera à sa place. Voir DET-71.'
+            );
+        }
+    }
 }

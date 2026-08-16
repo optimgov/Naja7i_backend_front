@@ -363,6 +363,9 @@ class TentativesTest extends TestCase
         $this->travel(40)->days();
 
         $this->assertSame(1, $this->causes()->status($this->candidat, false)['revealed']);
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     public function test_un_abonne_n_est_pas_plafonne(): void

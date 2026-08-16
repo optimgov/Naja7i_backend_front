@@ -584,6 +584,9 @@ class ChaineEditorialeTest extends TestCase
             $premier, $uuids->first(),
             'Le plus ancien d\'abord : servir le plus récent ferait d\'une file une pile.'
         );
+
+        /* L’horloge est rendue : un temps figé se paie dans un test ULTÉRIEUR. */
+        $this->travelBack();
     }
 
     // --- Le plan de rédaction pilote la file ----------------------------------

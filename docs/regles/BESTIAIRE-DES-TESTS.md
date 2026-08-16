@@ -116,3 +116,34 @@ qu'il disait. Rejouée sur la bonne branche : 603 vertes, dix de plus.
 l'arbre sur lequel il a été mesuré. « La suite est verte » est une phrase
 incomplète ; « la suite est verte sur `main` à tel commit » est une mesure.
 C'est aussi pourquoi la règle permanente 10 existe.
+
+### Un cas vécu du genre 4 — le contexte posé à la main qui rend un middleware invisible
+
+**16 août 2026.** Une session sœur a trouvé que `ResolveTenant` venait en
+DERNIER dans la chaîne du panneau Filament, après `AuthenticateSession`. Toute
+ouverture de `/admin` par un utilisateur déjà connecté rendait une 500. Le
+défaut vivait sous une suite entièrement verte.
+
+Leur explication tient en une phrase, et elle vaut pour tout ce dépôt :
+
+> « les tests du panneau posent le contexte à la main dans leur `setUp`,
+> l'ordre des middlewares devient sans effet, et le test valide le panneau sans
+> valider le chemin réel »
+
+**LE MÉCANISME.** En test, `setUp` et la requête HTTP partagent la même instance
+d'application. Un contexte posé à la main dans `setUp` est TOUJOURS LÀ quand le
+gestionnaire s'exécute. Le middleware qui devait le poser peut donc être mal
+placé, ou absent, sans qu'aucune assertion bouge : le test trouve la destination
+en état, et conclut que le chemin y mène.
+
+**MESURÉ, et le chiffre est la vraie information.** `ResolveTenant` retiré de la
+chaîne API : **606 tests verts, zéro rouge.** Le middleware qui porte l'isolation
+multi-organisme peut être supprimé sans qu'un seul test le remarque. En
+production il n'y a pas de `setUp` — il est parfaitement load-bearing, et la
+suite est aveugle à ce fait.
+
+**LE REMÈDE N'EST PAS DE RETIRER LES `setUp`.** Une fixture a besoin du contexte
+pour créer ses données : c'est légitime. Ce qui manque, c'est UN test par chaîne
+qui parte d'un état NU et laisse les middlewares faire leur travail — un seul
+suffit à rendre l'ordre observable. `PanneauAccesHttpTest` est le premier ; il
+rougit sur les trois cas quand on défait le correctif.

@@ -45,12 +45,26 @@ Le CRMEF n'est pas un concours unique. Primaire bilingue, primaire amazigh et
 secondaire ont des épreuves différentes. Sans ce niveau, les treize spécialités
 du secondaire seraient mélangées aux matières du primaire.
 
-### 3. Les poids officiels sont vérifiables
+### 3. Les poids sont ARITHMÉTIQUEMENT cohérents — et rien de plus
+
+**Amendé le 16 août 2026 (DET-63).** Ce paragraphe s'intitulait « Les poids
+officiels sont vérifiables », ce qui promettait ce que les tests ne prouvent
+pas.
 
 Les enfants d'un nœud somment au poids de leur parent ; les racines somment à
-100. Deux tests l'imposent sur chaque matrice. Une erreur de saisie dans un
-poids officiel fait échouer la CI plutôt que de fausser silencieusement un
-futur simulateur.
+100. Deux tests l'imposent sur chaque matrice. Une erreur de SAISIE fait donc
+échouer la CI plutôt que de fausser silencieusement le simulateur.
+
+**Cette vérification est arithmétique, jamais documentaire.** Elle établit que
+40 + 30 + 30 = 100 ; elle n'établit pas que 40 soit le bon poids, et ne le
+pourrait pas — un jeu de poids entièrement faux mais cohérent passerait ces
+mêmes tests sans rien signaler.
+
+La provenance est portée ailleurs, et par un autre mécanisme :
+`competency_nodes.provenance` croisé avec `sources.verified_at`. Un poids
+`reported` vient d'un descriptif nommé que personne dans ce dépôt n'a lu ; il
+compose exactement comme un poids `official`, et seule cette colonne dit la
+différence. Voir DET-60 et `docs/regles/CRMEF-rapprochement-20260815.md` §3.
 
 ### 4. Chaque donnée porte sa provenance
 

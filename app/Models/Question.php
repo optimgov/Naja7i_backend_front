@@ -39,6 +39,9 @@ class Question extends Model
         'stem', 'explanation', 'difficulty', 'cognitive_level',
         'mirror_question_id', 'remediation_id', 'delayed_review_days',
         'author_id', 'kind', 'authoring',
+        /* Annales importées — lot CRMEF-2. `import_note` porte les marques
+         * manuscrites relevées sur le scan, jamais une réponse. */
+        'import_ref', 'import_note',
     ];
 
     protected $hidden = [

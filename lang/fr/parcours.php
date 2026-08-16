@@ -18,6 +18,20 @@ return [
     'simulation_indisponible' => "L'examen blanc n'est pas encore disponible pour cette épreuve : la banque ne compte pas assez de questions publiées.",
     'simulation_duree_inconnue' => "La durée officielle de cette épreuve n'est pas encore établie. Un examen blanc ne peut pas être chronométré sans elle.",
     'simulation_base_de_notation' => "Cette note porte sur une série composée selon les poids officiels des domaines de l'épreuve. Elle mesure ce que vous avez démontré aujourd'hui, sur cette série.",
+
+    /*
+     * LA MÊME PHRASE, SANS LE MOT « OFFICIELS » — DET-60.
+     *
+     * Servie tant que la source des poids n'est pas vérifiée sur pièce. Le
+     * descriptif qui les porte est nommé, daté et paginé, mais personne dans ce
+     * dépôt ne l'a lu : dire « officiels » au candidat serait lui promettre une
+     * fidélité que nous ne pouvons pas établir.
+     *
+     * On ne dit pas non plus « non officiels », ce qui serait faux dans l'autre
+     * sens. On dit ce qui est vrai : les poids viennent du descriptif, et nous
+     * ne les avons pas vérifiés.
+     */
+    'simulation_base_de_notation_rapportee' => "Cette note porte sur une série composée selon les poids des domaines rapportés par le descriptif de l'épreuve, que nous n'avons pas pu vérifier sur pièce. Elle mesure ce que vous avez démontré aujourd'hui, sur cette série.",
     'simulation_bareme_non_officiel' => "Le barème officiel du concours n'est pas public : cette note est exprimée en pourcentage pondéré, elle n'est pas une note sur 20.",
     'tentative_expiree' => "Le temps imparti est écoulé. Cette réponse n'a pas été enregistrée, et l'épreuve a été clôturée.",
 ];

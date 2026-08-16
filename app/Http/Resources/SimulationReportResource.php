@@ -146,7 +146,24 @@ class SimulationReportResource extends JsonResource
             'meta' => [
                 /* Pourquoi une note ici et nulle part ailleurs — le contrat le
                  * dit lui-même, pour que le client n'ait pas à le déduire. */
-                'scoring_basis' => __('parcours.simulation_base_de_notation'),
+                /*
+                 * LE LIBELLÉ SUIT UN CHAMP, PAS UNE CONVICTION — DET-60.
+                 *
+                 * La justification de cette note tient à un fait : la série
+                 * reproduit les poids des domaines. Reste à savoir de quel
+                 * droit on les appelle « officiels ». `sources.verified_at`
+                 * répond, et c'est la seule autorité que le produit possède
+                 * sur ce point.
+                 *
+                 * Tant qu'elle est nulle, le descriptif est nommé mais n'a été
+                 * vu par personne ici : la phrase le dit au candidat plutôt que
+                 * de lui promettre une fidélité invérifiable. Le jour où la
+                 * source est vérifiée, la phrase change d'elle-même — aucun
+                 * code à reprendre.
+                 */
+                'scoring_basis' => $blueprint?->source?->verified_at !== null
+                    ? __('parcours.simulation_base_de_notation')
+                    : __('parcours.simulation_base_de_notation_rapportee'),
                 'not_official_scale' => __('parcours.simulation_bareme_non_officiel'),
                 'disclaimer' => __('parcours.aucune_prediction'),
             ],

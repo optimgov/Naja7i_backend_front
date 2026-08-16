@@ -65,6 +65,34 @@ class AdminPanelProvider extends PanelProvider
              */
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->middleware([
+                /*
+                 * RESOLVETENANT EN PREMIER, ET C'EST LOAD-BEARING.
+                 *
+                 * Il était en dernier, après `AuthenticateSession`. Or c'est
+                 * `AuthenticateSession` qui résout l'utilisateur depuis le
+                 * cookie « remember », et Filament appelle alors
+                 * `User::canAccessPanel()`, qui interroge PermissionResolver,
+                 * qui réclame le tenant. Six middlewares trop tôt : toute
+                 * ouverture de /admin par un utilisateur connecté rendait une
+                 * 500 `NoTenantResolvedException`.
+                 *
+                 * La preuve tient dans le journal de requêtes de la page
+                 * d'erreur : une seule requête, `select * from users`, et
+                 * AUCUNE sur `tenants` — ResolveTenant n'avait pas tourné.
+                 *
+                 * Contrairement à `SetLocale`, qui lit une préférence sur
+                 * `$request->user()` et doit donc venir après
+                 * l'authentification, ResolveTenant ne dépend de rien : il
+                 * charge le tenant plateforme. Rien ne s'oppose à ce qu'il
+                 * passe en tête, et tout l'exige.
+                 *
+                 * Pourquoi la recette ne le voyait pas : les tests du panneau
+                 * posent le contexte à la main dans leur `setUp`
+                 * (`app(TenantContext::class)->set(...)`). L'ordre des
+                 * middlewares devient alors sans effet, et le test valide le
+                 * panneau sans valider le chemin réel.
+                 */
+                ResolveTenant::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
@@ -74,7 +102,6 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                ResolveTenant::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

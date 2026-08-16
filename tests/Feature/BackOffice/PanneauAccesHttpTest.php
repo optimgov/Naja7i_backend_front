@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Tenancy\TenantContext;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -139,14 +140,54 @@ class PanneauAccesHttpTest extends TestCase
      */
     public function test_la_route_de_livewire_resout_le_tenant(): void
     {
-        $chaine = Route::getRoutes()->getByName('livewire.update')->gatherMiddleware();
+        /*
+         * DEUX PIÈGES, MESURÉS PLUTÔT QUE SUPPOSÉS — la première écriture de ce
+         * test tombait dans les deux, et cassait avant même d'assurer quoi que
+         * ce soit.
+         *
+         * 1. LA ROUTE NE S'APPELLE PAS `livewire.update`. Livewire la nomme
+         *    `default.livewire.update` — le préfixe est celui de son « pack »
+         *    par défaut. `getByName('livewire.update')` rendait donc `null`, et
+         *    le test mourait sur un appel de méthode, pas sur son assertion.
+         *
+         * 2. `gatherMiddleware()` NE DÉPLIE PAS LES GROUPES. Sur cette route il
+         *    rend exactement `['web']` — l'alias, jamais son contenu. Chercher
+         *    `ResolveTenant::class` là-dedans n'aurait rien trouvé même avec le
+         *    bon nom de route, et aurait fait croire à un défaut inexistant.
+         *
+         * On lit donc le groupe `web` tel que le noyau le tient : c'est là que
+         * `$middleware->web(prepend: …)` écrit, et c'est ce que la route
+         * exécutera réellement.
+         */
+        $route = Route::getRoutes()->getByName('default.livewire.update');
+
+        $this->assertNotNull(
+            $route,
+            'La route de mise à jour de Livewire est introuvable. Si Livewire a changé '
+            .'le nom de son pack, ce test doit suivre — pas être supprimé.'
+        );
+
+        $this->assertContains('web', $route->gatherMiddleware());
+
+        $noyau = app(Kernel::class);
+        $groupes = (new \ReflectionClass($noyau))->getProperty('middlewareGroups')->getValue($noyau);
+        $chaine = $groupes['web'] ?? [];
 
         $this->assertContains(
             ResolveTenant::class,
             $chaine,
-            'La route de mise à jour de Livewire doit résoudre le tenant : c’est elle '
-            .'qui exécute la connexion au back-office, pas les routes du panneau. '
-            .'Chaîne observée : '.implode(', ', $chaine)
+            'Le groupe `web` doit résoudre le tenant : c’est lui que porte la route de '
+            .'Livewire, qui exécute la connexion au back-office — pas les routes du '
+            .'panneau. Chaîne observée : '.implode(', ', $chaine)
+        );
+
+        /* ET EN TÊTE : la connexion résout l'utilisateur dès `StartSession`. */
+        $this->assertSame(
+            ResolveTenant::class,
+            $chaine[0] ?? null,
+            'ResolveTenant doit venir EN TÊTE du groupe `web`, avant `StartSession` : '
+            .'c’est la session qui fait résoudre l’utilisateur, et `canAccessPanel()` '
+            .'réclame alors le tenant.'
         );
     }
 

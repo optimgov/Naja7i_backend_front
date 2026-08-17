@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Questions\Tables;
 use App\Filament\Resources\Questions\Actions\ActesEditoriaux;
 use App\Models\CompetencyNode;
 use App\Models\Question;
+use App\Models\User;
 use App\Services\QuestionAuthoringService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -92,9 +93,30 @@ class QuestionsTable
                         ->orderBy('code')->pluck('code', 'id'))
                     ->searchable(),
 
+                /*
+                 * UN FILTRE N'EST PAS UN ANNUAIRE — D-04.
+                 *
+                 * `->relationship('author', 'email')` construisait ses options
+                 * depuis le modèle lié, SANS CONTRAINTE : il ne demandait pas
+                 * « qui a écrit une question » mais « quels utilisateurs
+                 * existent ». Résultat mesuré en recette humaine le 17 août :
+                 * les adresses des CANDIDATS s'affichaient dans le panneau des
+                 * filtres, lisibles par un relecteur qui ne porte ni
+                 * `members.view` ni `users.support` — les deux permissions qui
+                 * gouvernent l'accès aux personnes.
+                 *
+                 * On ne restreint pas au personnel, ce serait viser à côté : un
+                 * membre du personnel qui n'a jamais rien écrit n'a pas plus sa
+                 * place ici qu'un candidat. Le bon ensemble est celui qui a un
+                 * sens — les comptes qui ont EFFECTIVEMENT écrit. Il ne demande
+                 * aucune liste à tenir et se rétrécit tout seul.
+                 */
                 SelectFilter::make('author_id')
                     ->label('Auteur')
-                    ->relationship('author', 'email'),
+                    ->options(fn () => User::query()
+                        ->whereIn('id', Question::query()->select('author_id')->whereNotNull('author_id'))
+                        ->orderBy('email')
+                        ->pluck('email', 'id')),
             ])
             /*
              * LES ACTES DE LA CHAÎNE VIVENT ICI, pas seulement sur la page

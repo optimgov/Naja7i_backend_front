@@ -5,6 +5,11 @@
 Tout le reste du parcours fonctionne, et par endroits remarquablement bien. Mais
 il est inatteignable sans connaître une URL, et la première porte n'existe pas.
 
+*Mis à jour après un second passage qui a refermé les principaux trous du premier
+rapport : la chaîne éditoriale est désormais parcourue de bout en bout, et elle a
+livré trois défauts de plus (D-16, D-17, D-20) — dont l'un dit que le principe
+des quatre yeux n'est pas tenu.*
+
 ---
 
 ## Comment cette recette a été faite
@@ -36,12 +41,13 @@ n'est pas une recette.
 | **Le rapport d'examen blanc et sa note sur barème** | L'examen blanc dure 240 minutes et compte 20 questions ; je l'ai lancé, vérifié le chronomètre, la grille et la survie au rechargement, puis abandonné. Répondre à 20 questions puis attendre l'échéance n'était pas tenable dans cette session. | Une passation complète, ou un script qui avance l'échéance comme `echoir-revisions.php` le fait pour la mémoire. |
 | **L'avertissement des 5 dernières minutes** | Même raison : il se déclenche à T-5 min sur 240. | Idem. |
 | **« Répondre après l'échéance »** | Idem. | Idem. |
-| **La chaîne éditoriale de bout en bout** (écrire → faire relire par un autre → publier) | J'ai ouvert et décrit chaque écran et chaque champ du formulaire de création, mais je n'ai pas soumis de question réelle jusqu'à publication. Le formulaire exige une justification sur chaque option et une cause par distracteur ; le remplir honnêtement demande d'écrire une vraie question. | Une session avec un rédacteur humain. |
-| **« Un auteur ne peut pas relire son propre travail »** | Découle du point précédent : il faut une question dont l'auteur est identifié pour l'éprouver. | Idem. |
+| ~~La chaîne éditoriale de bout en bout~~ | **FAIT — voir la section « Second passage » ci-dessous.** | — |
+| ~~« Un auteur ne peut pas relire son propre travail »~~ | **FAIT — et la garantie n'existe pas (D-17).** | — |
 | **La reprise sur un second appareil** | Deux navigateurs simultanés non testés. Le tableau de bord lit `GET me/attempts` côté serveur, donc la mécanique est là, mais je ne l'ai pas vue. | Deux contextes navigateur en parallèle. |
 | **Le thème sombre** | Bouton présent partout, jamais activé. | Un passage complet en thème sombre. |
 | **Le collecteur d'annonces** | Hors périmètre demandé, et les annonces sont une fixture du 8 août. | — |
 | **Les écrans commerciaux avec le rôle prévu** | Impossible : voir D-02. J'ai opéré avec un compte `super_admin` créé pour la recette. | Corriger D-02. |
+| **Le refus de commande SANS motif** | Le champ « Motif (interne) » est déclaré obligatoire, et le premier « Confirmer » sans motif n'a pas fermé la modale — donc il a bien été rejeté. Mais je n'ai pas su capturer le message d'erreur affiché. Le refus est donc établi, sa formulation non. | Un œil humain sur la modale. |
 
 **Deux comptes ont été créés pour cette recette** et n'existent pas dans le semis :
 `recette.finance@naja7i.test` (rôle `finance`) et `recette.admin@naja7i.test`
@@ -196,6 +202,64 @@ Console du navigateur, sur 117 écrans :
 
 ---
 
+## Second passage — les trous refermés
+
+Le premier rapport listait ce qu'il n'avait pas pu vérifier. Voici ce qui a été
+parcouru depuis, **sur la même instance et la même base**.
+
+### La chaîne éditoriale, conduite par l'interface
+
+Une question a été écrite de bout en bout dans `/admin/questions/create` par
+`editorial.auteur` — rattachement, compétence « Grammaire » choisie dans la liste
+de recherche, remédiation, énoncé, justification générale, quatre options avec
+leur justification et leur cause. Puis suivie jusqu'à la publication.
+
+| Étape | Compte | Ce que j'ai vu | Verdict |
+|---|---|---|---|
+| Création | `auteur` | Acceptée. La page d'édition offre « Soumettre à la relecture » et un bloc « Ce qui empêche encore la publication » | ✅ |
+| Soumission | `auteur` | « Soumise à la relecture. » | ✅ |
+| L'auteur tente de relire | `auteur` | Aucune action de relecture offerte | ✅ *mais voir ci-dessous* |
+| **Le relecteur relit** | `relecteur` | **Aucune action. `/edit` → 403 Forbidden** | 🔴 **D-16** |
+| Relecture | `valideur` | « Relecture enregistrée. » | ✅ |
+| Validation | `valideur` | Modale générique « Êtes-vous sûr de vouloir faire cela ? » → « Validée pédagogiquement. » | ✅ |
+| Publication | `valideur` | Modale remarquable : « La publication **GÈLE** le contenu. Le corriger ensuite demande une nouvelle version », avec les deux bascules d'éligibilité et leurs conditions → « Publiée. » | ✅ |
+| Après publication | `valideur` | `/edit` → **403** : le gel est réel, pas déclaratif | ✅ |
+
+**Publication sans source vérifiée : elle a réussi.** La question est `published`
+avec `source_id = NULL`, `eligible_for_diagnostic = false`. Ce n'est pas la
+publication qui est bloquée par l'absence de source, c'est l'**éligibilité au
+diagnostic** — ce que dit d'ailleurs la modale. Le guide de visite affirme le
+contraire : « la publication refuse si la source n'est pas vérifiée ». C'est le
+guide qui a tort. → **D-18**
+
+### Le test qui discrimine sur les quatre yeux
+
+Que l'auteur ne puisse pas relire ne prouve rien : le rôle `auteur` n'a pas
+`questions.review`, il ne peut relire **rien**, ni le sien ni celui d'autrui.
+C'est le rôle qui bloque, pas la paternité.
+
+Le rôle `editeur` porte `questions.create` **et** `questions.review`. Test
+refait avec lui : il écrit une question, la soumet, et **« Marquer relue » lui
+est offert sur son propre travail**. Geste exécuté : « Relecture enregistrée. »
+Vérifié en base : `author_id = 3`, `reviewer_id = 3` — **la même personne**.
+→ **D-17**
+
+Le même compte a d'ailleurs relu ET validé la question de la chaîne complète
+(`reviewer_id = validator_id = 3`).
+
+### Coupons et commandes
+
+| Geste | Ce que j'ai vu | Verdict |
+|---|---|---|
+| Engendrer un code | Formulaire clair, note interne « Jamais lue par le candidat » | ✅ |
+| Engendrer un **lot** | **Aucune action de lot.** Le produit offre un code unique à `max_uses` réglable — l'aide dit « 50 pour un lot partenaire ». C'est un code partagé, pas un jeu de codes distincts | ⚠️ **D-19** |
+| **Révoquer** | Modale : « Le code cessera d'être utilisable. Les commandes déjà honorées ne changent pas. » Vérifié par l'autre bout : le candidat qui saisit le code révoqué lit « Ce code n'est plus valable. » | ✅ |
+| Commande en attente, côté candidat | « Votre code est en cours de validation — Notre équipe le vérifie sous 48 heures ouvrées. Votre abonnement démarrera à ce moment-là, pour la durée entière. » | ✅ |
+| **Refuser avec motif** | Modale : « Motif (interne)* — Lu par l'équipe uniquement. **Le candidat ne le verra jamais.** » Champ obligatoire | ✅ |
+| Ce que le candidat voit après refus | « non aboutie ». Le motif interne n'apparaît pas | ✅ |
+
+---
+
 ## Les défauts
 
 ### 🔴 Bloquants
@@ -244,6 +308,36 @@ contient, hors en-tête, **aucun `<a>` ni `<button>`**. Même chose pour « Vér
 sur une autre question » sur la correction, qui devait mener à la question
 miroir. L'étape 6 du guide de visite est impraticable.
 
+**D-16 — Un relecteur ne peut rien relire.**
+`editorial.relecteur` (rôle `reviseur`, permissions `questions.view`,
+`questions.review`, `catalogue.view`), connexion **prouvée** (`/admin`, plus de
+champ mot de passe). Il voit `/admin/questions` en 200 avec les 21 lignes, et :
+**zéro action de ligne, zéro action d'en-tête**.
+`/admin/questions/{id}` → 404 · `/admin/questions/{id}/edit` → **403 Forbidden**
+· `/admin/questions/{id}/review` → 404. Le rôle dont c'est le seul métier voit la
+file et ne peut agir sur aucune question. Seul l'`editeur` dispose de
+« Marquer relue ». *(J'ai failli signaler ce défaut à tort au premier essai : ma
+connexion n'avait pas abouti et je lisais la page de connexion. Le fait n'est
+retenu qu'avec la preuve de session.)*
+
+**D-17 — Un compte qui écrit peut relire son propre travail.**
+`editorial.valideur` (rôle `editeur`, qui porte `questions.create` ET
+`questions.review`) crée une question dans `/admin/questions/create`, la soumet,
+recharge : **« Marquer relue » lui est offert**. Geste exécuté → « Relecture
+enregistrée. » En base : `author_id = reviewer_id = 3`. Le principe des quatre
+yeux n'est pas tenu : il repose sur la séparation des rôles, et s'effondre dès
+qu'un compte porte les deux permissions — ce qui est le cas du rôle `editeur`
+livré par le semis. Le même compte a aussi relu **et** validé la question de la
+chaîne complète.
+
+**D-20 — « Retirer » est offert là où la transition est invalide, et absent là où elle est la seule permise.**
+Sur une question `à relire` ou `relue`, l'éditeur voit « Retirer ». Or le service
+déclare : « Retire une version. **Seule transition permise depuis `published`**. »
+Sur la question effectivement publiée, il n'y a **aucune** action — ni sur la page
+d'édition (403, par gel volontaire), ni dans la ligne de la liste, qui n'offre que
+« Question miroir ». Le rôle porte pourtant `questions.retire`. Une question
+publiée ne peut donc pas être retirée par l'interface.
+
 ### ⚠️ Gênants
 
 **D-03 — Le tableau de bord du back-office répond sur la mauvaise épreuve.**
@@ -276,6 +370,18 @@ autre forme : « Cette erreur vient **souvent** de : Piège de formulation », e
 l'ordonnance dit « Domaine jamais évalué — un angle mort à découvrir, **pas une
 lacune démontrée** ». À arbitrer : la formule actuelle suffit-elle, ou le mot
 doit-il être là.
+
+**D-18 — Le guide de visite affirme une règle que le produit n'applique pas.**
+`scripts/demonstration/VISITE.md` : « la publication refuse si la source n'est pas
+vérifiée (registre des sources) ». Mesuré : la publication **réussit** sans
+source. Ce qui est conditionné, c'est l'éligibilité au diagnostic — et la modale
+de publication le dit correctement. C'est la documentation qu'il faut corriger,
+pas le produit.
+
+**D-19 — Pas d'engendrement de lot de coupons.**
+`/admin/coupons` : les seules actions sont « Créer » et « Révoquer ». Un
+« lot partenaire » se fait avec un code unique à 50 usages — un code partagé
+entre 50 personnes, pas 50 codes nominatifs. À trancher : est-ce le besoin.
 
 **D-13 — La page 403 ne nomme rien.**
 `/admin/orders` en `editorial.auteur` : le corps se réduit à « 403 FORBIDDEN ».
@@ -336,3 +442,17 @@ cause sans amputer la question, l'isolation entre candidats, l'arabe complet.
 Il échoue sur la chose facile : **ouvrir la porte**. Un candidat qui s'inscrit
 demain voit un écran vide et repart. Corriger D-01 et D-06 — deux liens — rend
 tout le reste atteignable.
+
+Et il échoue sur une chose qui n'est ni facile ni cosmétique : **les rôles ne
+correspondent pas aux surfaces**. Le relecteur ne peut pas relire (D-16), le
+rôle finance ne peut pas entrer (D-02), l'éditeur peut se relire lui-même
+(D-17), et une question publiée ne peut pas être retirée (D-20). Quatre défauts,
+une seule cause : les permissions sont définies avec soin dans le catalogue des
+rôles, et l'interface ne s'y adosse pas — elle gate sur `questions.view` pour
+l'accès au panneau, sur le rôle pour la relecture, et nulle part sur la
+paternité. C'est le chantier qui commande les autres, parce qu'il décide qui
+peut faire tourner la plateforme.
+
+**Sept écrans du parcours restent non parcourus** — l'examen blanc jusqu'à son
+rapport, la question miroir, le thème sombre, la reprise sur un second appareil.
+La liste complète et ses raisons sont en haut de ce document.

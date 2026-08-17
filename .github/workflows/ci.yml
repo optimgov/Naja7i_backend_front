@@ -84,3 +84,34 @@ jobs:
           # Une variable d'environnement du système l'emporte sur le .env et
           # sur phpunit.xml : la valeur ci-dessous gagne bien.
           PASSWORD_CHECK_COMPROMISED: 'false'
+
+  script-demonstration:
+    # DET-77 — Le script de démonstration est le premier contact d'un partenaire
+    # avec le produit, et ses trois derniers défauts n'ont été trouvés QU'EN
+    # L'EXÉCUTANT. La CI ne peut pas l'exécuter : il lui faudrait PostgreSQL, un
+    # Nuxt en développement et deux dépôts côte à côte — un job qui reproduirait
+    # tout un poste de travail, et qui casserait pour des raisons sans rapport.
+    #
+    # Ce qui se vérifie POUR PAS CHER, en revanche : que le fichier est du bash
+    # valide et qu'aucune des tournures qui l'ont déjà piégé n'y revienne. Un
+    # `|| true` sur une opération dont le résultat compte, une variable non
+    # citée, un test à un seul crochet — shellcheck les nomme, et c'est
+    # exactement la famille des défauts avalés que la réécriture a chassés.
+    #
+    # HONNÊTE SUR LA PORTÉE : ce job n'établit PAS que le script produit une
+    # plateforme utilisable. Seule une exécution de bout en bout le fait, et
+    # elle reste manuelle. Il empêche seulement de pousser un script qui ne
+    # démarre même pas.
+    name: Script de démonstration (syntaxe et shellcheck)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntaxe bash
+        run: bash -n scripts/demonstration/naja7i-demo.sh
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y shellcheck
+          shellcheck --severity=warning scripts/demonstration/naja7i-demo.sh

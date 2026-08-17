@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
@@ -46,9 +47,35 @@ class EtatDemonstration extends Command
             return self::FAILURE;
         }
 
-        $compte = fn (string $table, string $ou = '') => (int) DB::table($table)
-            ->when($ou !== '', fn ($q) => $q->whereRaw($ou))
-            ->count();
+        /*
+         * UNE TABLE ABSENTE N'EST PAS UNE PANNE — c'est l'état d'une base
+         * neuve, et cette commande existe précisément pour le dire.
+         *
+         * Mesuré à la première base neuve jamais demandée au script de
+         * démonstration : `naja7i:etat` explosait sur
+         * `relation "filieres" does not exist`, avec quinze lignes de trace
+         * Laravel, à l'étape qui devait justement décider s'il fallait semer.
+         * L'arbitrage du semeur ne pouvait donc jamais conclure « base
+         * absente » : il mourait avant.
+         *
+         * On distingue trois choses là où la première écriture n'en
+         * distinguait que deux : base injoignable (échec, code 1), schéma
+         * absent (fait, compteurs à zéro), base peuplée (fait, compteurs
+         * réels). La deuxième ligne est celle qui manquait.
+         */
+        $schemaPresent = Schema::hasTable('filieres');
+
+        $this->line('schema='.($schemaPresent ? 'present' : 'absent'));
+
+        $compte = function (string $table, string $ou = '') {
+            if (! Schema::hasTable($table)) {
+                return 0;
+            }
+
+            return (int) DB::table($table)
+                ->when($ou !== '', fn ($q) => $q->whereRaw($ou))
+                ->count();
+        };
 
         foreach ([
             'filieres' => ['filieres', ''],

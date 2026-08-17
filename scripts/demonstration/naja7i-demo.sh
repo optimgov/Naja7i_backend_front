@@ -50,6 +50,43 @@ PIDS=~/Coding/.naja7i-demo.pids
 JOURNAL_API=/tmp/naja7i-api.log
 JOURNAL_FRONT=/tmp/naja7i-front.log
 
+# Le conteneur qui porte PostgreSQL. docker compose le nomme d'apres le dossier
+# du projet — MIS EN MINUSCULES, ce que la premiere version a oublie : le
+# dossier s'appelle « Naja7i_backend_front » et le conteneur
+# « naja7i_backend_front-postgres-1 ». On le deduit plutot que de l'ecrire en
+# dur, pour qu'un clone sous un autre nom fonctionne quand meme.
+CONTENEUR_PG="$(basename "$BACK" | tr '[:upper:]' '[:lower:]')-postgres-1"
+
+# Et on VERIFIE qu'il existe avant de s'en servir, plutot que de laisser une
+# erreur Docker remonter deguisee en panne de base. La distinction compte :
+# « le conteneur n'est pas la » se repare en une commande, « la base n'a pas
+# pu etre creee » envoie chercher du cote des permissions PostgreSQL.
+exiger_le_conteneur_pg() {
+  docker inspect "$CONTENEUR_PG" >/dev/null 2>&1 && return 0
+
+  echouer \
+    "Le conteneur PostgreSQL « $CONTENEUR_PG » n'existe pas." \
+    "" \
+    "Conteneurs en cours qui portent une base :" \
+    "$(docker ps --format '    {{.Names}}' | grep -i postgres || echo '    (aucun)')" \
+    "" \
+    "Si le dossier du projet a ete renomme, docker compose a change le prefixe." \
+    "Relancez la pile :" \
+    "    docker compose up -d"
+}
+
+# Une commande SQL passée AU CONTENEUR, sur la base d'administration.
+#
+# Le client PostgreSQL n'est pas sur l'hote, et n'a pas a y etre : la base
+# tourne dans Docker. Trouve a la premiere base neuve jamais demandee a ce
+# script — "createdb: command not found". Le chemin reset n'avait donc jamais
+# fonctionne, et cela ne pouvait pas se voir autrement qu'en le lancant.
+#
+# -tA : pas d'en-tete, pas d'alignement, une sortie lisible par le shell.
+pg_exec() {
+  docker exec "$CONTENEUR_PG" psql -U naja7i -d postgres -tA -c "$1" 2>&1
+}
+
 # macOS tue le processus PHP quand une classe Objective-C s'initialise après un
 # fork() — c'est ce qui a fait planter l'étape des comptes d'équipe sur une
 # exécution mesurée. Le même export protège déjà la suite de tests du dépôt.
@@ -360,24 +397,41 @@ reinitialiser() {
 
   arreter
 
+  # ON RENOMME L'ETAPE APRES `arreter`, qui a ecrase $ETAPE avec la sienne.
+  # Sans cette ligne, l'echec de la creation de base s'annoncait sous le titre
+  # « arret de l'API et du front » — mesure sur la premiere base neuve. Un
+  # diagnostic qui designe la mauvaise etape envoie chercher ailleurs, et c'est
+  # tout ce que le piege de DET-73 a deja coute une journee a faire.
+  ETAPE="base neuve"
+
+  exiger_le_conteneur_pg
+
   # `dropdb --if-exists … || true` était le premier des trois défauts : un drop
   # qui échoue — parce qu'une connexion reste ouverte, le cas le plus courant —
   # laissait le script continuer, et le semis explosait vingt lignes plus loin
   # sur une contrainte d'unicité, sans jamais nommer la vraie cause.
   #
   # Ici, un drop qui échoue ARRÊTE, et dit quoi faire.
-  if psql -tA -d postgres -c "select 1 from pg_database where datname = 'naja7i'" 2>/dev/null | grep -q 1; then
-    dropdb naja7i 2>/dev/null || echouer \
+  # Le controle portait un `2>/dev/null` : psql introuvable rendait une sortie
+  # vide, la base existante n'etait pas detectee, et la suppression etait sautee
+  # EN SILENCE. Encore un echec avale, dans le script ecrit pour ne plus en
+  # avaler. On passe par le conteneur, qui porte le client par construction.
+  if pg_exec "select 1 from pg_database where datname = 'naja7i'" | grep -q '^1$'; then
+    pg_exec "drop database naja7i" | grep -q '^DROP DATABASE$' || echouer \
       "La base « naja7i » n'a pas pu être supprimée." \
       "" \
       "Presque toujours : une connexion reste ouverte. Un tinker, un psql, une" \
       "API encore vivante. Pour voir qui :" \
-      "    psql -d postgres -c \"select pid, application_name from pg_stat_activity where datname = 'naja7i'\"" \
+      "    docker exec ${CONTENEUR_PG} psql -U naja7i -d postgres -c \"select pid, application_name from pg_stat_activity where datname = 'naja7i'\"" \
       "" \
       "Fermez-les, puis relancez."
   fi
 
-  createdb naja7i || echouer "La base « naja7i » n'a pas pu être créée."
+  pg_exec "create database naja7i owner naja7i" | grep -q '^CREATE DATABASE$' \
+    || echouer "La base « naja7i » n'a pas pu être créée." \
+               "" \
+               "Sortie de PostgreSQL :" \
+               "    $(pg_exec "create database naja7i owner naja7i")"
 
   vert "   base « naja7i » recréée, vide."
 }
@@ -404,9 +458,26 @@ etape "conteneurs — PostgreSQL, Redis, Mailpit"
   "docker compose n'a pas démarré." \
   "Si Docker est arrêté :  colima start"
 
+# LA SONDE MESURE LA CONNECTIVITE, RIEN D'AUTRE.
+#
+# Premiere ecriture : `php artisan naja7i:etat`, qui COMPTE DES TABLES. Sur une
+# base neuve les tables n'existent pas encore — les migrations passent a
+# l'etape suivante — donc la sonde echouait, et annoncait « PostgreSQL n'a pas
+# repondu apres 30 secondes » alors que PostgreSQL repondait parfaitement.
+#
+# Mesure sur la premiere base neuve jamais demandee au script. Le diagnostic
+# envoyait chercher du cote de Docker un defaut d'ORDRE dans le script.
+#
+# Un `select 1` ne depend d'aucun schema : c'est exactement la question posee.
+exiger_le_conteneur_pg
+
 for essai in $(seq 1 30); do
-  ( cd "$BACK" && php artisan naja7i:etat >/dev/null 2>&1 ) && break
-  [ "$essai" = "30" ] && echouer "PostgreSQL n'a pas répondu après 30 secondes."
+  pg_exec "select 1" | grep -q '^1$' && break
+  [ "$essai" = "30" ] && echouer \
+    "PostgreSQL n'a pas répondu après 30 secondes." \
+    "" \
+    "Dernière sortie du conteneur « $CONTENEUR_PG » :" \
+    "    $(pg_exec "select 1")"
   sleep 1
 done
 vert "   PostgreSQL répond."

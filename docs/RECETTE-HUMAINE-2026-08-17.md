@@ -330,13 +330,20 @@ qu'un compte porte les deux permissions — ce qui est le cas du rôle `editeur`
 livré par le semis. Le même compte a aussi relu **et** validé la question de la
 chaîne complète.
 
-**D-20 — « Retirer » est offert là où la transition est invalide, et absent là où elle est la seule permise.**
-Sur une question `à relire` ou `relue`, l'éditeur voit « Retirer ». Or le service
-déclare : « Retire une version. **Seule transition permise depuis `published`**. »
+**D-20 — Une question publiée ne peut pas être retirée par l'interface.**
 Sur la question effectivement publiée, il n'y a **aucune** action — ni sur la page
 d'édition (403, par gel volontaire), ni dans la ligne de la liste, qui n'offre que
-« Question miroir ». Le rôle porte pourtant `questions.retire`. Une question
-publiée ne peut donc pas être retirée par l'interface.
+« Question miroir ». Le rôle porte pourtant `questions.retire`, et la table des
+transitions autorise bien `published -> retired`.
+
+*Correction de ma propre lecture, faite au moment de corriger le défaut.* La
+première rédaction de D-20 ajoutait un second grief — « Retirer est offert là où
+la transition est invalide », sur une question `à relire`. **C'était faux.**
+J'avais lu le commentaire « Retire une version. Seule transition permise depuis
+`published` » comme « le retrait n'est permis que depuis published », alors que
+la phrase dit l'inverse : depuis `published`, la seule sortie est `retired`. La
+table autorise le retrait depuis cinq états. Le grief est retiré ; seul subsiste
+celui du haut, qui est réel.
 
 ### ⚠️ Gênants
 

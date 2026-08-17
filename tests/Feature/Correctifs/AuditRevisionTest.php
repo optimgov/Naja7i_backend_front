@@ -118,7 +118,7 @@ class AuditRevisionTest extends TestCase
 
             $question->contentSources()->attach($this->source->id, ['verification' => 'verified']);
             $transitions->submitForReview($question);
-            $transitions->markReviewed($question, $this->valideur);
+            $transitions->markReviewed($question, $this->relecteurDeControle());
             $transitions->validate($question, $this->valideur);
             $transitions->publish($question, forDiagnostic: true);
         }

@@ -138,7 +138,9 @@ class PanneauCouvertureTest extends TestCase
 
             $question->contentSources()->attach($this->source->id, ['verification' => 'verified']);
             $transitions->submitForReview($question);
-            $transitions->markReviewed($question, $this->valideur);
+            /* Le relecteur et le valideur sont deux personnes : la regle des
+             * trois actes l'impose depuis le 17 aout. */
+            $transitions->markReviewed($question, $this->relecteurTiers());
             $transitions->validate($question, $this->valideur);
             $transitions->publish($question, forDiagnostic: true);
         }
@@ -257,5 +259,35 @@ class PanneauCouvertureTest extends TestCase
         $this->page()
             ->assertCanNotSeeTableRecords(['SE-PSY-DEV::calcul'])
             ->assertSee('Aucun trou');
+    }
+
+    /**
+     * Un relecteur DISTINCT du valideur.
+     *
+     * Trois actes, trois personnes : depuis le 17 aout, le valideur n'est ni
+     * l'auteur ni le relecteur. Cette fixture faisait jouer les deux roles au
+     * meme compte ; on la migre plutot que de relacher la regle.
+     */
+    private function relecteurTiers(): User
+    {
+        /* PAS DE MÉMOÏSATION `static` ICI. La première écriture en gardait une,
+         * et `RefreshDatabase` annule la transaction entre deux tests : le
+         * compte mémorisé survivait en mémoire et plus en base, d'où une
+         * violation de clé étrangère sur le test suivant. `firstOrCreate` coûte
+         * une requête et ne ment jamais. */
+        $compte = User::firstOrCreate(
+            ['email' => 'relecteur-tiers@naja7i.ma'],
+            ['password' => 'une-phrase-de-passe-solide', 'locale' => 'fr'],
+        );
+
+        $compte->markEmailAsVerified();
+
+        $role = Role::where('code', 'editeur')->whereNull('tenant_id')->value('id');
+
+        if (! $compte->memberships()->where('role_id', $role)->exists()) {
+            $compte->memberships()->create(['role_id' => $role]);
+        }
+
+        return $compte->fresh();
     }
 }

@@ -98,7 +98,7 @@ class SimulationTest extends TestCase
                 $question->contentSources()->attach($source->id, ['verification' => 'verified']);
 
                 $transitions->submitForReview($question);
-                $transitions->markReviewed($question, $valideur);
+                $transitions->markReviewed($question, $this->relecteurDeControle());
                 $transitions->validate($question, $valideur);
                 $transitions->publish($question, forDiagnostic: true);
             }

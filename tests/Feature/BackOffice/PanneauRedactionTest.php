@@ -289,7 +289,16 @@ class PanneauRedactionTest extends TestCase
             ->test(EditQuestion::class, ['record' => $question->fresh()->getRouteKey()])
             ->assertActionHidden('valider');
 
+        /* $second a RELU : depuis le 17 aout il ne peut pas valider non plus.
+         * C'est un TROISIEME compte qui doit voir le bouton — et le verifier
+         * ainsi rend la nouvelle regle opposable au lieu de la contourner. */
         Livewire::actingAs($second)
+            ->test(EditQuestion::class, ['record' => $question->fresh()->getRouteKey()])
+            ->assertActionHidden('valider');
+
+        $troisieme = $this->membre('editeur3@naja7i.ma', 'editeur');
+
+        Livewire::actingAs($troisieme)
             ->test(EditQuestion::class, ['record' => $question->fresh()->getRouteKey()])
             ->assertActionVisible('valider');
     }
@@ -300,7 +309,7 @@ class PanneauRedactionTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->editeur);
+        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers@naja7i.ma', 'editeur'));
 
         Livewire::actingAs($this->editeur)
             ->test(EditQuestion::class, ['record' => $question->fresh()->getRouteKey()])
@@ -327,7 +336,7 @@ class PanneauRedactionTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->editeur);
+        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers-'.uniqid().'@naja7i.ma', 'editeur'));
         $transitions->validate($question->fresh(), $this->editeur);
 
         Livewire::actingAs($this->editeur)
@@ -346,7 +355,7 @@ class PanneauRedactionTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->editeur);
+        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers-'.uniqid().'@naja7i.ma', 'editeur'));
         $transitions->validate($question->fresh(), $this->editeur);
         $transitions->publish($question->fresh());
 

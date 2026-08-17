@@ -139,9 +139,28 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
      * Filament exige cette méthode hors environnement local, et c'est heureux :
      * sans elle, tout compte authentifié entrerait.
      */
+    /**
+     * LE PANNEAU S'OUVRE AUX MEMBRES DU PERSONNEL, PAS AUX SEULS RÉDACTEURS.
+     *
+     * Première écriture : `in_array('questions.view', …)`. Elle prenait UNE
+     * permission éditoriale pour la définition de « fait partie de l'équipe ».
+     * Le rôle `finance` porte `orders.view`, `orders.validate` et
+     * `refunds.issue` — pas `questions.view`. L'opérateur prévu pour valider les
+     * commandes était donc renvoyé à la page de connexion par le panneau qui
+     * héberge la file des commandes. Mesuré en recette humaine le 17 août.
+     *
+     * La bonne question n'est pas « sait-il rédiger », c'est « a-t-il un rôle de
+     * personnel ». Un candidat n'a aucune permission ; toute personne qui en
+     * porte au moins une a une raison d'entrer, et ce sont les policies de
+     * chaque ressource qui décident ensuite de ce qu'elle voit.
+     *
+     * On garde une garde grossière ici et des gardes fines en dessous : c'est
+     * l'inverse qui produit des trous — une garde fine à l'entrée décide pour
+     * des surfaces qu'elle ne connaît pas.
+     */
     public function canAccessPanel(Panel $panel): bool
     {
-        return in_array('questions.view', app(PermissionResolver::class)->forUser($this), true);
+        return app(PermissionResolver::class)->forUser($this) !== [];
     }
 
     /**

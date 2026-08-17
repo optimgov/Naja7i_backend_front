@@ -124,7 +124,7 @@ class BanqueDeQuestionsTest extends TestCase
         }
 
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question, $this->valideur);
+        $transitions->markReviewed($question, $this->relecteurDeControle());
         $transitions->validate($question, $this->valideur);
 
         return $transitions->publish($question, forDiagnostic: $diagnostic, forSimulation: $simulation);

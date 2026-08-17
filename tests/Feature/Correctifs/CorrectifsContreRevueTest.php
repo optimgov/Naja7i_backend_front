@@ -471,7 +471,7 @@ class CorrectifsContreRevueTest extends TestCase
 
         $service = app(QuestionTransitionService::class);
         $service->submitForReview($question);
-        $service->markReviewed($question->fresh(), $this->valideur);
+        $service->markReviewed($question->fresh(), $this->relecteurDeControle());
         $service->validate($question->fresh(), $this->valideur);
 
         return $service->publish($question->fresh(), forDiagnostic: true)->load('options');

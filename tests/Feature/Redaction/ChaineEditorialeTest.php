@@ -38,6 +38,11 @@ class ChaineEditorialeTest extends TestCase
 
     private User $relecteur;
 
+    /* TROIS ACTES, TROIS PERSONNES. Le valideur n'est ni l'auteur ni le
+     * relecteur depuis le 17 aout : la fixture porte donc un troisieme compte,
+     * au lieu de faire jouer deux roles au meme. */
+    private User $valideur;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -49,6 +54,7 @@ class ChaineEditorialeTest extends TestCase
 
         $this->auteur = $this->membre('auteur@naja7i.ma', 'auteur');
         $this->relecteur = $this->membre('editeur@naja7i.ma', 'editeur');
+        $this->valideur = $this->membre('valideur@naja7i.ma', 'editeur');
     }
 
     private function membre(string $email, ?string $role): User
@@ -736,6 +742,6 @@ class ChaineEditorialeTest extends TestCase
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
         $transitions->markReviewed($question->fresh(), $this->relecteur);
-        $transitions->validate($question->fresh(), $this->relecteur);
+        $transitions->validate($question->fresh(), $this->valideur);
     }
 }

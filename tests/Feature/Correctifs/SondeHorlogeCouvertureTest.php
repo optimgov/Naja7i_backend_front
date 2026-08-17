@@ -158,7 +158,7 @@ class SondeHorlogeCouvertureTest extends TestCase
         $valideur = $personne('det71.valideur@naja7i.ma');
         $service = app(QuestionTransitionService::class);
         $service->submitForReview($question);
-        $service->markReviewed($question->fresh(), $valideur);
+        $service->markReviewed($question->fresh(), $this->relecteurDeControle());
         $service->validate($question->fresh(), $valideur);
         $service->publish($question->fresh(), forDiagnostic: true);
 

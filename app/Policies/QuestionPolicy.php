@@ -56,10 +56,17 @@ class QuestionPolicy
             && ! in_array($question->status, ['published', 'retired'], true);
     }
 
+    /**
+     * Relire — et JAMAIS sa propre question.
+     *
+     * La paternité manquait ici comme dans le service. Reflet de la garde, pas
+     * la garde : c'est `QuestionTransitionService::markReviewed()` qui refuse.
+     */
     public function review(User $user, Question $question): bool
     {
         return $this->peut($user, 'questions.review')
-            && $question->status === 'a_verifier';
+            && $question->status === 'a_verifier'
+            && $question->author_id !== $user->id;
     }
 
     /**
@@ -74,7 +81,8 @@ class QuestionPolicy
     {
         return $this->peut($user, 'questions.validate')
             && $question->status === 'reviewed'
-            && $question->author_id !== $user->id;
+            && $question->author_id !== $user->id
+            && $question->reviewer_id !== $user->id;
     }
 
     public function publish(User $user, Question $question): bool

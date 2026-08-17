@@ -110,7 +110,7 @@ class QuestionMiroirTest extends TestCase
 
             $question->contentSources()->attach($this->source->id, ['verification' => 'verified']);
             $transitions->submitForReview($question);
-            $transitions->markReviewed($question, $this->valideur);
+            $transitions->markReviewed($question, $this->relecteurDeControle());
             $transitions->validate($question, $this->valideur);
             $transitions->publish($question, forDiagnostic: true);
         }
@@ -322,7 +322,7 @@ class QuestionMiroirTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->valideur);
+        $transitions->markReviewed($question->fresh(), $this->relecteurDeControle());
         $transitions->validate($question->fresh(), $this->valideur);
 
         return $transitions->publish($question->fresh(), forDiagnostic: true)->load('options');
@@ -380,7 +380,7 @@ class QuestionMiroirTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->valideur);
+        $transitions->markReviewed($question->fresh(), $this->relecteurDeControle());
         $transitions->validate($question->fresh(), $this->valideur);
 
         return $transitions->publish($question->fresh(), forDiagnostic: true)->load('options');

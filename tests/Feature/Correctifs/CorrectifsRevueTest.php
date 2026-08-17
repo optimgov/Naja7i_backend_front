@@ -228,7 +228,13 @@ class CorrectifsRevueTest extends TestCase
         $service = app(QuestionTransitionService::class);
 
         $service->submitForReview($question);
-        $service->markReviewed($question->fresh(), $this->candidat);
+
+        /* LA RELECTURE EST FAITE PAR UN TIERS, et il faut le dire : depuis le
+         * 17 août, `markReviewed` refuse aussi l'auteur. Faire relire le
+         * candidat ici trébuchait une étape trop tôt, et le test n'atteignait
+         * plus la règle qu'il défend. Un tiers relit, puis l'AUTEUR tente de
+         * valider — c'est bien la règle du valideur qui est éprouvée. */
+        $service->markReviewed($question->fresh(), $this->relecteurDeControle());
 
         $this->expectException(RuntimeException::class);
         $service->validate($question->fresh(), $this->candidat);   // auteur = valideur
@@ -466,7 +472,7 @@ class CorrectifsRevueTest extends TestCase
 
         $service = app(QuestionTransitionService::class);
         $service->submitForReview($question);
-        $service->markReviewed($question->fresh(), $valideur);
+        $service->markReviewed($question->fresh(), $this->relecteurDeControle());
         $service->validate($question->fresh(), $valideur);
     }
 

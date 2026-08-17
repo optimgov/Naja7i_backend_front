@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Questions\Tables;
 
+use App\Filament\Resources\Questions\Actions\ActesEditoriaux;
 use App\Models\CompetencyNode;
 use App\Models\Question;
 use App\Services\QuestionAuthoringService;
@@ -95,7 +96,19 @@ class QuestionsTable
                     ->label('Auteur')
                     ->relationship('author', 'email'),
             ])
+            /*
+             * LES ACTES DE LA CHAÎNE VIVENT ICI, pas seulement sur la page
+             * d'édition. Celle-ci n'est atteignable qu'avec `questions.create`
+             * et sur une question non gelée ; la liste, elle, s'ouvre à qui
+             * porte `questions.view`. Un relecteur y trouve donc « Marquer
+             * relue », et une question publiée y garde « Retirer ».
+             *
+             * C'est le précédent de `designerLeMiroir()` généralisé : elle avait
+             * été déplacée dans le tableau pour cette raison exacte, et le
+             * raisonnement n'avait servi qu'une fois sur six.
+             */
             ->recordActions([
+                ...ActesEditoriaux::tous(),
                 self::designerLeMiroir(),
                 EditAction::make(),
             ])

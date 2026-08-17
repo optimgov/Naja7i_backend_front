@@ -114,7 +114,7 @@ class TentativesTest extends TestCase
         $transitions = app(QuestionTransitionService::class);
 
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question, $valideur);
+        $transitions->markReviewed($question, $this->relecteurDeControle());
         $transitions->validate($question, $valideur);
 
         return $transitions->publish($question, forDiagnostic: true);

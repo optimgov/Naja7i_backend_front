@@ -177,6 +177,20 @@ Elles ne se renégocient pas d'un pas à l'autre.
     portent désormais cette règle : `pre-commit` refuse les branches de
     quarantaine, `post-checkout` journalise chaque basculement avec l'arbre des
     processus qui l'a demandé.
+11. **Une preuve d'accès avant tout constat de refus.** Le 17 août, en recette,
+    j'ai relevé « le relecteur n'a aucune action » et j'ai failli l'inscrire
+    comme défaut produit. Il était connecté dans mon scénario ; il ne l'était
+    pas dans le navigateur. Ma connexion n'avait pas abouti, et je lisais un
+    formulaire de connexion en croyant lire un refus. Les deux se ressemblent :
+    une page sans action, un tableau vide, un menu absent. La différence tient
+    à une question qu'on ne pense pas à poser — *suis-je seulement entré ?*
+    La règle : avant d'écrire qu'une permission manque, qu'une action est
+    absente ou qu'une ressource est refusée, PROUVER l'accès — l'URL après
+    redirection, l'absence de champ mot de passe, l'identité rendue par
+    l'application. Sans cette preuve, le constat ne vaut rien, et il est pire
+    que rien : il accuse du code juste, et un rapport qui accuse du code juste
+    finit par n'être plus lu. Le vrai défaut existait bien ici ; il n'a été
+    retenu qu'avec sa preuve, et le rapport le dit.
 
 ---
 

@@ -2,18 +2,10 @@
 
 namespace App\Filament\Resources\Sources\Pages;
 
+use App\Filament\Pages\ListeAvecCreation;
 use App\Filament\Resources\Sources\SourceResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListSources extends ListRecords
+class ListSources extends ListeAvecCreation
 {
     protected static string $resource = SourceResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Nouvelle source'),
-        ];
-    }
 }

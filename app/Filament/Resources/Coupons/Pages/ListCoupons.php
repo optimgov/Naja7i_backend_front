@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Coupons\Pages;
 
+use App\Filament\Pages\ListeAvecCreation;
 use App\Filament\Resources\Coupons\CouponResource;
-use Filament\Resources\Pages\ListRecords;
 
-class ListCoupons extends ListRecords
+class ListCoupons extends ListeAvecCreation
 {
     protected static string $resource = CouponResource::class;
 }

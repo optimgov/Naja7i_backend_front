@@ -47,6 +47,21 @@ class TenancyArchitectureTest extends TestCase
         'app/Services/AttemptService.php',        // incrément conditionnel, DB::raw
         'app/Services/MasteryCalculator.php',     // jointure d'agrégation, lecture seule
         'app/Services/PermissionResolver.php',    // jointure de référentiel, hors tenant
+
+        /*
+         * `naja7i:etat` COMPTE DÉLIBÉRÉMENT HORS SCOPE, et c'est sa raison d'être.
+         *
+         * Elle sert au script de démonstration à vérifier ce qu'il a produit —
+         * un installateur qui ne mesure pas son résultat fabrique des verts.
+         * Ce n'est pas un chemin métier : personne n'y arrive par une requête
+         * HTTP, et elle ne rend que des NOMBRES.
+         *
+         * La rendre scopée serait un défaut, pas une amélioration : sur une
+         * installation à plusieurs organismes elle sous-compterait, et
+         * l'installateur conclurait « base vide » sur une base pleine. Elle
+         * doit voir ce que la base contient, pas ce qu'un organisme en voit.
+         */
+        'app/Console/Commands/EtatDemonstration.php',
     ];
 
     private const FORBIDDEN_SCOPE_PATTERNS = [

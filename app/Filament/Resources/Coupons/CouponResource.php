@@ -7,14 +7,20 @@ use App\Filament\Resources\Coupons\Pages\ListCoupons;
 use App\Models\Coupon;
 use App\Models\Plan;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+/* `Filament\Actions\Action` ET NON `Filament\Tables\Actions\Action` : ce
+ * second espace de noms N'EXISTE PAS en Filament 4 — le paquet `tables` n'a
+ * plus de dossier `Actions`. La classe manquante ne levait qu'à L'OUVERTURE
+ * de la page, et aucun test n'ouvrait `/admin/coupons` ni `/admin/orders` :
+ * les deux rendaient 500 depuis le lot ABO. Les ressources qui marchaient —
+ * questions, sources — importaient déjà la bonne. */
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 

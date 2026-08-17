@@ -2,18 +2,10 @@
 
 namespace App\Filament\Resources\Questions\Pages;
 
+use App\Filament\Pages\ListeAvecCreation;
 use App\Filament\Resources\Questions\QuestionResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 
-class ListQuestions extends ListRecords
+class ListQuestions extends ListeAvecCreation
 {
     protected static string $resource = QuestionResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
-    }
 }

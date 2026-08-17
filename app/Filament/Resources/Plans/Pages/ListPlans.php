@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Plans\Pages;
 
+use App\Filament\Pages\ListeAvecCreation;
 use App\Filament\Resources\Plans\PlanResource;
-use Filament\Resources\Pages\ListRecords;
 
-class ListPlans extends ListRecords
+class ListPlans extends ListeAvecCreation
 {
     protected static string $resource = PlanResource::class;
 }

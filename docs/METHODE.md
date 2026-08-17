@@ -191,6 +191,21 @@ Elles ne se renégocient pas d'un pas à l'autre.
     que rien : il accuse du code juste, et un rapport qui accuse du code juste
     finit par n'être plus lu. Le vrai défaut existait bien ici ; il n'a été
     retenu qu'avec sa preuve, et le rapport le dit.
+12. **Un rouge se rejoue avant d'être attribué.** Le 17 août, PostgreSQL et
+    Redis ont été coupés une trentaine de secondes par un redémarrage du moteur,
+    pendant qu'une suite tournait. L'information est venue de l'extérieur : rien,
+    depuis l'intérieur de la session, ne distingue « mon code a cassé » de « la
+    base a disparu pendant deux secondes ». La règle est donc de rejouer un
+    échec avant d'en conclure quoi que ce soit — et surtout avant de le
+    corriger, parce qu'un correctif écrit contre un défaut inexistant reste dans
+    le dépôt.
+    **La règle est ASYMÉTRIQUE, et c'est ce qui la rend utile.** Une coupure
+    d'infrastructure fabrique du ROUGE, jamais du vert : un vert ne devient donc
+    pas suspect parce qu'un incident a eu lieu. Ce qui devient suspect, c'est un
+    verdict rendu SUR des rouges — une mutation, notamment, où un rouge parasite
+    s'ajouterait à ceux qu'on attend et ferait croire à une discrimination plus
+    large qu'elle n'est. Ce sont ces verdicts-là qu'il faut rejouer, pas les
+    verts.
 
 ---
 

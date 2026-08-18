@@ -33,6 +33,19 @@ use Filament\Tables\Table;
  */
 class PlanResource extends Resource
 {
+    /**
+     * LA PERMISSION QUI OUVRE CETTE SURFACE — D-13.
+     *
+     * Déclarée ici parce qu'un `abort(403)` ne transporte aucun code : la
+     * politique (PlanPolicy::viewAny) rend un booléen, et le nom de
+     * ce qui manque est perdu au moment où l'on pourrait le dire. La page
+     * 403 la lit pour nommer ce qu'il faut demander.
+     *
+     * Une déclaration à côté d'une politique dérive : `RefusNommeTest` la
+     * tient contre elle, surface par surface.
+     */
+    public const PERMISSION_REQUISE = 'orders.view';
+
     protected static ?string $model = Plan::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;

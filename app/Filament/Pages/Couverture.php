@@ -3,10 +3,12 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Libelles;
+use App\Filament\Resources\Questions\QuestionResource;
 use App\Models\Exam;
 use App\Models\Question;
 use App\Services\CouvertureBanque;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Filament\Support\Icons\Heroicon;
@@ -39,6 +41,19 @@ use Illuminate\Support\Collection;
  */
 class Couverture extends Page implements HasTable
 {
+    /**
+     * LA PERMISSION QUI OUVRE CETTE SURFACE — D-13.
+     *
+     * Déclarée ici parce qu'un `abort(403)` ne transporte aucun code : la
+     * politique (QuestionPolicy::viewAny, par `canAccess()`) rend un booléen, et le nom de
+     * ce qui manque est perdu au moment où l'on pourrait le dire. La page
+     * 403 la lit pour nommer ce qu'il faut demander.
+     *
+     * Une déclaration à côté d'une politique dérive : `RefusNommeTest` la
+     * tient contre elle, surface par surface.
+     */
+    public const PERMISSION_REQUISE = 'questions.view';
+
     use InteractsWithTable;
 
     protected string $view = 'filament.pages.couverture';
@@ -102,18 +117,114 @@ class Couverture extends Page implements HasTable
                 SelectFilter::make('exam')
                     ->label('Épreuve')
                     ->options(fn () => Exam::published()->orderBy('name_fr')->pluck('name_fr', 'id'))
-                    ->default(fn () => Exam::published()->orderBy('name_fr')->value('id')),
+                    /* D-03 — L'ÉPREUVE PAR DÉFAUT EST CELLE QUI A DU TRAVAIL.
+                     * L'ordre alphabétique ouvrait sur une épreuve sans
+                     * contenu ni candidat, et la page concluait « Aucun trou »
+                     * en regardant ailleurs. Le critère vit dans le service,
+                     * avec le reste de la mesure. */
+                    ->default(fn () => $this->epreuveParDefaut()?->id),
             ])
             /* Le service rend une collection déjà ordonnée par la demande.
              * Pagination et tri de colonne la réordonneraient sur un critère
              * qui n'est pas celui de la page. */
             ->paginated(false)
             ->emptyStateIcon(Heroicon::OutlinedCheckCircle)
-            ->emptyStateHeading('Aucun trou')
-            ->emptyStateDescription(
-                'Chaque couple attendu par un candidat est servi par au moins deux questions. '
-                .'La liste se remplira d\'elle-même : elle suit les erreurs réellement commises.'
-            );
+            ->emptyStateHeading(fn () => $this->titreDuVide())
+            ->emptyStateDescription(fn () => $this->texteDuVide())
+            /* RÈGLE DES PORTES, CLAUSES 1 ET 2. Cette page mesure ce qui
+             * manque à la banque ; ce qui la remplit est une question écrite.
+             * Vide, elle ne renvoyait nulle part — même famille que le D-01,
+             * transposée au personnel.
+             *
+             * L'action n'apparaît QUE si le compte peut écrire : la règle du
+             * dépôt veut qu'une action soit proposée ou absente, jamais grisée.
+             * Un relecteur n'a pas `questions.create`, et le bouton n'existe
+             * pas pour lui. */
+            ->emptyStateActions([
+                Action::make('ecrire')
+                    ->label('Écrire une question')
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->url(fn () => QuestionResource::getUrl('create'))
+                    ->visible(fn () => auth()->user()?->can('create', Question::class) ?? false),
+
+                Action::make('file')
+                    ->label('Voir la file de rédaction')
+                    ->url(fn () => QuestionResource::getUrl('index'))
+                    ->link(),
+            ]);
+    }
+
+    /**
+     * L'épreuve sur laquelle la page ouvre — D-03.
+     *
+     * Mémorisée le temps de la requête : le filtre l'appelle une fois, l'état
+     * vide une ou deux fois de plus, et chaque appel parcourt les trous de
+     * toutes les épreuves publiées.
+     */
+    private function epreuveParDefaut(): ?Exam
+    {
+        return $this->classement()['exam'] ?? null;
+    }
+
+    /** @return array{exam: Exam, trous: int, attente: int, questions: int}|array{} */
+    private function classement(): array
+    {
+        return $this->classementMemorise ??= (app(CouvertureBanque::class)->epreuveAOuvrir() ?? []);
+    }
+
+    /** @var array{exam: Exam, trous: int, attente: int, questions: int}|array{}|null */
+    private ?array $classementMemorise = null;
+
+    /**
+     * L'ÉPREUVE REGARDÉE EST CELLE DU FILTRE, PAS CELLE DU DÉFAUT.
+     *
+     * L'état vide doit nommer ce qu'il a examiné, sans quoi « Aucun trou » est
+     * une affirmation sans sujet — le défaut exact du D-03. Le filtre est
+     * modifiable : on lit donc SA valeur, et on ne retombe sur le défaut que
+     * tant qu'il n'a pas été touché.
+     */
+    private function epreuveRegardee(): ?Exam
+    {
+        $choisie = $this->getTableFilterState('exam')['value'] ?? null;
+
+        return Exam::published()->find($choisie) ?? $this->epreuveParDefaut();
+    }
+
+    private function titreDuVide(): string
+    {
+        $exam = $this->epreuveRegardee();
+
+        if ($exam === null) {
+            return 'Aucune épreuve publiée';
+        }
+
+        /* UNE ÉPREUVE SANS BANQUE N'A PAS « AUCUN TROU » : elle n'a rien du
+         * tout. Les deux phrases se ressemblent et ne disent pas la même
+         * chose — la première rassure à tort. */
+        return Question::where('exam_id', $exam->id)->where('status', 'published')->exists()
+            ? 'Aucun trou'
+            : 'Rien à mesurer sur cette épreuve';
+    }
+
+    private function texteDuVide(): string
+    {
+        $exam = $this->epreuveRegardee();
+
+        if ($exam === null) {
+            return 'Le catalogue ne publie aucune épreuve : il n\'y a pas de banque à couvrir.';
+        }
+
+        $publiees = Question::where('exam_id', $exam->id)->where('status', 'published')->count();
+
+        if ($publiees === 0) {
+            return "« {$exam->name_fr} » ne compte aucune question publiée. Rien n\'y est donc "
+                .'attendu par un candidat, et l\'absence de trou ne dit rien de l\'état de la '
+                .'banque. Changez d\'épreuve, ou écrivez la première question de celle-ci.';
+        }
+
+        return "« {$exam->name_fr} » : chaque couple attendu par un candidat est servi par au "
+            .'moins deux questions. La liste se remplira d\'elle-même — elle suit les erreurs '
+            .'réellement commises.';
     }
 
     /**

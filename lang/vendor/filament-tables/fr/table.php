@@ -1,257 +1,187 @@
 <?php
 
 return [
-
     'column_manager' => [
-
         'heading' => 'Colonnes',
-
         'actions' => [
-
             'apply' => [
                 'label' => 'Appliquer les colonnes',
             ],
-
             'reset' => [
                 'label' => 'Réinitialiser',
             ],
-
+            'reorder' => [
+                'label' => 'Réordonner la colonne',
+            ],
         ],
-
     ],
-
     'columns' => [
-
         'actions' => [
             'label' => 'Action|Actions',
         ],
-
         'text' => [
-
             'actions' => [
                 'collapse_list' => 'Afficher :count de moins',
                 'expand_list' => 'Afficher :count de plus',
             ],
-
             'more_list_items' => ':count de plus',
-
         ],
-
+        'icon' => [
+            'boolean' => [
+                'true' => 'Oui',
+                'false' => 'Non',
+            ],
+        ],
+        'select' => [
+            'loading_message' => 'Chargement…',
+            'no_options_message' => 'Aucune option disponible.',
+            'no_search_results_message' => 'Aucune option ne correspond à votre recherche.',
+            'placeholder' => 'Choisir une option',
+            'searching_message' => 'Recherche…',
+            'search_prompt' => 'Commencez à taper pour rechercher…',
+        ],
     ],
-
     'fields' => [
-
         'bulk_select_page' => [
             'label' => 'Sélectionner/déselectionner tous les éléments pour les actions groupées.',
         ],
-
         'bulk_select_record' => [
-            'label' => "Sélectionner/désélectionner l'élément :key pour les actions groupées.",
+            'label' => 'Sélectionner/désélectionner l\'élément :key pour les actions groupées.',
         ],
-
         'bulk_select_group' => [
             'label' => 'Sélectionner/désélectionner le groupe :title pour les actions groupées.',
         ],
-
         'search' => [
             'label' => 'Rechercher',
             'placeholder' => 'Rechercher',
             'indicator' => 'Recherche',
         ],
-
     ],
-
     'summary' => [
-
         'heading' => 'Résumé',
-
         'subheadings' => [
             'all' => 'Tous :label',
             'group' => 'résumé de :group',
             'page' => 'Cette page',
         ],
-
         'summarizers' => [
-
             'average' => [
                 'label' => 'Moyenne',
             ],
-
             'count' => [
                 'label' => 'Compteur',
             ],
-
             'sum' => [
                 'label' => 'Somme',
             ],
-
         ],
-
     ],
-
     'actions' => [
-
         'disable_reordering' => [
             'label' => 'Fin du classement des enregistrements',
         ],
-
         'enable_reordering' => [
             'label' => 'Classer les enregistrements',
         ],
-
         'filter' => [
             'label' => 'Filtre',
         ],
-
         'group' => [
             'label' => 'Groupe',
         ],
-
         'open_bulk_actions' => [
             'label' => 'Ouvrir les actions',
         ],
-
         'column_manager' => [
             'label' => 'Basculer les colonnes',
         ],
-
+        'reorder_record' => [
+            'label' => 'Réordonner l’élément :key',
+        ],
+        'toggle_record_content' => [
+            'label' => 'Déplier ou replier l’élément :key',
+        ],
     ],
-
     'empty' => [
-
         'heading' => 'Aucun(e) :model',
-
         'description' => 'Créer un(e) :model pour commencer.',
-
     ],
-
     'filters' => [
-
         'actions' => [
-
             'apply' => [
                 'label' => 'Appliquer les filtres',
             ],
-
             'remove' => [
                 'label' => 'Supprimer le filtre',
             ],
-
             'remove_all' => [
                 'label' => 'Supprimer tous les filtres',
                 'tooltip' => 'Supprimer tous les filtres',
             ],
-
             'reset' => [
                 'label' => 'Réinitialiser les filtres',
             ],
-
         ],
-
         'heading' => 'Filtres',
-
         'indicator' => 'Filtres actifs',
-
         'multi_select' => [
             'placeholder' => 'Tout',
         ],
-
         'select' => [
-
             'placeholder' => 'Tout',
-
             'relationship' => [
                 'empty_option_label' => 'Aucun',
             ],
-
         ],
-
         'trashed' => [
-
             'label' => 'Enregistrements supprimés',
-
             'only_trashed' => 'Enregistrements supprimés uniquement',
-
             'with_trashed' => 'Avec les enregistrements supprimés',
-
             'without_trashed' => 'Sans les enregistrements supprimés',
-
         ],
-
     ],
-
     'grouping' => [
-
         'fields' => [
-
             'group' => [
                 'label' => 'Grouper par',
                 'placeholder' => 'Grouper par',
             ],
-
             'direction' => [
-
                 'label' => 'Groupe',
-
                 'options' => [
                     'asc' => 'Croissant',
                     'desc' => 'Décroissant',
                 ],
-
             ],
-
         ],
-
     ],
-
-    'reorder_indicator' => "Faites glisser et déposez les enregistrements dans l'ordre.",
-
+    'reorder_indicator' => 'Faites glisser et déposez les enregistrements dans l\'ordre.',
     'selection_indicator' => [
-
         'selected_count' => '1 élément sélectionné|:count éléments sélectionnés',
-
         'actions' => [
-
             'select_all' => [
                 'label' => 'Sélectionner tout (:count)',
             ],
-
             'deselect_all' => [
                 'label' => 'Désélectionner tout',
             ],
-
         ],
-
     ],
-
     'sorting' => [
-
         'fields' => [
-
             'column' => [
                 'label' => 'Trier par',
             ],
-
             'direction' => [
-
                 'label' => 'Ordre',
-
                 'options' => [
                     'asc' => 'Croissant',
                     'desc' => 'Décroissant',
                 ],
-
             ],
-
         ],
-
     ],
-
-    /* Complété par naja7i : absent de la traduction française livrée avec
-     * cette version de Filament. C'est la clé que le pilote a vue s'afficher
-     * telle quelle sur le tableau de bord. */
     'result_count' => '{0} Aucun résultat|{1} :count résultat|[2,*] :count résultats',
-
     'default_model_label' => 'enregistrement',
-
+    'loading' => 'Chargement…',
 ];

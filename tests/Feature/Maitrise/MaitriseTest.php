@@ -129,10 +129,24 @@ class MaitriseTest extends TestCase
 
     /**
      * Sert une série sur un sous-domaine, en laissant sauter certaines
-     * questions. Une entrée `null` est un item SERVI et laissé sans réponse —
-     * ce que fait un candidat qui passe son tour.
+     * questions.
      *
-     * @param  list<array{0: bool, 1: string}|null>  $reponses
+     * TROIS FORMES D'ENTRÉE, ET LA TROISIÈME EST LE D-09 :
+     *
+     *   - `[bool, string]`  répondu, juste ou faux, avec sa certitude ;
+     *   - `null`            item SERVI et jamais touché — aucune ligne de
+     *                       réponse en base ;
+     *   - `[null, string]`  item TRAVERSÉ : le candidat déclare une certitude
+     *                       sans choisir d'option. Une ligne de réponse existe,
+     *                       à `selected_option_id` nul. C'est ce que l'écran de
+     *                       passation produisait à chaque « Suivante » sur une
+     *                       question sans réponse, et ce que le contrat
+     *                       autorise (`option_uuid` est `nullable`).
+     *
+     * Les deux dernières décrivent le MÊME FAIT — le candidat n'a rien
+     * répondu — et doivent donc se compter pareil.
+     *
+     * @param  list<array{0: bool|null, 1: string}|null>  $reponses
      */
     private function servir(string $codeNoeud, array $reponses): void
     {
@@ -164,7 +178,14 @@ class MaitriseTest extends TestCase
             }
 
             [$juste, $certitude] = $reponses[$i];
-            $option = $juste ? $question->correctOption() : $question->distractors()->first();
+
+            /* `null` : traversée. On appelle le service avec `null` comme
+             * option, exactement comme le faisait le contrôleur quand l'écran
+             * envoyait `option_uuid: null`. On ne pose rien à la main en base —
+             * ce serait tester notre propre écriture. */
+            $option = $juste === null
+                ? null
+                : ($juste ? $question->correctOption() : $question->distractors()->first());
 
             $service->answer($item, $option, $certitude);
         }
@@ -530,6 +551,103 @@ class MaitriseTest extends TestCase
 
         $this->assertSame(5, $this->maitrise('SE-PSY')->skipped_count, 'Cinq sautées sous Psychologie.');
         $this->assertSame(10, $this->maitrise('SE-SOC')->skipped_count, 'Dix sous Sociologie.');
+    }
+
+    // --- D-09 : traverser sans répondre n'est pas se tromper ---------------
+
+    /**
+     * LE CŒUR DU D-09, ET IL SE MESURE EN TROIS NOMBRES.
+     *
+     * Cinq questions répondues juste, cinq TRAVERSÉES — certitude déclarée,
+     * aucune option choisie. C'est exactement ce que produisait l'écran de
+     * passation à chaque clic sur « Suivante » d'une question sans réponse.
+     *
+     * Avant le correctif, chacune de ces cinq lignes recevait `is_correct =
+     * false` à la soumission, entrait au dénominateur avec un poids de 0, et
+     * grossissait `answered_count`. Le candidat lisait donc : dix réponses,
+     * 50 % de maîtrise, cinq erreurs commises avec certitude — sur cinq
+     * questions qu'il n'avait pas lues.
+     *
+     * Le domaine témoin qui SAUTE vraiment (`SE-PSY-LEARN`, cinq justes et
+     * cinq items jamais touchés) doit rendre exactement les mêmes nombres :
+     * c'est le même fait, et il ne doit pas dépendre de la façon dont le
+     * client s'y prend.
+     */
+    public function test_une_question_traversee_sans_option_ne_grossit_pas_l_evidence(): void
+    {
+        $this->servir('SE-PSY-DEV', array_merge(
+            array_fill(0, 5, [true, 'sure']),
+            array_fill(0, 5, [null, 'sure']),      // traversées : ligne vide en base
+        ));
+
+        app(MasteryCalculator::class)->recomputeForExam($this->candidat, $this->epreuve);
+
+        $score = $this->maitrise('SE-PSY-DEV');
+
+        $this->assertSame(
+            5, $score->answered_count,
+            'Le volume d\'évidence ne compte que ce qui a été répondu. '
+            .'Une ligne de réponse sans option n\'est pas une réponse.'
+        );
+
+        $this->assertSame(
+            5, $score->skipped_count,
+            'Traverser une question est un évitement, et il se compte comme tel.'
+        );
+
+        $this->assertSame(
+            0, $score->confident_error_count,
+            'Une question non lue ne peut pas être une erreur commise avec certitude — '
+            .'c\'est le signal le plus fort de l\'ordonnance, et il était fabriqué.'
+        );
+
+        $this->assertEqualsWithDelta(
+            100.0, $score->score, 0.01,
+            'De ce qu\'il a tenté, tout était juste. Le score n\'est pas flatteur : il est vrai, '
+            .'et son volume d\'évidence dit ce qu\'il vaut.'
+        );
+    }
+
+    /**
+     * LES DEUX FAÇONS DE NE PAS RÉPONDRE RENDENT LE MÊME RÉSULTAT.
+     *
+     * Ce test est le seul qui distingue un correctif complet d'un correctif à
+     * moitié : on peut exclure les lignes vides de l'évidence sans les compter
+     * comme sautées, et le domaine disparaîtrait alors de l'ordonnance au lieu
+     * d'y remonter avec le motif `questions_sautees`.
+     */
+    public function test_traverser_et_ne_jamais_toucher_se_comptent_pareil(): void
+    {
+        $this->servir('SE-PSY-DEV', array_merge(       // traversées
+            array_fill(0, 5, [true, 'sure']),
+            array_fill(0, 5, [null, 'sure']),
+        ));
+
+        $this->servir('SE-PSY-LEARN', array_merge(     // jamais touchées
+            array_fill(0, 5, [true, 'sure']),
+            array_fill(0, 5, null),
+        ));
+
+        app(MasteryCalculator::class)->recomputeForExam($this->candidat, $this->epreuve);
+
+        $traverse = $this->maitrise('SE-PSY-DEV');
+        $saute = $this->maitrise('SE-PSY-LEARN');
+
+        $this->assertSame(
+            [$saute->answered_count, $saute->skipped_count, $saute->evidence, $saute->score],
+            [$traverse->answered_count, $traverse->skipped_count, $traverse->evidence, $traverse->score],
+            'Le produit ne doit pas mesurer deux choses différentes selon la façon dont '
+            .'le client a exprimé le même refus de répondre.'
+        );
+
+        $priorites = app(RemediationPlanner::class)
+            ->prioritize($this->candidat, $this->epreuve, 30);
+
+        $this->assertSame(
+            'questions_sautees',
+            $priorites->firstWhere('node_code', 'SE-PSY-DEV')['reason'],
+            'Le traverseur remonte dans l\'ordonnance avec le motif du saut, comme le sauteur.'
+        );
     }
 
     public function test_une_tentative_en_cours_ne_produit_aucune_sautee(): void

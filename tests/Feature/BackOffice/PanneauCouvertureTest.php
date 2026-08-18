@@ -250,6 +250,121 @@ class PanneauCouvertureTest extends TestCase
         $composant->assertSee('2 / 2')->assertSee('0 / 2');
     }
 
+    // --- D-03 : la page ouvre là où il y a du travail --------------------------
+
+    /**
+     * ══════════════════════════════════════════════════════════════════════
+     * L'ÉPREUVE PAR DÉFAUT EST CELLE QUI A DU TRAVAIL, PAS LA PREMIÈRE DE
+     * L'ALPHABET
+     *
+     * Le filtre valait `Exam::published()->orderBy('name_fr')->value('id')`.
+     * Sur le catalogue réel comme sur celui du test, cela désigne
+     * « Didactique de la langue française » — une épreuve sans une question et
+     * sans un candidat. Le premier écran du back-office affirmait donc « Aucun
+     * trou. Chaque couple attendu par un candidat est servi par au moins deux
+     * questions », en regardant ailleurs.
+     *
+     * CE TEST N'EST PAS UN TEST D'ORDRE, C'EST UN TEST DE CRITÈRE. La demande
+     * est posée sur `CRMEF-SE-2025`, qui n'est PAS premier alphabétiquement :
+     * si le critère redevient le libellé, la page ouvre sur l'épreuve vide et
+     * ne voit aucun des deux couples.
+     * ══════════════════════════════════════════════════════════════════════
+     */
+    public function test_le_tableau_de_bord_ouvre_sur_l_epreuve_qui_a_du_travail(): void
+    {
+        $this->attendre('calcul', 1);
+        $this->attendre('confusion_notions', 2);
+
+        $alphabetique = Exam::published()->orderBy('name_fr')->first();
+
+        $this->assertNotSame(
+            $this->epreuve->id, $alphabetique->id,
+            'Le montage ne distingue plus rien : l\'épreuve travaillée est aussi la première '
+            .'de l\'alphabet, et le test passerait avec l\'ancien critère.'
+        );
+
+        /* AUCUN `filterTable` : c'est précisément la valeur par défaut qu'on
+         * éprouve. La poser à la main mesurerait le filtre, pas le défaut. */
+        Livewire::actingAs($this->redacteur)
+            ->test(Couverture::class)
+            ->assertCanSeeTableRecords([
+                'SE-PSY-DEV::confusion_notions',
+                'SE-PSY-DEV::calcul',
+            ], inOrder: true);
+    }
+
+    /**
+     * « AUCUN TROU » ET « RIEN À MESURER » NE SONT PAS LA MÊME PHRASE.
+     *
+     * La première rassure : la banque couvre ce qu'on lui demande. La seconde
+     * avertit : il n'y a rien à couvrir, donc rien à conclure. C'est la moitié
+     * du D-03 qui reste vraie même une fois le défaut par défaut corrigé —
+     * l'opérateur peut toujours changer de filtre à la main.
+     *
+     * L'ÉPREUVE EXAMINÉE EST NOMMÉE dans les deux cas. « Aucun trou » sans
+     * sujet est une affirmation dont on ne peut rien faire.
+     */
+    public function test_une_epreuve_sans_banque_ne_dit_pas_aucun_trou(): void
+    {
+        $vide = Exam::published()->where('code', 'CRMEF-FR-DID-2025')->firstOrFail();
+
+        $this->assertSame(
+            0,
+            Question::where('exam_id', $vide->id)->where('status', 'published')->count(),
+            'Le montage suppose une épreuve sans banque publiée.'
+        );
+
+        Livewire::actingAs($this->redacteur)
+            ->test(Couverture::class)
+            ->filterTable('exam', $vide->id)
+            ->assertSee('Rien à mesurer sur cette épreuve')
+            ->assertSee($vide->name_fr)
+            ->assertDontSee('Aucun trou');
+    }
+
+    /**
+     * RÈGLE DES PORTES, SUR UN ÉCRAN DE PERSONNEL.
+     *
+     * Cette page mesure ce qui manque à la banque ; ce qui la remplit est une
+     * question écrite. Vide, elle ne menait nulle part — même défaut que le
+     * tableau de bord d'un candidat sans tentative, transposé au personnel.
+     */
+    public function test_l_etat_vide_offre_la_porte_de_la_redaction(): void
+    {
+        $this->attendre('calcul', 1);
+        $this->peupler('calcul', 2, 'fr');
+        $this->peupler('calcul', 2, 'ar');
+
+        Livewire::actingAs($this->redacteur)
+            ->test(Couverture::class)
+            ->filterTable('exam', $this->epreuve->id)
+            ->assertSee('Aucun trou')
+            ->assertSee('Écrire une question');
+    }
+
+    /**
+     * ET LA PORTE N'EXISTE PAS POUR QUI NE PEUT PAS L'EMPRUNTER.
+     *
+     * La règle du dépôt ne tolère ni bouton grisé ni lien masqué en CSS pour
+     * cause de droits : soit l'action est proposée, soit elle n'est pas dans
+     * le rendu. `reviseur` porte `questions.view` et `questions.review`, pas
+     * `questions.create` — il voit la page, et pas l'invitation à écrire.
+     */
+    public function test_la_porte_de_redaction_n_existe_pas_pour_qui_ne_redige_pas(): void
+    {
+        $this->attendre('calcul', 1);
+        $this->peupler('calcul', 2, 'fr');
+        $this->peupler('calcul', 2, 'ar');
+
+        $relecteur = $this->membre('relecteur-porte@naja7i.ma', 'reviseur');
+
+        Livewire::actingAs($relecteur)
+            ->test(Couverture::class)
+            ->filterTable('exam', $this->epreuve->id)
+            ->assertSee('Aucun trou')
+            ->assertDontSee('Écrire une question');
+    }
+
     public function test_la_page_est_vide_quand_la_banque_couvre_tout(): void
     {
         $this->attendre('calcul', 1);

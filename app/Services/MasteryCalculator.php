@@ -71,6 +71,41 @@ final class MasteryCalculator
      * indistinguable du jamais-servi, et l'ordonnance le traitait donc en
      * angle mort au lieu d'y voir un refus.
      *
+     * ══════════════════════════════════════════════════════════════════════
+     * D-09 — UNE LIGNE DE RÉPONSE N'EST PAS UNE RÉPONSE
+     *
+     * `selected_option_id` peut être NUL : le contrat l'autorise
+     * (`'option_uuid' => ['nullable', 'uuid']`), et l'écran de passation en
+     * produisait à chaque question traversée sans choix. Ce que devenait une
+     * telle ligne, mesuré et non déduit :
+     *
+     *   - `submit()` lui pose `is_correct = false`, parce que
+     *     `selectedOption?->is_correct === true` est faux quand il n'y a pas
+     *     d'option ;
+     *   - elle entrait donc ici, au dénominateur, avec un poids de 0 ;
+     *   - elle grossissait `answered_count`, C'EST-À-DIRE LE VOLUME
+     *     D'ÉVIDENCE — la règle non négociable du dépôt veut qu'un score ne
+     *     sorte jamais sans lui, et il était faux ;
+     *   - déclarée « sûr », elle grossissait `confident_error_count`, le
+     *     signal le plus fort de l'ordonnance.
+     *
+     * Autrement dit, elle produisait exactement ce que `ecrire()` refuse
+     * quelques lignes plus bas : « donner au sauteur le score de celui qui
+     * s'est trompé ». Le calcul se contredisait lui-même selon que
+     * l'évitement passait par une ligne absente ou par une ligne vide.
+     *
+     * DEUX SERRURES. L'écran de passation n'écrit plus rien sans option
+     * choisie ; celle-ci rend l'état inoffensif QUEL QUE SOIT LE CLIENT — et
+     * le contrat continue d'accepter `option_uuid: null`, ce qui est
+     * légitime : c'est le geste « je passe ».
+     *
+     * `MemoryScheduler` n'avait pas ce défaut, et c'est une garantie qu'on
+     * ignorait avoir : sa requête joint `question_options` par une jointure
+     * INTERNE sur `selected_option_id`, donc une réponse sans option n'y
+     * entre pas. Aucun rendez-vous de mémoire n'a jamais été créé sur une
+     * question non lue.
+     * ══════════════════════════════════════════════════════════════════════
+     *
      * @return Collection<int, MasteryScore>
      */
     private function recomputeLeaves(User $user, Exam $exam): Collection
@@ -81,6 +116,7 @@ final class MasteryCalculator
             ->where('attempts.user_id', $user->id)
             ->where('attempts.exam_id', $exam->id)
             ->whereNotNull('responses.is_correct')      // uniquement les tentatives soumises
+            ->whereNotNull('responses.selected_option_id')   // et uniquement les vraies réponses
             ->select([
                 'attempt_items.competency_node_id',
                 'responses.is_correct',
@@ -114,6 +150,12 @@ final class MasteryCalculator
      * ont bien été servis puis laissés. Tant qu'une tentative est en cours,
      * ne pas avoir répondu n'est pas avoir sauté, c'est ne pas avoir fini.
      *
+     * DEUX FAÇONS DE NE PAS RÉPONDRE, UN SEUL FAIT. Ne jamais toucher la
+     * question laisse l'item sans ligne de réponse ; la traverser en déclarant
+     * une certitude laissait une ligne à `selected_option_id` nul. Le candidat
+     * n'a rien répondu dans les deux cas, et il y a exactement une chose à
+     * compter — voir le D-09 au-dessus de `recomputeLeaves()`.
+     *
      * La requête est pilotée par `AttemptItem`, dont le scope global filtre
      * `attempt_items.tenant_id` : les jointures, elles, sont écrites à la main
      * et ne portent aucun scope.
@@ -128,7 +170,9 @@ final class MasteryCalculator
             ->where('attempts.user_id', $user->id)
             ->where('attempts.exam_id', $exam->id)
             ->whereNotNull('attempts.submitted_at')
-            ->whereNull('responses.id')
+            ->where(fn ($q) => $q
+                ->whereNull('responses.id')
+                ->orWhereNull('responses.selected_option_id'))
             ->groupBy('attempt_items.competency_node_id')
             ->selectRaw('attempt_items.competency_node_id as node_id, count(*) as total')
             ->pluck('total', 'node_id')

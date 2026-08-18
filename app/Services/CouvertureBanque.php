@@ -115,6 +115,66 @@ final class CouvertureBanque
     }
 
     /**
+     * L'ÉPREUVE SUR LAQUELLE OUVRIR LE TABLEAU DE BORD — D-03.
+     *
+     * ══════════════════════════════════════════════════════════════════════
+     * CE QUE LE DÉFAUT DISAIT DE L'ÉCRAN
+     *
+     * La page de couverture ouvrait sur `Exam::published()->orderBy('name_fr')
+     * ->value('id')` : la PREMIÈRE ÉPREUVE PAR ORDRE ALPHABÉTIQUE. Sur le semis
+     * réel, c'est « Didactique de la langue française » — une épreuve sans une
+     * question et sans un candidat. La page répondait donc, sereinement :
+     * « Aucun trou. Chaque couple attendu par un candidat est servi par au
+     * moins deux questions. »
+     *
+     * L'affirmation était exacte et sans objet. La banque semée vit sur
+     * « Spécialité — Langue française », et le premier écran du back-office
+     * annonçait qu'il n'y avait rien à faire en regardant ailleurs.
+     *
+     * L'ORDRE ALPHABÉTIQUE N'EST PAS UN DÉFAUT D'INTERFACE, c'est une absence
+     * de critère. Une page dont l'ordre est arbitraire finit toujours par
+     * ouvrir sur le vide, et personne ne peut dire que c'est faux.
+     *
+     * LE CRITÈRE EST CELUI DE LA PAGE ELLE-MÊME : le travail à faire. On
+     * classe par nombre de trous, puis par candidats en attente, puis par
+     * volume de banque publiée. L'alphabet ne sert plus que de départage
+     * final, quand tout le reste est à égalité — le plus souvent parce que
+     * TOUT est à zéro, et il n'y a alors rien de mieux à dire.
+     * ══════════════════════════════════════════════════════════════════════
+     *
+     * @return array{exam: Exam, trous: int, attente: int, questions: int}|null
+     */
+    public function epreuveAOuvrir(): ?array
+    {
+        $classement = Exam::published()
+            ->orderBy('name_fr')
+            ->get()
+            ->map(function (Exam $exam): array {
+                $trous = $this->trous($exam);
+
+                return [
+                    'exam' => $exam,
+                    'trous' => $trous->count(),
+                    'attente' => (int) $trous->sum('waiting_candidates'),
+                    'questions' => Question::where('exam_id', $exam->id)
+                        ->where('status', 'published')
+                        ->count(),
+                ];
+            });
+
+        if ($classement->isEmpty()) {
+            return null;
+        }
+
+        /* `sortByDesc` de Laravel est STABLE : à critères égaux, l'ordre
+         * alphabétique du `get()` ci-dessus survit. C'est le départage voulu,
+         * et il ne se lit pas dans le tri lui-même — d'où cette ligne. */
+        return $classement
+            ->sortByDesc(fn (array $l) => [$l['trous'], $l['attente'], $l['questions']])
+            ->first();
+    }
+
+    /**
      * La demande réelle : un couple par ligne, avec ce que la banque en offre.
      *
      * @return Collection<int, array<string, mixed>>

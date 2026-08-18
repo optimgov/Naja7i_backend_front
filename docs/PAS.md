@@ -87,6 +87,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | CRMEF-2 phase 1 : le rapprochement du corpus et de la base — voies, coefficients, les 40/30/30, six dettes | `d027f20` |
 | 38 | CRMEF-2 phase 2 : les trois faits imprimés — cinq options, pénalité négative, numérotation réelle | `11116a3` |
 | 39 | CRMEF-2 phase 3 : 53 annales en file éditoriale, sans corrigé et sans pouvoir en sortir | `887aa83` |
+| — | Lot PORTES phase 2, côté serveur : la question sautée cesse d'être une erreur démontrée, le tableau de bord ouvre là où il y a du travail, la fuite de traduction est fermée sur toute sa famille, et le refus nomme ce qu'il refuse — DET-78, DET-79, DET-80 signalées | `521cda9` |
 
 ## Lots frontend
 

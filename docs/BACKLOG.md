@@ -828,6 +828,36 @@ chemin — un nœud PARENT choisi comme domaine lourd alors qu'il ne porte aucun
 item, et deux scans de mots interdits qui mordaient sur une citation officielle
 et sur un démenti.
 
+### Lot PORTES phase 2 — côté serveur · `521cda9`
+**Règle installée :** un écran qui mesure offre toujours la porte qui le
+remplit ; aucun état vide ne se termine sans un chemin cliquable ; tout élément
+qui a l'apparence d'un lien EST un lien. Voir `docs/regles/PORTES.md`.
+
+**Acceptation :**
+
+- **D-09** — une réponse sans option choisie n'entre plus dans le volume
+  d'évidence et compte comme sautée. Traverser une question et ne jamais la
+  toucher rendent exactement les mêmes nombres — `answered_count`,
+  `skipped_count`, `evidence`, `score` et le motif d'ordonnance.
+- **D-03** — `Couverture` ouvre sur l'épreuve qui a du travail (trous, puis
+  candidats en attente, puis banque publiée), et non sur la première de
+  l'alphabet. Son état vide nomme l'épreuve examinée, distingue « Aucun trou »
+  de « Rien à mesurer », et offre la porte de la rédaction à qui porte
+  `questions.create`.
+- **D-05** — les 143 clés de Filament qui ne se résolvaient dans aucune des
+  deux langues sont traduites. Deux garanties : le contrôle de rendu visite
+  TOUTES les pages du panneau, et un test indépendant du rendu vérifie que
+  chaque clé de chaque paquet se résout en `fr` et en `ar`.
+- **D-13** — la page 403 nomme la surface, la permission qui l'ouvre et les
+  permissions du compte ; elle ne nomme aucun autre compte. La permission est
+  déclarée sur la surface et tenue contre sa politique par `RefusNommeTest`.
+
+**Mutations, sur la suite complète de 634 tests :** sept posées, chacune
+rougissant le ou les tests attendus et eux seuls. Le détail est dans le message
+de `521cda9`.
+
+---
+
 ### FRONT-1 — Socle d'interface · `43a140f`, `d72584c`
 **Acceptation :** relais BFF, aucun appel direct du navigateur vers l'API ;
 six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.

@@ -35,6 +35,7 @@ final class OwnAccountTest extends TestCase
             $this->actingAs($user)
                 ->patchJson('/api/v1/me/account', [
                     'email' => "nouveau-{$role}@naja7i.ma",
+                    'current_password' => 'une-phrase-de-passe-solide',
                     'phone' => "+21260000001{$suffix}",
                     'locale' => 'ar',
                     'status' => 'suspended',
@@ -51,6 +52,51 @@ final class OwnAccountTest extends TestCase
             $this->assertSame('active', $user->status);
             $this->assertSame([$role], $user->memberships()->with('role')->get()->pluck('role.code')->all());
         }
+    }
+
+    public function test_le_candidat_ne_change_pas_son_email_sans_le_mot_de_passe_courant(): void
+    {
+        $user = $this->user('email-protege@naja7i.ma', 'candidat');
+
+        $this->actingAs($user)
+            ->patchJson('/api/v1/me/account', ['email' => 'email-vole@naja7i.ma'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+
+        $this->assertSame('email-protege@naja7i.ma', $user->fresh()->email);
+    }
+
+    public function test_le_candidat_ne_change_pas_son_email_avec_un_mauvais_mot_de_passe(): void
+    {
+        $user = $this->user('email-original@naja7i.ma', 'candidat');
+
+        $this->actingAs($user)
+            ->patchJson('/api/v1/me/account', [
+                'email' => 'email-refuse@naja7i.ma',
+                'current_password' => 'incorrect',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('current_password');
+
+        $this->assertSame('email-original@naja7i.ma', $user->fresh()->email);
+    }
+
+    public function test_le_candidat_change_son_email_avec_le_bon_mot_de_passe(): void
+    {
+        $user = $this->user('email-ancien@naja7i.ma', 'candidat');
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        $this->actingAs($user)
+            ->patchJson('/api/v1/me/account', [
+                'email' => 'email-nouveau@naja7i.ma',
+                'current_password' => 'une-phrase-de-passe-solide',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.email', 'email-nouveau@naja7i.ma');
+
+        $user->refresh();
+        $this->assertSame('email-nouveau@naja7i.ma', $user->email);
+        $this->assertNull($user->email_verified_at);
     }
 
     public function test_changement_de_mot_de_passe_exige_le_courant_et_la_politique_centrale(): void

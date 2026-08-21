@@ -10,6 +10,8 @@ return [
     ],
     'fields' => [
         'email' => 'E-mail',
+        'current_password_for_email' => 'Mot de passe actuel',
+        'current_password_for_email_help' => 'Obligatoire uniquement pour modifier votre e-mail.',
         'phone' => 'Téléphone (E.164)',
         'locale' => 'Langue',
         'email_verification' => 'Vérification de l’e-mail',

@@ -26,9 +26,11 @@ final class OwnAccountService
             'email' => ['sometimes', 'nullable', 'email:rfc', 'required_without:phone', Rule::unique('users', 'email')->ignore($user)],
             'phone' => ['sometimes', 'nullable', 'required_without:email', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')->ignore($user)],
             'locale' => ['sometimes', 'required', Rule::in(['fr', 'ar'])],
+            'current_password' => ['sometimes', 'nullable', 'string'],
         ])->validate();
 
         if (array_key_exists('email', $validated) && $validated['email'] !== $user->email) {
+            $this->assertCurrentPassword($user, $validated['current_password'] ?? null);
             $user->email_verified_at = null;
         }
         if (array_key_exists('phone', $validated) && $validated['phone'] !== $user->phone) {
@@ -43,18 +45,12 @@ final class OwnAccountService
     /** @param array<string, mixed> $data */
     public function changePassword(User $user, array $data): void
     {
-        if (! $user->identities()->where('provider', 'password')->exists() || $user->password === null) {
-            throw ValidationException::withMessages(['current_password' => __('auth.password_identity_required')]);
-        }
-
         $validated = Validator::make($data, [
             'current_password' => ['required', 'string'],
             'password' => ['required', 'confirmed', PasswordPolicy::rule()],
         ])->validate();
 
-        if (! Hash::check($validated['current_password'], (string) $user->password)) {
-            throw ValidationException::withMessages(['current_password' => __('auth.current_password_invalid')]);
-        }
+        $this->assertCurrentPassword($user, $validated['current_password']);
 
         $user->forceFill([
             'password' => $validated['password'],
@@ -64,5 +60,21 @@ final class OwnAccountService
         // Sanctum AuthenticateSession conserve l'empreinte du mot de passe
         // dans chaque session. La réponse courante reçoit la nouvelle valeur ;
         // les autres sessions seront rejetées à leur prochaine requête.
+    }
+
+    private function assertCurrentPassword(User $user, mixed $currentPassword): void
+    {
+        if (! $user->identities()->where('provider', 'password')->exists() || $user->password === null) {
+            throw ValidationException::withMessages(['current_password' => __('auth.password_identity_required')]);
+        }
+
+        $validated = Validator::make(
+            ['current_password' => $currentPassword],
+            ['current_password' => ['required', 'string']],
+        )->validate();
+
+        if (! Hash::check($validated['current_password'], (string) $user->password)) {
+            throw ValidationException::withMessages(['current_password' => __('auth.current_password_invalid')]);
+        }
     }
 }

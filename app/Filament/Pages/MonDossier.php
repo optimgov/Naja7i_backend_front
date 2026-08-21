@@ -63,6 +63,12 @@ final class MonDossier extends Page
                         ->label(__('dossier.fields.email'))
                         ->email()
                         ->maxLength(255),
+                    TextInput::make('current_password')
+                        ->label(__('dossier.fields.current_password_for_email'))
+                        ->password()
+                        ->revealable(filament()->arePasswordsRevealable())
+                        ->autocomplete('current-password')
+                        ->helperText(__('dossier.fields.current_password_for_email_help')),
                     TextInput::make('phone')
                         ->label(__('dossier.fields.phone'))
                         ->tel()
@@ -161,6 +167,7 @@ final class MonDossier extends Page
 
         $this->accountForm->fill([
             'email' => $user->email,
+            'current_password' => null,
             'phone' => $user->phone,
             'locale' => $user->locale,
             'email_verification' => $this->verificationLabel($user->email_verified_at !== null),

@@ -10,6 +10,8 @@ return [
     ],
     'fields' => [
         'email' => 'البريد الإلكتروني',
+        'current_password_for_email' => 'كلمة المرور الحالية',
+        'current_password_for_email_help' => 'مطلوبة فقط لتغيير بريدك الإلكتروني.',
         'phone' => 'رقم الهاتف (E.164)',
         'locale' => 'اللغة',
         'email_verification' => 'التحقق من البريد الإلكتروني',

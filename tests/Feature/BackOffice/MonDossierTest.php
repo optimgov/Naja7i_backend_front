@@ -57,6 +57,7 @@ final class MonDossierTest extends TestCase
         Livewire::test(MonDossier::class)
             ->fillForm([
                 'email' => 'nouvelle-adresse@naja7i.ma',
+                'current_password' => 'une-phrase-de-passe-solide',
                 'phone' => '+212600000777',
                 'locale' => 'ar',
             ], 'accountForm')
@@ -70,6 +71,54 @@ final class MonDossierTest extends TestCase
         $this->assertNull($staff->email_verified_at);
         $this->assertSame($rolesAvant, $staff->memberships()->pluck('role_id')->all());
         $this->assertSame('active', $staff->status);
+    }
+
+    public function test_le_personnel_ne_change_pas_son_email_sans_le_mot_de_passe_courant(): void
+    {
+        $staff = $this->staff('personnel-protege@naja7i.ma', ['members.view']);
+        $this->actingAs($staff);
+
+        Livewire::test(MonDossier::class)
+            ->fillForm(['email' => 'personnel-vole@naja7i.ma'], 'accountForm')
+            ->call('saveAccount')
+            ->assertHasErrors(['accountData.current_password']);
+
+        $this->assertSame('personnel-protege@naja7i.ma', $staff->fresh()->email);
+    }
+
+    public function test_le_personnel_ne_change_pas_son_email_avec_un_mauvais_mot_de_passe(): void
+    {
+        $staff = $this->staff('personnel-original@naja7i.ma', ['members.view']);
+        $this->actingAs($staff);
+
+        Livewire::test(MonDossier::class)
+            ->fillForm([
+                'email' => 'personnel-refuse@naja7i.ma',
+                'current_password' => 'incorrect',
+            ], 'accountForm')
+            ->call('saveAccount')
+            ->assertHasErrors(['accountData.current_password']);
+
+        $this->assertSame('personnel-original@naja7i.ma', $staff->fresh()->email);
+    }
+
+    public function test_le_personnel_change_son_email_avec_le_bon_mot_de_passe(): void
+    {
+        $staff = $this->staff('personnel-ancien@naja7i.ma', ['members.view']);
+        $staff->forceFill(['email_verified_at' => now()])->save();
+        $this->actingAs($staff);
+
+        Livewire::test(MonDossier::class)
+            ->fillForm([
+                'email' => 'personnel-nouveau@naja7i.ma',
+                'current_password' => 'une-phrase-de-passe-solide',
+            ], 'accountForm')
+            ->call('saveAccount')
+            ->assertHasNoErrors();
+
+        $staff->refresh();
+        $this->assertSame('personnel-nouveau@naja7i.ma', $staff->email);
+        $this->assertNull($staff->email_verified_at);
     }
 
     public function test_les_roles_ne_sont_jamais_acceptes_comme_donnees_du_formulaire(): void

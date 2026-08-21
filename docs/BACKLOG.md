@@ -919,6 +919,17 @@ Cette amélioration UX est fermée par `4015a44` : le formulaire ne propose plus
 que les rôles réellement attribuables par l'acteur, sans dupliquer ni affaiblir
 la garde serveur.
 
+### LOT-2A — Mon dossier backend et invitation du personnel · livré · `21fc459`
+
+Le propre compte dispose de contrats communs candidat/personnel pour modifier
+coordonnées, langue et mot de passe sans ouvrir rôles, statut, tenant ou actes
+non révocables. L'invitation du personnel remplace le mot de passe temporaire :
+jeton opaque stocké hashé, expirant, à usage unique, réinvitation révoquant le
+précédent et compte inutilisable avant acceptation.
+
+Vérification de sortie : suite complète séquentielle verte, **659 tests et
+2 282 assertions**. Le rendu candidat/personnel reste à livrer au lot 2B.
+
 ### LOT-0A.2 — Arbitrages Q-07/Q-08/Q-13 · livré · `3eeff4a`
 
 Le quota gratuit est cumulatif sans remise à zéro automatique, la consommation

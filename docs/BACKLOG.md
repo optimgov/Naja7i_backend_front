@@ -991,6 +991,50 @@ test de refus nommé rougit seul), puis suite complète séquentielle verte à
 **748 tests et 2 648 assertions**. Aucune migration sur une base durable,
 aucun push.
 
+#### Préalable P-Q · le quota se fige dans la version d'offre · livré · `1dddf83`
+
+Un `QuotaProfile` est amendable : une version qui relirait `quota_profiles`
+livrerait à une commande d'hier la valeur d'aujourd'hui — le défaut V-3 sous un
+autre nom. À la composition, la version COPIE donc le profil sélectionné :
+code, unité, fenêtre, valeur, les deux bornes du moment et les deux
+justifications qui les fondent. Des colonnes typées sur `plan_versions`, jamais
+un JSON libre, et jamais une table fille : la spécification déclare un seul
+profil par version, chaque unité désigne exactement une capacité, et une table
+fille aurait exigé son propre déclencheur d'immuabilité en face de celui de
+`plan_versions`.
+
+Les justifications sont copiées et non pointées. « Référence de justification »
+ne peut pas être un renvoi vers le profil — le profil est précisément ce qui
+bouge — ni vers `quota_profile_events`, que le profil semé ne porte pas. Le
+seul texte qui reste vrai dans dix mois est celui du moment de la sélection.
+
+La SÉLECTION versionne, l'AMENDEMENT non. `plans.quota_profile_id` entre aux
+champs contractuels : changer de profil est un geste commercial et crée une
+version. Déplacer la valeur ou les bornes depuis le registre pédagogique ne
+touche aucune version existante et ne compose rien — sans quoi l'admin
+pédagogique recomposerait, depuis un écran qu'elle ne relie à rien, des offres
+qu'elle ne voit pas, et les commandes en vol seraient refusées pour version
+périmée. Le profil amendé ne sert qu'aux compositions futures.
+
+`QuotaProfileService::assertSelectionnable()` reste le point de passage, à la
+sélection comme à la composition, et un refus nommé s'y ajoute : un profil qui
+borne une capacité que l'offre ne vend pas ne se compose pas — une enveloppe
+que rien ne débite promettrait quarante questions à qui n'a pas le droit d'en
+recevoir une.
+
+L'honoration ouvre l'enveloppe LUE SUR LA VERSION : unité, fenêtre et valeur
+sont inscrites sur l'octroi de la capacité que l'unité compte, les autres
+capacités s'ouvrant sans enveloppe — l'illimité reste une absence, jamais un
+nombre. Allocation seulement : ni reliquat, ni décrément, ni trace de service.
+La consommation reste le lot 3B, et un compteur posé sans son verrouillage
+serait un reliquat que personne ne sait débiter.
+
+**Vérification :** 8 tests ciblés et 28 assertions, mutation éprouvée
+(l'honoration relit `quota_profiles.value` → le test d'honoration rougit, et
+lui seul, sur les 73 tests commerciaux et de back-office rejoués), puis suite
+complète séquentielle verte à **756 tests et 2 676 assertions** en 224,6 s.
+Aucune migration sur une base durable, aucun push.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

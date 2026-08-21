@@ -107,6 +107,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | Outillage : 256 Mio pour le processus PHPUnit ; suite complète verte à 719 tests et 2 547 assertions | `9a9c2bd` |
 | 3A.4 | Versions d'offre immuables : toute modification contractuelle crée une version, la commande fige celle affichée et l'honoration ne relit plus le plan courant | backend `2e0606b` · frontend `b9e9f4c` |
 | 3A.5 | Profils de quota pédagogiques : unité et fenêtre fermées en code, bornes justifiées tenues en base, déplacement d'une borne refusé sans raison nouvelle, registre réservé à `quotas.manage` | `85a7634` |
+| P-Q | La version d'offre copie le profil de quota à la composition — code, unité, fenêtre, valeur, bornes et justifications ; amender le profil ne touche plus aucune version vendue, et l'honoration ouvre l'enveloppe figée | `1dddf83` |
 
 ## Lots frontend
 

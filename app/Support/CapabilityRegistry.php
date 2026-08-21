@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use App\Contracts\AccessGrant;
-use Illuminate\Support\Facades\DB;
+use App\Models\CapabilityDefinition;
 use RuntimeException;
 
 /**
@@ -45,7 +45,7 @@ final class CapabilityRegistry
     {
         $locale = $locale === 'ar' ? 'ar' : 'fr';
 
-        return DB::table('capability_definitions')
+        return CapabilityDefinition::query()
             ->whereIn('code', self::COMMERCIALIZABLE)
             ->whereNotNull('label_fr')
             ->whereNotNull('label_ar')
@@ -74,7 +74,7 @@ final class CapabilityRegistry
             return [];
         }
 
-        $definitions = DB::table('capability_definitions')
+        $definitions = CapabilityDefinition::query()
             ->whereIn('code', $codes)
             ->get()
             ->keyBy('code');
@@ -128,7 +128,7 @@ final class CapabilityRegistry
             }
         }
 
-        $complete = DB::table('capability_definitions')
+        $complete = CapabilityDefinition::query()
             ->whereIn('code', $codes)
             ->whereNotNull('label_fr')
             ->whereNotNull('label_ar')

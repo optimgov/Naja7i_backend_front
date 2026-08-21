@@ -47,6 +47,9 @@ class TenancyArchitectureTest extends TestCase
         'app/Services/AttemptService.php',        // incrément conditionnel, DB::raw
         'app/Services/MasteryCalculator.php',     // jointure d'agrégation, lecture seule
         'app/Services/PermissionResolver.php',    // jointure de référentiel, hors tenant
+        /* Catalogue global : construit en une lecture la chaîne d'ascendance
+         * d'une portée, puis interroge access_grants une seule fois. */
+        'app/Services/DatabaseAccessGrant.php',
 
         /*
          * `naja7i:etat` COMPTE DÉLIBÉRÉMENT HORS SCOPE, et c'est sa raison d'être.

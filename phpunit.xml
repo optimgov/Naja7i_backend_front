@@ -18,6 +18,13 @@
         </include>
     </source>
     <php>
+        <!--
+            La suite complète dépasse désormais la valeur CLI par défaut de
+            128 Mio pendant la construction du cache de métadonnées PHPUnit.
+            Cette enveloppe concerne uniquement le processus de test ; elle ne
+            modifie aucune limite applicative ni aucun conteneur de production.
+        -->
+        <ini name="memory_limit" value="256M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

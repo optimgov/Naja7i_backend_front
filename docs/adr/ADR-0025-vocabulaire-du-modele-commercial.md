@@ -36,6 +36,11 @@ Le quota F03 existant demeure un **quota global par compte de causes révélées
 
 Une capacité présente dans le code n'est pas automatiquement vendable. La liste commercialisable est fermée en code. `CERTIFICATION` reste non commercialisable tant que la fonction et sa règle métier ne sont pas livrées. Les trois paliers doivent pouvoir distinguer au minimum l'accès aux annales/séries, la carte de maîtrise, l'ordonnance, le rendez-vous mémoire et le coaching automatique complet ; les capacités fines autorisent, le regroupement « coaching » présente l'offre.
 
+Le registre normatif, les huit capacités commercialisables et l'absence de
+capacité agrégée sont fixés par l'ADR-0030. « Coaching » est uniquement un
+libellé ou un regroupement commercial : il n'entre jamais dans une décision
+d'autorisation et aucune table d'inclusion ne lui donne d'effet technique.
+
 ## Conséquences
 
 - Aucun objet unique « abonnement » ne fusionne offre, commande et droit.
@@ -48,8 +53,3 @@ Une capacité présente dans le code n'est pas automatiquement vendable. La list
 - On fait autoriser un écran depuis une commande ou une offre au lieu des droits effectifs : le test d'autorité unique rougit.
 - On remplace le quota de questions par le quota F03 de causes : le test de séparation des unités rougit.
 - On auto-attribue le gratuit sans version d'offre ni origine de droit : le test du porteur explicite rougit.
-
-## Arbitrages encore ouverts
-
-- Noms techniques et libellés FR/AR définitifs des capacités commercialisables.
-- Capacité agrégée `COACHING_AUTOMATIQUE_COMPLET` éventuelle ou regroupement commercial sans capacité agrégée.

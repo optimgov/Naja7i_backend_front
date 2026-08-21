@@ -29,10 +29,11 @@ interface AccessGrant
 }
 ```
 
-Une **capacité** est un droit d'usage produit, distinct d'une permission RBAC :
-`corrections.full`, `series.targeted`, `simulator.full`, `coach.access`,
-`certification.take`. Le nommage est délibérément différent des permissions
-(`questions.publish`) pour qu'aucune confusion ne s'installe.
+Une **capacité** est un droit d'usage produit, distinct d'une permission RBAC.
+Le registre normatif et ses codes exacts sont fixés par l'ADR-0030 ; les
+exemples historiques `corrections.full` et `coach.access` sont supersédés et ne
+doivent jamais être persistés. Le nommage reste délibérément différent des
+permissions (`questions.publish`) pour qu'aucune confusion ne s'installe.
 
 ### Ce qui accorde une capacité
 

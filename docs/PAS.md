@@ -94,6 +94,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 0A.2 | Arbitrages commerciaux Q-07/Q-08/Q-13 : quota gratuit cumulatif, consommation au premier service idempotent, versionnement automatique, exemptions F05/F07 préservées | `3eeff4a` |
 | 1A.2 | L'annuaire ne propose plus dans Filament les rôles que l'acteur ne peut pas réellement attribuer ; super_admin reste réservé aux super-administrateurs | `4015a44` |
 | 2A | Mon dossier backend et invitation du personnel : coordonnées et mot de passe du propre compte, lien opaque hashé, unique et expirant, aucun mot de passe transmis par l'administration | `21fc459` |
+| 2C | Mon dossier personnel dans Filament : coordonnées et mot de passe par le service commun, vérifications, état et rôles en lecture seule | `b537d00` |
 
 ## Lots frontend
 

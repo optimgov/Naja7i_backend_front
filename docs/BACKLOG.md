@@ -930,6 +930,10 @@ précédent et compte inutilisable avant acceptation.
 Vérification de sortie : suite complète séquentielle verte, **659 tests et
 2 282 assertions**. Le rendu candidat/personnel reste à livrer au lot 2B.
 
+Le rendu personnel Filament est livré par `b537d00`. Vérification backend après
+ce rendu : suite complète verte, **667 tests et 2 313 assertions**. Le rendu
+candidat Nuxt relève du dépôt frontend et conserve son propre SHA.
+
 ### LOT-0A.2 — Arbitrages Q-07/Q-08/Q-13 · livré · `3eeff4a`
 
 Le quota gratuit est cumulatif sans remise à zéro automatique, la consommation

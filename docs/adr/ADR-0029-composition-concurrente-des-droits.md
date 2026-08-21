@@ -7,9 +7,9 @@
 
 Le fait V-1 a été vérifié le 21 août 2026 dans `app/Services/AbonnementService.php`, `departDe()` vers les lignes 216–230 : le chaînage ABO-2 est corrigé pour les droits datés, et un nouvel octroi commence après la fin la plus tardive des droits datés actifs de même capacité. Ce comportement doit être conservé par test de non-régression.
 
-Réserve V-2, dans la première branche de la même fonction : `if ($courants->contains(fn ($o) => $o->ends_at === null)) return $maintenant;`. Dès qu'un droit sans terme existe, cette branche fait démarrer chaque achat daté suivant maintenant ; un second pack daté chevauche alors le premier au lieu de le prolonger. Ce défaut est latent tant qu'aucun sans-terme n'est posé et devient certain avec l'offre gratuite auto-attribuée. Il constitue une dette à corriger au lot 3B.
+Réserve V-2, dans la première branche de la même fonction : `if ($courants->contains(fn ($o) => $o->ends_at === null)) return $maintenant;`. Dès qu'un droit sans terme existe, cette branche fait démarrer chaque achat daté suivant maintenant ; un second pack daté chevauche alors le premier au lieu de le prolonger. Ce défaut est latent tant qu'aucun sans-terme n'est posé et devient certain avec l'offre gratuite auto-attribuée. Il doit donc être corrigé au lot 3A, avant la création du premier droit sans terme.
 
-Cet ADR formalise l'existant et traite uniquement les compositions encore sensibles : concurrence, droit sans terme avec droit daté, gratuit avec payant, capacités inclusives et portées.
+Cet ADR formalise l'existant et traite uniquement les compositions encore sensibles : concurrence, droit sans terme avec droit daté, gratuit avec payant, union des capacités atomiques et portées.
 
 ## Invariants
 
@@ -18,7 +18,7 @@ Cet ADR formalise l'existant et traite uniquement les compositions encore sensib
 3. Un droit payant n'est jamais réduit par l'attribution ou la migration d'un droit gratuit.
 4. Une offre supérieure ajoute ses capacités et prolonge les capacités communes sans retirer le reliquat antérieur.
 5. Les capacités différentes coexistent.
-6. Une capacité large ne retire pas une capacité fine ; l'autorisation est l'union des droits actifs, avec une règle d'inclusion fermée en code.
+6. L'autorisation est l'union des capacités atomiques portées par les droits actifs. Aucune capacité n'en implique une autre.
 7. Deux portées ne fusionnent que si la relation d'inclusion est définie ; sinon elles coexistent séparément.
 
 ## Algorithme transactionnel
@@ -45,13 +45,17 @@ L'idempotence porte aussi sur l'origine : la même décision rejouée ne crée p
 | Droit sans terme + plusieurs droits datés | Les datés se chaînent entre eux ; le sans-terme est ignoré dans leur calcul de départ. |
 | Gratuit + payant, capacité commune | Le payant conserve ou prolonge le meilleur droit ; le gratuit ne le réduit pas. |
 | Gratuit + payant, capacités différentes | Union des capacités actives. |
-| Capacité inclusive + capacité incluse | Union effective ; aucune suppression physique du droit fin. |
 | Même capacité, portées disjointes | Coexistence indépendante. |
 | Portée large + portée incluse | La large autorise l'ensemble ; la fine reste traçable et reprend effet si la large expire avant elle. |
 
-## Capacités inclusives et portées
+## Capacités atomiques et portées
 
-La relation d'inclusion est déclarée dans une table fermée en code, acyclique et testée. Elle n'est pas déduite d'un nom commercial tel que « coaching complet ». Les portées sont normalisées selon une hiérarchie explicite (catalogue, épreuve, matière, chapitre). Une portée large couvre ses descendantes mais ne modifie pas leurs dates ni leur origine.
+Il n'existe aucune table d'inclusion entre capacités. Une offre commerciale
+compose explicitement plusieurs capacités atomiques ; son nom, par exemple
+« coaching complet », n'entre jamais dans la décision d'autorisation. Les
+portées sont normalisées selon une hiérarchie explicite (catalogue, épreuve,
+matière, chapitre). Une portée large couvre ses descendantes mais ne modifie pas
+leurs dates ni leur origine.
 
 ## Composition des enveloppes
 
@@ -72,7 +76,7 @@ La sélection de l'enveloppe et son débit sont atomiques sous le même verrou q
 - gratuit 20 questions avec reliquat 7 + pack illimité 30 jours : consommation libre pendant 30 jours, puis reprise au reliquat 7 ;
 - deux enveloppes chiffrées actives : débit de celle qui expire le plus tôt ;
 - gratuit après payant : aucune réduction ;
-- capacité large expirée avant une fine : la fine demeure active ;
+- offre composée : chaque capacité atomique octroyée demeure indépendante ;
 - portées disjointes : aucune prolongation croisée ;
 - même décision rejouée : un seul octroi.
 
@@ -84,6 +88,4 @@ La sélection de l'enveloppe et son débit sont atomiques sous le même verrou q
 
 ## Arbitrages encore ouverts
 
-- Table exacte des inclusions entre capacités commercialisables.
-- Hiérarchie exacte et règles de chevauchement des portées pédagogiques.
 - Représentation d'une origine supplémentaire lorsqu'un droit sans terme rend inutile un nouvel intervalle daté.

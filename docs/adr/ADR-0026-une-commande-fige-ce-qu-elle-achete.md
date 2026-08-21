@@ -23,7 +23,7 @@ Une modification contractuelle crée automatiquement une nouvelle version ; l'ad
 | Capacités | Oui | Ajout ou retrait d'une autorisation. |
 | Quotas : unité, valeur, fenêtre | Oui | Modifie la quantité utilisable. |
 | Portée pédagogique | Oui | Matière, chapitre, épreuve ou catalogue couvert. |
-| Éligibilité | Oui | Modifie qui peut demander ou recevoir l'offre. |
+| Rattachement au public / éligibilité | Oui | Appartient à la version et modifie qui peut demander ou recevoir l'offre. |
 | Politique d'accès gratuit | Oui | Ouverture, période, plafond, public et règles de redemande. |
 | Description commerciale | Oui, toujours | Toute modification versionne mécaniquement, sans jugement sur un changement de sens. |
 | Nom commercial | Oui, toujours | Toute modification versionne mécaniquement, sans exception ni case à cocher. |
@@ -34,7 +34,9 @@ Une modification contractuelle crée automatiquement une nouvelle version ; l'ad
 | Retrait de la vente / visibilité | Non | Empêche de nouvelles demandes sans altérer les versions. |
 | Données internes et notes d'administration | Non | Non exposées et non contractuelles. |
 
-Le rattachement à une catégorie de public ne versionne pas s'il ne fait que classer le catalogue ; toute modification effective d'éligibilité ou de périmètre versionne.
+Le rattachement à une catégorie de public appartient à la version d'offre et
+versionne toujours. Un classement interne du catalogue, s'il devient nécessaire,
+doit employer un champ distinct, non exposé et sans effet sur l'éligibilité.
 
 La distinction est mécanique : le flux normal de modification du nom ou de la description crée toujours une version. Une coquille ne se qualifie jamais par appréciation humaine dans ce flux ; elle passe exclusivement par « correction éditoriale », avec permission et journal dédiés.
 

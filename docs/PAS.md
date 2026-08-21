@@ -101,6 +101,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.1 | V-2 : un droit sans terme reste effectif sans interrompre le chaînage des achats datés successifs | `117339b` |
 | 0A.3 | Registre normatif des neuf capacités atomiques et règle de contenance des portées typées ; contradiction de la capacité agrégée close | `16c0ede` |
 | Q2.1 | Zone de préparation pédagogique distincte de la banque : retranscription versionnée, doublons bloqués, décisions humaines tracées et aucun transfert réel | `1b7f171` |
+| 3A.2 | Portées typées des droits et résolution par contenance : racine, filière, famille, épreuve et nœuds de compétence | `1a425c7` |
 
 ## Lots frontend
 

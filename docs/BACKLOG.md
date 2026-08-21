@@ -900,6 +900,18 @@ et que les suivants réservent leur durée à la suite. DET-81 est close avant l
 création de toute offre gratuite sans terme. Le scénario S-08 est couvert par
 un test discriminant.
 
+#### Lot 3A.2 · portées typées · livré · `1a425c7`
+
+Les droits portent désormais le couple cohérent `(scope_type, scope_uuid)` et
+la portée globale reste `(null, null)`. La résolution applique en une requête
+sur les droits la contenance filière, famille, épreuve et nœud de compétence ;
+matière et chapitre restent des `competency_node`. Les types `specialty`,
+`track`, `matiere` et `chapitre` sont refusés en base.
+
+Les droits existants, tous produits sans portée par le chemin livré, sont
+normalisés à la racine. DET-87 et DET-88 tracent les deux suites qui exigent un
+objet catalogue ou une garde sur `CompetencyNode` hors de ce pas.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

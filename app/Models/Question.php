@@ -27,6 +27,9 @@ class Question extends Model
 {
     use HasPublicUuid;
 
+    /** Échelle pédagogique déclarée. Les libellés paramétrables relèvent de Q2. */
+    public const DIFFICULTY_SCALE = [1, 2, 3, 4, 5];
+
     public const STATUSES = [
         'draft', 'a_verifier', 'reviewed', 'pedagogically_validated', 'published', 'retired',
     ];
@@ -48,6 +51,7 @@ class Question extends Model
         'id', 'exam_id', 'competency_node_id', 'supersedes_id',
         'mirror_question_id', 'remediation_id',
         'author_id', 'reviewer_id', 'validator_id',
+        'import_metadata',
     ];
 
     /**

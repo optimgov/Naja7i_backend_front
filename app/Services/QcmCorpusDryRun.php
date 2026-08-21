@@ -182,7 +182,9 @@ final class QcmCorpusDryRun
                     'competency_node_code' => $node?->code,
                     'locale' => $this->locale((string) ($row['enonce'] ?? '')),
                     'stem' => $row['enonce'] ?? null,
-                    'difficulty' => $row['difficulte'] ?? null,
+                    /* La difficulté du corpus est provisoire. Elle reste dans
+                     * import_metadata jusqu'à confirmation humaine. */
+                    'difficulty' => null,
                     'status' => 'draft',
                     'authoring' => 'imported',
                     'eligible_for_diagnostic' => false,
@@ -310,7 +312,7 @@ final class QcmCorpusDryRun
         }
 
         $difficulty = $row['difficulte'] ?? null;
-        if (! is_int($difficulty) || $difficulty < 1 || $difficulty > 4) {
+        if (! is_int($difficulty) || ! in_array($difficulty, Question::DIFFICULTY_SCALE, true)) {
             $issues[] = 'difficulte_invalide';
         }
 

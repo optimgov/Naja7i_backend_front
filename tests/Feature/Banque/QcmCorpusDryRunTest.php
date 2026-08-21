@@ -37,6 +37,8 @@ final class QcmCorpusDryRunTest extends TestCase
         $this->assertSame('الأول', $first['options'][0]['content']);
         $this->assertStringNotContainsString('A.', $first['options'][0]['content']);
         $this->assertSame('ar', $first['question']['locale']);
+        $this->assertNull($first['question']['difficulty']);
+        $this->assertSame(2, $first['question']['import_metadata']['provisional']['difficulte']);
         $this->assertSame('B', $first['question']['import_metadata']['source_facts']['suggestion_reponse']);
         $this->assertNotEmpty($first['question']['exam_code']);
         $this->assertTrue(collect($first['options'])->every(fn ($option) => $option['is_correct'] === false));
@@ -85,11 +87,42 @@ final class QcmCorpusDryRunTest extends TestCase
         $this->assertNull($question->import_metadata);
     }
 
+    public function test_import_metadata_n_est_jamais_expose_par_la_serialisation_du_modele(): void
+    {
+        $question = new Question;
+        $question->setAttribute('import_metadata', [
+            'source_facts' => ['suggestion_reponse' => 'B'],
+        ]);
+
+        $this->assertArrayNotHasKey('import_metadata', $question->toArray());
+    }
+
+    public function test_la_difficulte_cinq_appartient_a_l_echelle_pedagogique_declaree(): void
+    {
+        $rows = json_decode(file_get_contents(base_path('tests/Fixtures/qcm_corpus_dry_run.json')), true);
+        $rows[0]['difficulte'] = 5;
+        $path = tempnam(sys_get_temp_dir(), 'qcm-difficulty-five-');
+        file_put_contents($path, json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
+        try {
+            $report = app(QcmCorpusDryRun::class)->analyser($path);
+            $issues = collect($report['anomalies'])
+                ->where('id', 'FIXTURE#Q1')
+                ->pluck('code');
+
+            $this->assertNotContains('difficulte_invalide', $issues);
+            $this->assertNull($report['mapping'][0]['question']['difficulty']);
+            $this->assertSame(5, $report['mapping'][0]['question']['import_metadata']['provisional']['difficulte']);
+        } finally {
+            unlink($path);
+        }
+    }
+
     public function test_les_metadonnees_provisoires_invalides_sont_signalees_sans_correction(): void
     {
         $rows = json_decode(file_get_contents(base_path('tests/Fixtures/qcm_corpus_dry_run.json')), true);
         $rows[0]['suggestion_reponse'] = 'E'; // La sentinelle E est vide sur ce QCM à quatre choix.
-        $rows[0]['difficulte'] = 5;
+        $rows[0]['difficulte'] = 6;
         $rows[0]['temps_s'] = 12;
         $rows[0]['valeurs_par_defaut'] = ['difficulte', 'inconnu'];
         $rows[0]['statut'] = 'publie';

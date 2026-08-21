@@ -108,6 +108,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.4 | Versions d'offre immuables : toute modification contractuelle crée une version, la commande fige celle affichée et l'honoration ne relit plus le plan courant | backend `2e0606b` · frontend `b9e9f4c` |
 | 3A.5 | Profils de quota pédagogiques : unité et fenêtre fermées en code, bornes justifiées tenues en base, déplacement d'une borne refusé sans raison nouvelle, registre réservé à `quotas.manage` | `85a7634` |
 | P-Q | La version d'offre copie le profil de quota à la composition — code, unité, fenêtre, valeur, bornes et justifications ; amender le profil ne touche plus aucune version vendue, et l'honoration ouvre l'enveloppe figée | `1dddf83` |
+| P-E | L'immuabilité des versions devient différenciée : les quatre textes se corrigent par `corriger_version_editoriale()`, qui journalise dans la même transaction sous `plans.editorial_fix` ; tout le reste, et le DELETE, lèvent toujours | `d804621` |
 
 ## Lots frontend
 

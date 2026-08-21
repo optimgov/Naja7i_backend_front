@@ -1035,6 +1035,51 @@ lui seul, sur les 73 tests commerciaux et de back-office rejoués), puis suite
 complète séquentielle verte à **756 tests et 2 676 assertions** en 224,6 s.
 Aucune migration sur une base durable, aucun push.
 
+#### Préalable P-E · le canal de correction éditoriale · livré · `d804621`
+
+Le lot 3A.4 interdisait tout UPDATE sur une version ; la spécification
+d'administration commerciale autorise depuis AR-1 la correction d'une coquille
+**sans version nouvelle**. Les deux ne tenaient pas ensemble : versionner une
+faute d'accord ferait de chaque coquille un contrat neuf, et laisser l'UPDATE
+ouvert rendrait le prix réécrivable. L'immuabilité devient donc
+**différenciée** — les quatre textes (`name_fr`, `name_ar`, `description_fr`,
+`description_ar`) et rien d'autre.
+
+Le déclencheur ne lit pas une liste de colonnes autorisées : il compare la
+ligne entière MOINS les quatre textes. Toute colonne ajoutée demain à
+`plan_versions` est donc immuable par défaut, sans que personne ait à penser à
+l'inscrire — une liste positive aurait vieilli au premier ajout.
+
+`corriger_version_editoriale(version, champ, nouveau_texte, auteur, motif)`
+écrit la ligne de journal **puis** le texte, dans la même transaction : si
+l'UPDATE lève, le journal disparaît avec lui, et il n'existe aucun état où le
+texte a changé sans que le journal le dise. La marque qui autorise l'UPDATE est
+posée par la fonction, locale à sa transaction, et porte l'identifiant EXACT de
+la version corrigée — une marque booléenne aurait laissé réécrire une autre
+ligne dans la même transaction. Elle est effacée juste après : une correction,
+une ligne, une trace. Champ hors liste, motif de moins de dix caractères, texte
+vide ou texte identique sont refusés **en base**, donc sur tous les chemins, y
+compris une console.
+
+`plan_version_editorial_fixes` est en ajout seul, comme le journal des profils
+de quota. Son identifiant est un UUIDv7 produit par une fonction SQL `uuid7()`
+écrite ici : la ligne étant insérée par le canal et non par Eloquent,
+`HasPublicUuid` ne pouvait pas la servir, et `gen_random_uuid()` aurait produit
+un v4 — la faute que le PAS-1.1 a déjà eu à réparer une fois.
+
+L'autorisation, elle, reste en PHP : `plans.editorial_fix`, permission
+plateforme dédiée portée par `editeur` et `super_admin`, vérifiée par
+`PlanVersionPolicy::editorialFix` et exigée par le service. Un 403 explicite,
+pas un 404 : la règle 404 protège ce qui appartient à autrui, pas une surface
+d'administration refusée à un membre du personnel.
+
+**Vérification :** 10 tests ciblés et 28 assertions, mutation éprouvée (le
+canal n'écrit plus sa ligne de journal → deux tests rougissent, le test de
+correction et celui de l'ajout seul, les deux seuls qui lisent le journal ;
+aucun test hors journal ne bouge), puis suite complète séquentielle verte à
+**766 tests et 2 704 assertions** en 220,2 s. Aucune migration sur une base
+durable, aucun push.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

@@ -888,9 +888,9 @@ capacités atomiques, dont huit commercialisables, et ADR-0031 fixe les portées
 typées et leur règle de contenance. Les exemples historiques et l'hypothèse
 d'une capacité agrégée de coaching sont explicitement supersédés.
 
-Restent à implémenter dans le lot commercial : capacités atomiques et portées
-typées, représentation des origines sous droit sans terme, politique de
-redemande, bornes F05/F07 et traitement de la divergence juridique DET-82.
+Restent à implémenter dans le lot commercial : profils de quota, administration
+commerciale complète, demandes d'accès gratuit, droits transitoires, politique
+de redemande, bornes F05/F07 et traitement de la divergence juridique DET-82.
 
 #### Lot 3A.1 · correction V-2 · livré · `117339b`
 
@@ -928,6 +928,26 @@ Le correctif `cfc3d93` fait passer le référentiel bilingue par son modèle
 Eloquent. Le seul accès SQL bas niveau restant est la construction justifiée de
 la chaîne d'ascendance globale des portées ; le garde-fou d'architecture le
 nomme explicitement au lieu de tolérer toute la classe par accident.
+
+#### Lot 3A.4 · versions d'offre immuables · livré · backend `2e0606b` · frontend `b9e9f4c`
+
+`plans` reste la projection courante administrable, tandis que chaque création
+ou modification contractuelle produit automatiquement une `plan_version`
+immuable. Prix, devise, durée, capacités, noms et descriptions sont figés ;
+ordre d'affichage et retrait de la vente ne versionnent pas. Les offres
+historiques reçoivent une version initiale explicitement reconstruite.
+
+Une commande référence désormais la version opaque affichée au candidat et
+`AbonnementService` lit exclusivement ses capacités et sa durée. Une version
+devenue périmée avant le clic est refusée avec invitation à actualiser, sans
+substitution silencieuse et sans consommer le coupon. Le client Nuxt renvoie
+ce marqueur pour le paiement simulé ; l'absence du marqueur reste tolérée sur
+les anciens clients pendant la transition.
+
+**Vérification :** 42 tests commerciaux ciblés et 245 assertions, typecheck
+Nuxt vert, puis suite backend complète séquentielle verte à **726 tests et
+2 563 assertions**. Aucune migration n'a été exécutée sur une base durable et
+aucun push n'a été effectué.
 
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 

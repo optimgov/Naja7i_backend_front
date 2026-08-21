@@ -230,6 +230,38 @@ final class PanneauPersonnesTest extends TestCase
         $this->assertSame(['super_admin'], $cible->memberships()->with('role')->get()->pluck('role.code')->all());
     }
 
+    public function test_les_options_filament_ne_montrent_que_les_roles_reellement_attribuables(): void
+    {
+        $gestionnaire = $this->staff('options-bornees@naja7i.ma', [
+            'members.view', 'members.invite', 'roles.assign',
+        ]);
+        $attribuable = $this->role('role-attribuable', 'Rôle attribuable', ['members.view']);
+        $excessif = $this->role('role-excessif', 'Rôle excessif', ['questions.publish']);
+
+        $roles = app(AccountAdministrationService::class)->assignableRoles($gestionnaire, true);
+
+        $this->assertTrue($roles->contains($attribuable));
+        $this->assertFalse($roles->contains($excessif));
+        $this->assertFalse($roles->contains(fn (Role $role): bool => $role->code === 'super_admin'));
+
+        $this->actingAs($gestionnaire)
+            ->get('/admin/users/create')
+            ->assertOk()
+            ->assertSee('Rôle attribuable')
+            ->assertDontSee('Rôle excessif')
+            ->assertDontSee('Super administrateur');
+    }
+
+    public function test_super_admin_reste_visible_pour_un_acteur_super_admin(): void
+    {
+        $gestionnaire = $this->superAdmin('options-super-admin@naja7i.ma');
+
+        $this->actingAs($gestionnaire)
+            ->get('/admin/users/create')
+            ->assertOk()
+            ->assertSee('Super administrateur');
+    }
+
     public function test_suspendre_un_compte_deja_authentifie_ferme_immediatement_le_panneau(): void
     {
         $personnel = $this->staff('session-suspendue@naja7i.ma', ['members.view']);
@@ -334,5 +366,19 @@ final class PanneauPersonnesTest extends TestCase
     private function superAdmin(string $email): User
     {
         return $this->membre($email, 'super_admin');
+    }
+
+    /** @param list<string> $permissionCodes */
+    private function role(string $code, string $label, array $permissionCodes): Role
+    {
+        $role = Role::create([
+            'code' => $code,
+            'label_fr' => $label,
+            'label_ar' => $label,
+            'is_staff' => true,
+        ]);
+        $role->permissions()->attach(Permission::whereIn('code', $permissionCodes)->pluck('id'));
+
+        return $role;
     }
 }

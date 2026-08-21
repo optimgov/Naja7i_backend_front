@@ -7,6 +7,7 @@ use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AccountAdministrationService;
 use App\Services\PermissionResolver;
 use App\Tenancy\TenantContext;
 use App\Validation\PasswordPolicy;
@@ -74,7 +75,7 @@ final class UserResource extends Resource
             Section::make('Rôles dans ce tenant')->schema([
                 CheckboxList::make('role_uuids')
                     ->label('Rôles')
-                    ->options(fn (?User $record): array => self::roleOptions($record === null))
+                    ->options(fn (?User $record): array => self::assignableRoleOptions($record === null))
                     ->required(fn (?User $record): bool => $record === null)
                     ->disabled(fn (?User $record): bool => $record?->is(auth()->user()) ?? false)
                     ->helperText(fn (?User $record): string => $record?->is(auth()->user())
@@ -135,6 +136,20 @@ final class UserResource extends Resource
         }
 
         return $query->pluck('label_fr', 'uuid')->all();
+    }
+
+    private static function assignableRoleOptions(bool $staffOnly = false): array
+    {
+        $actor = auth()->user();
+
+        if ($actor === null) {
+            return [];
+        }
+
+        return app(AccountAdministrationService::class)
+            ->assignableRoles($actor, $staffOnly)
+            ->pluck('label_fr', 'uuid')
+            ->all();
     }
 
     private static function canAdministerAccount(): bool

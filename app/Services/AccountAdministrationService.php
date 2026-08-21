@@ -10,6 +10,7 @@ use App\Tenancy\TenantContext;
 use App\Validation\PasswordPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -144,6 +145,26 @@ final class AccountAdministrationService
         $this->permissions->forget();
     }
 
+    /**
+     * Rôles que l'acteur peut réellement attribuer dans le tenant courant.
+     *
+     * @return Collection<int, Role>
+     */
+    public function assignableRoles(User $actor, bool $staffOnly = false): Collection
+    {
+        $this->authorize($actor, 'roles.assign');
+
+        $query = $this->availableRolesQuery()->with('permissions')->orderBy('label_fr');
+
+        if ($staffOnly) {
+            $query->where('is_staff', true);
+        }
+
+        return $query->get()
+            ->filter(fn (Role $role): bool => $this->isRoleAssignableBy($actor, $role))
+            ->values();
+    }
+
     private function authorize(User $actor, string $permission): void
     {
         if (! $this->permissions->has($actor, $permission)) {
@@ -160,8 +181,6 @@ final class AccountAdministrationService
 
     private function ensureRolesAssignableBy(User $actor, $roles): void
     {
-        $actorPermissions = $this->permissions->forUser($actor);
-
         foreach ($roles->loadMissing('permissions') as $role) {
             if ($role->code === 'super_admin' && ! $actor->hasRole('super_admin')) {
                 throw ValidationException::withMessages([
@@ -169,7 +188,7 @@ final class AccountAdministrationService
                 ]);
             }
 
-            if (array_diff($role->permissions->pluck('code')->all(), $actorPermissions) !== []) {
+            if (! $this->isRoleAssignableBy($actor, $role)) {
                 throw ValidationException::withMessages([
                     'role_uuids' => 'Vous ne pouvez attribuer que des rôles dont vous détenez toutes les permissions.',
                 ]);
@@ -180,14 +199,7 @@ final class AccountAdministrationService
     /** @param list<string> $uuids */
     private function resolveRoles(array $uuids)
     {
-        $tenantId = app(TenantContext::class)->id();
-        $query = Role::query()->availableIn($tenantId)->whereIn('uuid', $uuids);
-
-        if ($tenantId !== TenantContext::PLATFORM_TENANT_ID) {
-            $query->where(fn ($q) => $q->where('tenant_id', $tenantId)->orWhere('is_staff', false));
-        }
-
-        $roles = $query->get();
+        $roles = $this->availableRolesQuery()->whereIn('uuid', $uuids)->get();
 
         if ($roles->count() !== count(array_unique($uuids))) {
             throw ValidationException::withMessages([
@@ -196,5 +208,29 @@ final class AccountAdministrationService
         }
 
         return $roles;
+    }
+
+    private function availableRolesQuery()
+    {
+        $tenantId = app(TenantContext::class)->id();
+        $query = Role::query()->availableIn($tenantId);
+
+        if ($tenantId !== TenantContext::PLATFORM_TENANT_ID) {
+            $query->where(fn ($q) => $q->where('tenant_id', $tenantId)->orWhere('is_staff', false));
+        }
+
+        return $query;
+    }
+
+    private function isRoleAssignableBy(User $actor, Role $role): bool
+    {
+        if ($role->code === 'super_admin' && ! $actor->hasRole('super_admin')) {
+            return false;
+        }
+
+        return array_diff(
+            $role->permissions->pluck('code')->all(),
+            $this->permissions->forUser($actor),
+        ) === [];
     }
 }

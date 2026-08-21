@@ -915,6 +915,10 @@ Vérification de sortie : suite complète séquentielle verte, **652 tests et
 refusera à l'acteur courant ; c'est une amélioration UX mineure à traiter sans
 affaiblir la garde serveur.
 
+Cette amélioration UX est fermée par `4015a44` : le formulaire ne propose plus
+que les rôles réellement attribuables par l'acteur, sans dupliquer ni affaiblir
+la garde serveur.
+
 ### LOT-0A.2 — Arbitrages Q-07/Q-08/Q-13 · livré · `3eeff4a`
 
 Le quota gratuit est cumulatif sans remise à zéro automatique, la consommation

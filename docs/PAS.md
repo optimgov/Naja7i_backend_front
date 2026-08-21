@@ -92,6 +92,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 1A | Administration des personnes dans Filament : consultation, création de personnel, coordonnées et rôles sous permissions existantes, sans auto-escalade ni suppression | `821e732` |
 | 1A.1 | Correctifs de sécurité de l'annuaire : délégation bornée aux permissions de l'acteur, super_admin protégé, suspension effective dans Filament, dernière appartenance conservée et politique de mot de passe centralisée | `3feb1bd` |
 | 0A.2 | Arbitrages commerciaux Q-07/Q-08/Q-13 : quota gratuit cumulatif, consommation au premier service idempotent, versionnement automatique, exemptions F05/F07 préservées | `3eeff4a` |
+| 1A.2 | L'annuaire ne propose plus dans Filament les rôles que l'acteur ne peut pas réellement attribuer ; super_admin reste réservé aux super-administrateurs | `4015a44` |
 
 ## Lots frontend
 

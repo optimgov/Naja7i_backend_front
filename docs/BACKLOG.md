@@ -912,6 +912,18 @@ Les droits existants, tous produits sans portée par le chemin livré, sont
 normalisés à la racine. DET-87 et DET-88 tracent les deux suites qui exigent un
 objet catalogue ou une garde sur `CompetencyNode` hors de ce pas.
 
+#### Lot 3A.3 · registre exécutable des capacités · livré · `af66ff0`
+
+Le code connaît exactement neuf capacités atomiques et n'en autorise que huit
+dans une offre. `certification.take` est refusée par le modèle, Filament et
+l'honoration d'une commande. Un référentiel FR/AR complet fournit libellés,
+descriptions, ordre et marqueur de relecture ; l'API ajoute cette présentation
+sans casser sa liste historique de codes.
+
+`annales.practice` est déclarée mais aucun sélecteur ne l'applique avant l'audit
+du marqueur prévu par D-3. Aucun code agrégé de coaching ou de pack n'entre dans
+l'autorisation.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

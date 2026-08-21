@@ -102,6 +102,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 0A.3 | Registre normatif des neuf capacités atomiques et règle de contenance des portées typées ; contradiction de la capacité agrégée close | `16c0ede` |
 | Q2.1 | Zone de préparation pédagogique distincte de la banque : retranscription versionnée, doublons bloqués, décisions humaines tracées et aucun transfert réel | `1b7f171` |
 | 3A.2 | Portées typées des droits et résolution par contenance : racine, filière, famille, épreuve et nœuds de compétence | `1a425c7` |
+| 3A.3 | Registre exécutable de neuf capacités, huit commercialisables, certification fermée et référentiel bilingue | `af66ff0` |
 
 ## Lots frontend
 

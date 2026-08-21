@@ -1,7 +1,7 @@
 # F07 — Rendez-vous Mémoire
 
 **Statut :** **brouillon révisé — autonome, reconstruite depuis le code livré**, jamais validée
-**Version :** 0.3 — 21 août 2026
+**Version :** 0.4 — 21 août 2026
 **Validée par :** — *(en attente d'arbitrage OptimGov)*
 **Source de la ligne d'origine :** `NAJAH-INV-001` §8, F07
 **Dépend de :** [[F02]], [[F03]] (validée), [[F05]] (vivier partagé)
@@ -95,6 +95,11 @@ Une question **servie et sautée** entre dans l'urgence, à facteur partiel et
 La consultation du nombre dû ne consomme rien. Les items servis par F07 ne
 débitent pas le quota général de questions : ils remédient à une erreur déjà
 rencontrée et ne constituent pas un entraînement libre.
+
+Cette exemption OptimGov est maintenue après les arbitrages Q-07/Q-08 : la
+règle générale consomme au premier service, mais F07 est un chemin métier
+explicitement exempté. Le document d'arbitrage Q-07/Q-08/Q-13 n'avait pas
+mandat pour renverser cette décision.
 
 Cette exemption est tenue par le serveur : un nouvel énoncé ne peut provenir
 que d'un rendez-vous issu d'une **erreur causée appartenant au compte**. Le

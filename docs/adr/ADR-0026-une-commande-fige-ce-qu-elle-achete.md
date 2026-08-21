@@ -3,6 +3,10 @@
 **Statut :** proposé révisé · intégré au lot 0A autorisé le 21 août 2026
 **Dépend de :** ADR-0025
 
+**Arbitrage Q-13 : tranché le 21 août 2026.** Le versionnement est automatique
+sur tout changement contractuel ; il ne dépend ni d'une case à cocher ni d'une
+décision ponctuelle de l'administrateur.
+
 ## Décision
 
 Une commande et une demande d'accès référencent l'identifiant de la **version d'offre affichée au candidat**. Cette version est immuable. À l'acceptation, l'octroi lit cette version, jamais l'offre courante.

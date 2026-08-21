@@ -1,7 +1,7 @@
 # F05 — La question miroir
 
 **Statut :** **brouillon — reconstruite depuis le code livré**, jamais validée
-**Version :** 0.1 — 21 août 2026
+**Version :** 0.2 — 21 août 2026
 **Validée par :** — *(en attente d'arbitrage OptimGov)*
 **Source de la ligne d'origine :** `NAJAH-INV-001` §8, F05
 **Dépend de :** [[F03]] (validée), [[F04]], ADR-0015
@@ -55,6 +55,11 @@ Condition nécessaire : le candidat a choisi un distracteur portant une cause
    couple `(compétence, cause)`, interdit l'énumération du vivier et limite le
    débit des ouvertures. La valeur du plafond et sa fenêtre restent à spécifier
    avant implémentation.
+
+   Cette exemption OptimGov est maintenue après les arbitrages Q-07/Q-08 : la
+   règle générale consomme au premier service, mais F05 est un chemin métier
+   explicitement exempté. Le document d'arbitrage Q-07/Q-08/Q-13 n'avait pas
+   mandat pour renverser cette décision.
 
 6. **Elle distingue trois refus, et les nomme :**
 

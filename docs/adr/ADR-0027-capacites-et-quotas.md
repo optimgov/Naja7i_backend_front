@@ -1,13 +1,22 @@
 # ADR-0027 — Capacités, quotas et consommation
 
 **Statut :** proposé révisé · intégré au lot 0A autorisé le 21 août 2026
-**Dépend de :** ADR-0025, ADR-0026 · **Complété par :** `MATRICE-CONSOMMATION-QUOTAS.md`
+**Dépend de :** ADR-0025, ADR-0026
+
+**Arbitrages Q-07 et Q-08 : tranchés le 21 août 2026.** Le quota gratuit est
+cumulatif sans remise à zéro automatique et se débite au premier service
+idempotent d'un item, sauf exemptions métier explicitement décidées ci-dessous.
 
 ## Décision de structure
 
 Les capacités restent binaires et fermées en code. Les quotas sont des objets distincts, typés et bornés : unité, valeur, fenêtre et portée. Une unité inconnue ou une valeur hors bornes est refusée. Il n'existe ni JSON libre, ni valeur sentinelle négative pour « illimité ».
 
 Le quota de questions est **cumulatif sur la durée du droit**. Un renouvellement crée une nouvelle enveloppe. Un droit sans terme ne se remet pas automatiquement à zéro.
+
+La valeur de départ recommandée pour l'offre gratuite est **40 questions**.
+C'est un paramètre administrable à calibrer selon la taille réelle de la banque
+et les données d'usage, notamment après les premières inscriptions. Ce nombre
+n'est ni une constante de code, ni une règle métier figée, ni un minimum garanti.
 
 Le quota F03 actuellement en vigueur est un compteur global par compte de causes révélées, cumulatif à vie. Il reste distinct du quota de questions ; ce lot ne change ni sa fiche validée, ni son comportement.
 
@@ -33,7 +42,19 @@ Un quota atteint ne produit jamais un bouton grisé. Le candidat lit ce qui lui 
 
 Chaque chemin doit répondre explicitement à la question : **« Ce premier service d'item consomme-t-il le quota de questions, sur quelle enveloppe et avec quelle clé idempotente ? »** Aucun chemin ne peut hériter d'une réponse implicite.
 
-La matrice jointe couvre diagnostic, entraînement, simulation, miroir, mémoire, démonstration publique et reprise. La démonstration publique ne consomme jamais.
+La matrice normative couvre diagnostic, entraînement, simulation, miroir,
+mémoire, démonstration publique et reprise :
+
+| Chemin | Débite le quota général ? | Règle |
+|---|---:|---|
+| Démonstration publique | Non | Aucun compte ni enveloppe. |
+| Diagnostic | Oui | Premier service idempotent de chaque item. |
+| Entraînement ciblé | Oui | Premier service idempotent de chaque item. |
+| Examen blanc | Oui | Premier service idempotent de chaque item. |
+| F05 miroir | **Non** | Exemption OptimGov, avec borne propre et protections anti-aspiration. |
+| F07 mémoire | **Non** | Exemption OptimGov, limitée aux erreurs causées du compte et bornée par séance. |
+| Reprise d'une tentative | Non | Les items ont déjà été servis. |
+| Consultation d'une correction | Non | Aucun nouvel item n'est livré. |
 
 Par décision OptimGov du 21 août 2026, F05 miroir et F07 mémoire ne débitent pas le quota général de questions. Cette exemption ne crée pas un accès libre à la banque :
 
@@ -63,6 +84,7 @@ La liste vendable est fermée en code. `CERTIFICATION` reste exclue tant que sa 
 - quota épuisé : aucun nouvel énoncé divulgué ;
 - quota épuisé : aucun bouton grisé ; reliquat et porte d'augmentation visibles ;
 - démonstration publique : zéro consommation ;
+- F05 miroir et F07 mémoire : zéro débit du quota général, sans accès libre à la banque ;
 - F03 : comportement inchangé et compteur distinct.
 
 ### Tests de mutation

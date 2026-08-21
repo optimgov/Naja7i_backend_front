@@ -864,12 +864,11 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 
 ---
 
-### LOT-0A — Gouvernance préalable à l'évolution commerciale · autorisé, non livré
+### LOT-0A — Gouvernance préalable à l'évolution commerciale · livré · `5e65d0d`
 
 OptimGov a autorisé le 21 août 2026 l'intégration documentaire des ADR-0025 à
-ADR-0029 et des brouillons F01, F02, F04, F05, F06, F07 et F09. Aucun SHA n'est
-inscrit ici avant commit ; conformément à `docs/PAS.md`, ce lot n'est donc pas
-livré.
+ADR-0029 et des brouillons F01, F02, F04, F05, F06, F07 et F09. Le lot est
+livré par `5e65d0d` et inscrit dans `docs/PAS.md`.
 
 Décisions acquises pour la suite : offre et version d'offre distinctes,
 capacités séparées des quotas, commande figée sur une version, demande d'accès

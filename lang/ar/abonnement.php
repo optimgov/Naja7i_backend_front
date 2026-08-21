@@ -10,5 +10,6 @@ return [
     'coupon_plan_inactif' => 'لم يعد العرض المرتبط بهذا الرمز متاحا.',
     'coupon_indisponible' => 'لا يمكن استعمال هذا الرمز.',
     'coupon_plan_introuvable' => 'هذا العرض غير موجود.',
+    'coupon_version_indisponible' => 'لم تعد هذه النسخة من العرض متاحة. يرجى تحديث الصفحة.',
     'en_attente' => 'رمزك قيد التحقق من طرف فريقنا.',
 ];

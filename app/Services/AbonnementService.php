@@ -77,9 +77,10 @@ final class AbonnementService
             }
 
             $plan = $verrouillee->plan()->firstOrFail();
+            $version = $verrouillee->planVersion()->firstOrFail();
             $maintenant = now();
 
-            foreach ($this->capacitesDe($plan->capabilities) as $capacite) {
+            foreach ($this->capacitesDe($version->capabilities) as $capacite) {
                 $depart = $this->departDe($verrouillee->user_id, $capacite, $maintenant);
 
                 AccessGrantRecord::create([
@@ -87,12 +88,12 @@ final class AbonnementService
                     'capability' => $capacite,
                     'scope_uuid' => null,
                     'starts_at' => $depart,
-                    'ends_at' => $plan->duration_days === null
+                    'ends_at' => $version->duration_days === null
                         ? null
-                        : $depart->copy()->addDays($plan->duration_days),
+                        : $depart->copy()->addDays($version->duration_days),
                     'origin' => 'purchase',
                     'origin_reference' => $verrouillee->uuid,
-                    'note' => "Plan {$plan->code}",
+                    'note' => "Plan {$plan->code} v{$version->version}",
                 ]);
             }
 

@@ -7,6 +7,7 @@ use App\Exceptions\PaiementRefuse;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\PlanVersionService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -28,6 +29,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class CouponGateway implements PaymentGateway
 {
+    public function __construct(private readonly PlanVersionService $versions) {}
+
     public function moyen(): string
     {
         return 'coupon';
@@ -45,7 +48,7 @@ final class CouponGateway implements PaymentGateway
             throw new PaiementRefuse('code_absent');
         }
 
-        return DB::transaction(function () use ($user, $code, $idempotencyKey) {
+        return DB::transaction(function () use ($user, $parametres, $code, $idempotencyKey) {
             /* VERROU SUR LE COUPON, et il est nécessaire : deux saisies
              * simultanées du dernier usage passeraient toutes deux le contrôle
              * avant que l'une n'incrémente. */
@@ -65,14 +68,20 @@ final class CouponGateway implements PaymentGateway
                 throw new PaiementRefuse('plan_inactif');
             }
 
+            $version = $this->versions->purchasable(
+                $plan,
+                isset($parametres['version_uuid']) ? (string) $parametres['version_uuid'] : null,
+            );
+
             $commande = Order::create([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
+                'plan_version_id' => $version->id,
                 'coupon_id' => $coupon->id,
                 /* LE MONTANT EST FIGÉ MAINTENANT — le prix du plan peut changer
                  * avant la validation, la commande ne bouge pas. */
-                'amount_cents' => $plan->price_cents,
-                'currency' => $plan->currency,
+                'amount_cents' => $version->price_cents,
+                'currency' => $version->currency,
                 'external_reference' => $coupon->code,
                 'idempotency_key' => $idempotencyKey,
                 'idempotency_fingerprint' => hash('sha256', 'coupon|'.$code),

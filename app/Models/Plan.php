@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
+use App\Services\PlanVersionService;
 use App\Support\CapabilityRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -41,6 +43,18 @@ class Plan extends Model
                 ]);
             }
         });
+
+        static::created(function (Plan $plan): void {
+            $version = app(PlanVersionService::class)->current($plan);
+            $plan->setAttribute('current_version_id', $version->id);
+        });
+
+        static::updated(function (Plan $plan): void {
+            if ($plan->wasChanged(PlanVersionService::CONTRACTUAL_FIELDS)) {
+                $version = app(PlanVersionService::class)->current($plan);
+                $plan->setAttribute('current_version_id', $version->id);
+            }
+        });
     }
 
     protected $fillable = [
@@ -69,6 +83,16 @@ class Plan extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(PlanVersion::class);
+    }
+
+    public function currentVersion(): HasOne
+    {
+        return $this->hasOne(PlanVersion::class, 'id', 'current_version_id');
     }
 
     /** Ce qui est proposé à la vente aujourd'hui. */

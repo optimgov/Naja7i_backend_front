@@ -31,6 +31,7 @@ class PlanResource extends JsonResource
             /* Nul = sans terme. Le client dit « sans limite de durée », il ne
              * fabrique pas un nombre. */
             'duration_days' => $this->duration_days,
+            'version_uuid' => $this->currentVersion?->uuid,
             'capabilities' => $this->capabilities,
             'capability_details' => app(CapabilityRegistry::class)->publicPresentation(
                 $this->capabilities,

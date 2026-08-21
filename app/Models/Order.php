@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasPublicUuid;
+use App\Services\PlanVersionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 /**
  * Une commande : l'intention d'acquérir un plan, et sa suite.
@@ -26,8 +28,25 @@ class Order extends Model
 {
     use BelongsToTenant, HasPublicUuid;
 
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order): void {
+            $plan = Plan::query()->findOrFail($order->plan_id);
+
+            if ($order->plan_version_id === null) {
+                $order->plan_version_id = app(PlanVersionService::class)->current($plan)->id;
+
+                return;
+            }
+
+            if (! PlanVersion::query()->whereKey($order->plan_version_id)->whereBelongsTo($plan)->exists()) {
+                throw new LogicException('La version de commande doit appartenir au plan commandé.');
+            }
+        });
+    }
+
     protected $fillable = [
-        'user_id', 'plan_id', 'coupon_id', 'amount_cents', 'currency',
+        'user_id', 'plan_id', 'plan_version_id', 'coupon_id', 'amount_cents', 'currency',
         'external_reference', 'idempotency_key', 'idempotency_fingerprint',
         'status', 'method', 'honored_at', 'validated_by', 'validated_at',
         'refusal_reason',
@@ -36,7 +55,7 @@ class Order extends Model
     /* L'empreinte est un détail d'implémentation de l'idempotence ; le motif de
      * refus est INTERNE et ne sort jamais vers le candidat (règle de DET-50). */
     protected $hidden = [
-        'id', 'tenant_id', 'user_id', 'plan_id', 'coupon_id',
+        'id', 'tenant_id', 'user_id', 'plan_id', 'plan_version_id', 'coupon_id',
         'idempotency_key', 'idempotency_fingerprint',
         'validated_by', 'refusal_reason',
     ];
@@ -58,6 +77,11 @@ class Order extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function planVersion(): BelongsTo
+    {
+        return $this->belongsTo(PlanVersion::class);
     }
 
     public function coupon(): BelongsTo

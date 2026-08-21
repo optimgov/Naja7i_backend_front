@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\AbonnementService;
+use App\Services\PlanVersionService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -32,14 +33,20 @@ use RuntimeException;
  */
 final class SimulatedGateway implements PaymentGateway
 {
-    public function __construct(private readonly AbonnementService $abonnements)
-    {
+    private readonly PlanVersionService $versions;
+
+    public function __construct(
+        private readonly AbonnementService $abonnements,
+        ?PlanVersionService $versions = null,
+    ) {
         if (app()->environment('production')) {
             throw new RuntimeException(
                 'Le paiement simulé ne peut pas exister en production : '
                 .'il ouvrirait un abonnement sans contrepartie.'
             );
         }
+
+        $this->versions = $versions ?? app(PlanVersionService::class);
     }
 
     public function moyen(): string
@@ -67,17 +74,25 @@ final class SimulatedGateway implements PaymentGateway
             throw new PaiementRefuse('plan_introuvable');
         }
 
-        $commande = DB::transaction(fn () => Order::create([
-            'user_id' => $user->id,
-            'plan_id' => $plan->id,
-            'amount_cents' => $plan->price_cents,
-            'currency' => $plan->currency,
-            'external_reference' => 'SIMULATION',
-            'idempotency_key' => $idempotencyKey,
-            'idempotency_fingerprint' => hash('sha256', 'simule|'.$plan->code),
-            'status' => 'en_attente',
-            'method' => $this->moyen(),
-        ]));
+        $commande = DB::transaction(function () use ($user, $parametres, $idempotencyKey, $plan): Order {
+            $version = $this->versions->purchasable(
+                $plan,
+                isset($parametres['version_uuid']) ? (string) $parametres['version_uuid'] : null,
+            );
+
+            return Order::create([
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'plan_version_id' => $version->id,
+                'amount_cents' => $version->price_cents,
+                'currency' => $version->currency,
+                'external_reference' => 'SIMULATION',
+                'idempotency_key' => $idempotencyKey,
+                'idempotency_fingerprint' => hash('sha256', 'simule|'.$plan->code.'|'.$version->uuid),
+                'status' => 'en_attente',
+                'method' => $this->moyen(),
+            ]);
+        });
 
         /* Aucun validateur humain : c'est une simulation, et `validated_by`
          * reste nul. La piste d'audit doit pouvoir distinguer un droit ouvert

@@ -45,7 +45,7 @@ class AbonnementController extends Controller
      */
     public function plans(): JsonResponse
     {
-        $plans = Plan::active()->ordered()->get();
+        $plans = Plan::active()->ordered()->with('currentVersion')->get();
 
         return response()->json(['data' => PlanResource::collection($plans)->resolve()]);
     }
@@ -80,6 +80,7 @@ class AbonnementController extends Controller
     {
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:32'],
+            'version_uuid' => ['sometimes', 'uuid'],
         ]);
 
         $cle = $request->header('Idempotency-Key') ?: (string) Str::uuid7();
@@ -124,6 +125,7 @@ class AbonnementController extends Controller
     {
         $validated = $request->validate([
             'plan_code' => ['required', 'string', 'max:64'],
+            'version_uuid' => ['sometimes', 'uuid'],
         ]);
 
         $cle = $request->header('Idempotency-Key') ?: (string) Str::uuid7();

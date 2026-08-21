@@ -883,6 +883,11 @@ nom, description et rattachement au public versionnent ; une correction
 capacités n'existe, l'autorisation étant l'union des capacités atomiques des
 droits actifs. DET-83 et DET-84 inscrivent les deux réserves d'invitation.
 
+Le complément 0A.3 (`16c0ede`) ferme P-5 et P-6 : ADR-0030 fixe les neuf
+capacités atomiques, dont huit commercialisables, et ADR-0031 fixe les portées
+typées et leur règle de contenance. Les exemples historiques et l'hypothèse
+d'une capacité agrégée de coaching sont explicitement supersédés.
+
 Restent à implémenter dans le lot commercial : capacités atomiques et portées
 typées, représentation des origines sous droit sans terme, politique de
 redemande, bornes F05/F07 et traitement de la divergence juridique DET-82.

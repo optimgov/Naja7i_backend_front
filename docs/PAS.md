@@ -99,6 +99,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | Q0/Q1 | Corpus QCM : projection et validation sans écriture, conservation des métadonnées d'import, refus des réponses inventées et rapport strict d'anomalies | `0f01fa6` |
 | Q1.1 | La difficulté arbitraire reste provisoire, l'échelle déclarée couvre cinq crans et les métadonnées d'import restent hors sérialisation | `af2ae76` |
 | 3A.1 | V-2 : un droit sans terme reste effectif sans interrompre le chaînage des achats datés successifs | `117339b` |
+| 0A.3 | Registre normatif des neuf capacités atomiques et règle de contenance des portées typées ; contradiction de la capacité agrégée close | `16c0ede` |
 
 ## Lots frontend
 

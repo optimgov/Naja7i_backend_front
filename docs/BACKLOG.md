@@ -932,7 +932,8 @@ Vérification de sortie : suite complète séquentielle verte, **659 tests et
 
 Le rendu personnel Filament est livré par `b537d00`. Vérification backend après
 ce rendu : suite complète verte, **667 tests et 2 313 assertions**. Le rendu
-candidat Nuxt relève du dépôt frontend et conserve son propre SHA.
+candidat Nuxt et l'acceptation d'invitation sont livrés dans le dépôt frontend
+par `c43075e` ; typecheck, build de production et contrôles FR/AR/RTL sont verts.
 
 ### LOT-0A.2 — Arbitrages Q-07/Q-08/Q-13 · livré · `3eeff4a`
 

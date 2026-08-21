@@ -95,6 +95,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 1A.2 | L'annuaire ne propose plus dans Filament les rôles que l'acteur ne peut pas réellement attribuer ; super_admin reste réservé aux super-administrateurs | `4015a44` |
 | 2A | Mon dossier backend et invitation du personnel : coordonnées et mot de passe du propre compte, lien opaque hashé, unique et expirant, aucun mot de passe transmis par l'administration | `21fc459` |
 | 2C | Mon dossier personnel dans Filament : coordonnées et mot de passe par le service commun, vérifications, état et rôles en lecture seule | `b537d00` |
+| 2.1 | Correctif Mon dossier : réauthentification avant changement d'e-mail et parcours candidat réellement modifiable | backend `d719f75` · frontend `76e0325` |
 
 ## Lots frontend
 

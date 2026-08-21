@@ -935,6 +935,20 @@ ce rendu : suite complète verte, **667 tests et 2 313 assertions**. Le rendu
 candidat Nuxt et l'acceptation d'invitation sont livrés dans le dépôt frontend
 par `c43075e` ; typecheck, build de production et contrôles FR/AR/RTL sont verts.
 
+#### Correctif 2.1 · livré · backend `d719f75` · frontend `76e0325`
+
+Un changement effectif d'e-mail exige désormais le mot de passe courant sur
+les deux surfaces, candidat et personnel ; les changements de téléphone ou de
+langue n'en demandent pas. « Mon dossier » candidat écrit réellement le profil
+préparé par `PUT /me/profile` : épreuve choisie dans le catalogue ouvert,
+objectif et date cible, avec états de chargement, erreur et succès en FR/AR.
+
+Vérification de sortie : suite backend complète séquentielle verte, **673 tests
+et 2 339 assertions** ; frontend `dossier`, `locales`, `typecheck` et build de
+production verts. L'envoi synchrone d'invitation reste rattaché à DET-14 ; la
+consommation d'une invitation d'un compte suspendu ne donne aucun accès mais
+mérite une révocation explicite lors d'un futur passage sur ce workflow.
+
 ### LOT-0A.2 — Arbitrages Q-07/Q-08/Q-13 · livré · `3eeff4a`
 
 Le quota gratuit est cumulatif sans remise à zéro automatique, la consommation

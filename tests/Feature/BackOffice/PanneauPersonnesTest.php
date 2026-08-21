@@ -10,7 +10,9 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AccountAdministrationService;
 use App\Tenancy\TenantContext;
+use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -50,9 +52,7 @@ final class PanneauPersonnesTest extends TestCase
 
     public function test_la_creation_exige_invitation_et_attribution_et_cree_une_identite_utilisable(): void
     {
-        $gestionnaire = $this->staff('gestionnaire@naja7i.ma', [
-            'members.view', 'members.invite', 'roles.assign',
-        ]);
+        $gestionnaire = $this->superAdmin('gestionnaire@naja7i.ma');
         $role = Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail();
 
         $cree = app(AccountAdministrationService::class)->create($gestionnaire, [
@@ -71,9 +71,7 @@ final class PanneauPersonnesTest extends TestCase
 
     public function test_les_ecrans_de_creation_et_edition_se_rendent_entierement(): void
     {
-        $gestionnaire = $this->staff('ecrans@naja7i.ma', [
-            'members.view', 'members.invite', 'roles.assign',
-        ]);
+        $gestionnaire = $this->superAdmin('ecrans@naja7i.ma');
         $cible = $this->membre('ecran-cible@naja7i.ma', 'auteur');
 
         $this->actingAs($gestionnaire)
@@ -140,7 +138,7 @@ final class PanneauPersonnesTest extends TestCase
 
     public function test_roles_assign_attribue_et_retire_uniquement_dans_le_tenant_courant(): void
     {
-        $gestionnaire = $this->staff('gestionnaire3@naja7i.ma', ['members.view', 'roles.assign']);
+        $gestionnaire = $this->superAdmin('gestionnaire3@naja7i.ma');
         $cible = $this->membre('personnel@naja7i.ma', 'auteur');
         $reviseur = Role::where('code', 'reviseur')->whereNull('tenant_id')->firstOrFail();
 
@@ -165,9 +163,7 @@ final class PanneauPersonnesTest extends TestCase
 
     public function test_le_panneau_ne_peut_pas_creer_un_candidat_sans_actes_juridiques(): void
     {
-        $gestionnaire = $this->staff('gestionnaire5@naja7i.ma', [
-            'members.view', 'members.invite', 'roles.assign',
-        ]);
+        $gestionnaire = $this->superAdmin('gestionnaire5@naja7i.ma');
         $candidat = Role::where('code', 'candidat')->whereNull('tenant_id')->firstOrFail();
 
         $this->expectException(ValidationException::class);
@@ -178,10 +174,138 @@ final class PanneauPersonnesTest extends TestCase
         ]);
     }
 
+    public function test_create_refuse_un_role_dont_une_permission_depasse_celles_de_l_acteur(): void
+    {
+        $gestionnaire = $this->staff('create-borne@naja7i.ma', ['members.view', 'members.invite', 'roles.assign']);
+        $auteur = Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail();
+
+        try {
+            app(AccountAdministrationService::class)->create($gestionnaire, [
+                'email' => 'escalade-create@naja7i.ma', 'phone' => null,
+                'password' => 'une-phrase-temporaire-solide', 'locale' => 'fr', 'status' => 'active',
+                'role_uuids' => [$auteur->uuid],
+            ]);
+            $this->fail('Le rôle plus puissant aurait dû être refusé.');
+        } catch (ValidationException) {
+            $this->assertDatabaseMissing('users', ['email' => 'escalade-create@naja7i.ma']);
+        }
+    }
+
+    public function test_sync_roles_refuse_un_role_dont_une_permission_depasse_celles_de_l_acteur(): void
+    {
+        $gestionnaire = $this->staff('sync-borne@naja7i.ma', ['members.view', 'roles.assign']);
+        $cible = $this->membre('escalade-sync@naja7i.ma', 'auteur');
+        $reviseur = Role::where('code', 'reviseur')->whereNull('tenant_id')->firstOrFail();
+
+        try {
+            app(AccountAdministrationService::class)->syncRoles($gestionnaire, $cible, [$reviseur->uuid]);
+            $this->fail('Le rôle plus puissant aurait dû être refusé.');
+        } catch (ValidationException) {
+            $this->assertSame(['auteur'], $cible->memberships()->with('role')->get()->pluck('role.code')->all());
+        }
+    }
+
+    public function test_super_admin_n_est_attribuable_que_par_un_super_admin_et_dans_la_borne_de_permissions(): void
+    {
+        $role = Role::where('code', 'super_admin')->whereNull('tenant_id')->firstOrFail();
+        $cible = $this->membre('future-admin@naja7i.ma', 'auteur');
+        $imposteur = $this->staff(
+            'imposteur@naja7i.ma',
+            Permission::query()->pluck('code')->all(),
+        );
+
+        try {
+            app(AccountAdministrationService::class)->syncRoles($imposteur, $cible, [$role->uuid]);
+            $this->fail('Un rôle complet sans appartenance super_admin ne doit pas pouvoir transmettre super_admin.');
+        } catch (ValidationException) {
+            $this->assertSame(['auteur'], $cible->memberships()->with('role')->get()->pluck('role.code')->all());
+        }
+
+        app(AccountAdministrationService::class)->syncRoles(
+            $this->superAdmin('autorise@naja7i.ma'),
+            $cible,
+            [$role->uuid],
+        );
+
+        $this->assertSame(['super_admin'], $cible->memberships()->with('role')->get()->pluck('role.code')->all());
+    }
+
+    public function test_suspendre_un_compte_deja_authentifie_ferme_immediatement_le_panneau(): void
+    {
+        $personnel = $this->staff('session-suspendue@naja7i.ma', ['members.view']);
+
+        $this->actingAs($personnel)->get('/admin/users')->assertOk();
+        $personnel->forceFill(['status' => 'suspended'])->save();
+
+        $this->get('/admin/users')->assertForbidden();
+        $this->assertFalse($personnel->fresh()->canAccessPanel(Filament::getPanel('admin')));
+    }
+
+    public function test_sync_roles_refuse_la_derniere_appartenance_sans_aucune_mutation(): void
+    {
+        $gestionnaire = $this->superAdmin('garde-dernier-role@naja7i.ma');
+        $cible = $this->membre('reste-visible@naja7i.ma', 'auteur');
+
+        try {
+            app(AccountAdministrationService::class)->syncRoles($gestionnaire, $cible, []);
+            $this->fail('La dernière appartenance aurait dû être conservée.');
+        } catch (ValidationException) {
+            $this->assertSame(['auteur'], $cible->memberships()->with('role')->get()->pluck('role.code')->all());
+            $this->actingAs($gestionnaire)->get(UserResource::getUrl('edit', ['record' => $cible]))->assertOk();
+        }
+    }
+
+    public function test_creation_du_personnel_utilise_les_bornes_centrales_de_mot_de_passe(): void
+    {
+        config()->set('naja7i.password.min_length', 20);
+        config()->set('naja7i.password.max_length', 24);
+        config()->set('naja7i.password.check_compromised', false);
+        $gestionnaire = $this->superAdmin('politique-mdp@naja7i.ma');
+        $auteur = Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail();
+
+        foreach (['trop-court-mais-12', str_repeat('x', 25)] as $password) {
+            try {
+                app(AccountAdministrationService::class)->create($gestionnaire, [
+                    'email' => hash('sha256', $password).'@naja7i.ma', 'phone' => null,
+                    'password' => $password, 'locale' => 'fr', 'status' => 'active',
+                    'role_uuids' => [$auteur->uuid],
+                ]);
+                $this->fail('La borne centrale du mot de passe aurait dû refuser la valeur.');
+            } catch (ValidationException) {
+                $this->assertDatabaseMissing('users', ['email' => hash('sha256', $password).'@naja7i.ma']);
+            }
+        }
+    }
+
+    public function test_creation_du_personnel_applique_conditionnellement_le_controle_anti_fuite(): void
+    {
+        config()->set('naja7i.password.check_compromised', true);
+        app()->instance(UncompromisedVerifier::class, new class implements UncompromisedVerifier
+        {
+            public function verify($data): bool
+            {
+                return false;
+            }
+        });
+        $gestionnaire = $this->superAdmin('anti-fuite@naja7i.ma');
+        $auteur = Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail();
+
+        try {
+            app(AccountAdministrationService::class)->create($gestionnaire, [
+                'email' => 'mot-de-passe-fuite@naja7i.ma', 'phone' => null,
+                'password' => 'une-phrase-temporaire-solide', 'locale' => 'fr', 'status' => 'active',
+                'role_uuids' => [$auteur->uuid],
+            ]);
+            $this->fail('Le contrôle anti-fuite central aurait dû refuser le mot de passe.');
+        } catch (ValidationException) {
+            $this->assertDatabaseMissing('users', ['email' => 'mot-de-passe-fuite@naja7i.ma']);
+        }
+    }
+
     private function membre(string $email, string $roleCode): User
     {
         $user = User::create([
-            'email' => $email, 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr',
+            'email' => $email, 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr', 'status' => 'active',
         ]);
         $user->memberships()->create([
             'role_id' => Role::where('code', $roleCode)->whereNull('tenant_id')->value('id'),
@@ -200,10 +324,15 @@ final class PanneauPersonnesTest extends TestCase
         $role->permissions()->attach(Permission::whereIn('code', $permissionCodes)->pluck('id'));
 
         $user = User::create([
-            'email' => $email, 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr',
+            'email' => $email, 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr', 'status' => 'active',
         ]);
         $user->memberships()->create(['role_id' => $role->id]);
 
         return $user;
+    }
+
+    private function superAdmin(string $email): User
+    {
+        return $this->membre($email, 'super_admin');
     }
 }

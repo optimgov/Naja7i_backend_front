@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Validation\PasswordPolicy;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 class RegisterRequest extends FormRequest
 {
@@ -29,20 +29,9 @@ class RegisterRequest extends FormRequest
 
     public function rules(): array
     {
-        $policy = config('naja7i.password');
-
-        $password = Password::min($policy['min_length'])
-            ->max($policy['max_length']);
-
-        // Pas de ->letters()->numbers()->symbols() : les règles de composition
-        // poussent aux substitutions prévisibles (« Passw0rd! ») sans gain réel.
-        if ($policy['check_compromised']) {
-            $password = $password->uncompromised();
-        }
-
         return [
             'email' => ['required', 'email:rfc', 'max:255'],
-            'password' => ['required', 'confirmed', $password],
+            'password' => ['required', 'confirmed', PasswordPolicy::rule()],
             'locale' => ['required', 'in:fr,ar'],
 
             // Actes juridiques de nature distincte (ADR-0005).

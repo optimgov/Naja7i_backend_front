@@ -61,6 +61,7 @@ class PanneauAccesHttpTest extends TestCase
             'email' => 'panneau@naja7i.ma',
             'password' => 'une-phrase-de-passe-solide',
             'locale' => 'fr',
+            'status' => 'active',
         ]);
         $this->administrateur->markEmailAsVerified();
         $this->administrateur->memberships()->create([
@@ -229,6 +230,7 @@ class PanneauAccesHttpTest extends TestCase
             'email' => 'candidat-panneau@naja7i.ma',
             'password' => 'une-phrase-de-passe-solide',
             'locale' => 'fr',
+            'status' => 'active',
         ]);
         $candidat->markEmailAsVerified();
         $candidat->memberships()->create([

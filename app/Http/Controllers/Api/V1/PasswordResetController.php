@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\ApiError;
+use App\Validation\PasswordPolicy;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 
 /**
  * Mot de passe oublié. S'appuie sur le broker Laravel et la table
@@ -51,18 +51,10 @@ class PasswordResetController extends Controller
     /** Application du nouveau mot de passe. */
     public function reset(Request $request): JsonResponse
     {
-        $policy = config('naja7i.password');
-
-        $rule = PasswordRule::min($policy['min_length'])->max($policy['max_length']);
-
-        if ($policy['check_compromised']) {
-            $rule = $rule->uncompromised();
-        }
-
         $validated = $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'email:rfc'],
-            'password' => ['required', 'confirmed', $rule],
+            'password' => ['required', 'confirmed', PasswordPolicy::rule()],
         ]);
 
         $validated['email'] = Str::lower(trim($validated['email']));

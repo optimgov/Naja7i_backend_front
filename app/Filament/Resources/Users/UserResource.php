@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\PermissionResolver;
 use App\Tenancy\TenantContext;
+use App\Validation\PasswordPolicy;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
@@ -21,7 +22,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Validation\Rules\Password;
 
 final class UserResource extends Resource
 {
@@ -66,7 +66,7 @@ final class UserResource extends Resource
                     ->password()
                     ->revealable()
                     ->required(fn (?User $record): bool => $record === null)
-                    ->rule(Password::min(12))
+                    ->rule(PasswordPolicy::rule())
                     ->dehydrated(fn (?string $state): bool => filled($state))
                     ->visible(fn (?User $record): bool => $record === null)
                     ->helperText('À transmettre par un canal sûr. Aucun e-mail d’invitation n’est envoyé par le socle actuel.'),

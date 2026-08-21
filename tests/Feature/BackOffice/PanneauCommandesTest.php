@@ -50,6 +50,7 @@ class PanneauCommandesTest extends TestCase
     {
         $user = User::create([
             'email' => $email, 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr',
+            'status' => 'active',
         ]);
         $user->markEmailAsVerified();
 
@@ -119,6 +120,7 @@ class PanneauCommandesTest extends TestCase
          */
         $lecteur = User::create([
             'email' => 'comptable@naja7i.ma', 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr',
+            'status' => 'active',
         ]);
         $lecteur->markEmailAsVerified();
 

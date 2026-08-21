@@ -160,7 +160,8 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return app(PermissionResolver::class)->forUser($this) !== [];
+        return $this->status === 'active'
+            && app(PermissionResolver::class)->forUser($this) !== [];
     }
 
     /**

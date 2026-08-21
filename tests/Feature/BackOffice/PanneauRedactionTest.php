@@ -65,6 +65,7 @@ class PanneauRedactionTest extends TestCase
     {
         $user = User::create([
             'email' => $email, 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr',
+            'status' => 'active',
         ]);
         $user->markEmailAsVerified();
 

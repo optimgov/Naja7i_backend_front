@@ -7,12 +7,12 @@ use App\Models\Membership;
 use App\Models\Role;
 use App\Models\User;
 use App\Tenancy\TenantContext;
+use App\Validation\PasswordPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -35,15 +35,17 @@ final class AccountAdministrationService
         $data = Validator::make($data, [
             'email' => ['nullable', 'email', 'required_without:phone', Rule::unique('users', 'email')],
             'phone' => ['nullable', 'required_without:email', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')],
-            'password' => ['required', Password::min(12)],
+            'password' => ['required', PasswordPolicy::rule()],
             'locale' => ['required', Rule::in(['fr', 'ar'])],
             'status' => ['required', Rule::in(['active', 'suspended'])],
             'role_uuids' => ['required', 'array', 'min:1'],
             'role_uuids.*' => ['required', 'uuid', 'distinct'],
         ])->validate();
 
-        return DB::transaction(function () use ($data): User {
+        return DB::transaction(function () use ($actor, $data): User {
             $roles = $this->resolveRoles($data['role_uuids'] ?? []);
+
+            $this->ensureRolesAssignableBy($actor, $roles);
 
             if ($roles->isEmpty()) {
                 throw ValidationException::withMessages([
@@ -113,8 +115,16 @@ final class AccountAdministrationService
             ]);
         }
 
-        DB::transaction(function () use ($user, $roleUuids): void {
+        DB::transaction(function () use ($actor, $user, $roleUuids): void {
             $roles = $this->resolveRoles($roleUuids);
+
+            if ($roles->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'role_uuids' => 'Au moins un rôle doit rester attribué dans ce tenant.',
+                ]);
+            }
+
+            $this->ensureRolesAssignableBy($actor, $roles);
 
             Membership::query()
                 ->where('user_id', $user->id)
@@ -145,6 +155,25 @@ final class AccountAdministrationService
     {
         if (! $user->memberships()->exists()) {
             throw new AuthorizationException('Ce compte ne fait pas partie du tenant courant.');
+        }
+    }
+
+    private function ensureRolesAssignableBy(User $actor, $roles): void
+    {
+        $actorPermissions = $this->permissions->forUser($actor);
+
+        foreach ($roles->loadMissing('permissions') as $role) {
+            if ($role->code === 'super_admin' && ! $actor->hasRole('super_admin')) {
+                throw ValidationException::withMessages([
+                    'role_uuids' => 'Le rôle super_admin ne peut être attribué que par un super-administrateur.',
+                ]);
+            }
+
+            if (array_diff($role->permissions->pluck('code')->all(), $actorPermissions) !== []) {
+                throw ValidationException::withMessages([
+                    'role_uuids' => 'Vous ne pouvez attribuer que des rôles dont vous détenez toutes les permissions.',
+                ]);
+            }
         }
     }
 

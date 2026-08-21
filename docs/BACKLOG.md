@@ -1101,6 +1101,10 @@ affaiblir les invariants de la banque publiée ni fabriquer un domaine par défa
 682 tests et 2 392 assertions. Le mode strict retourne volontairement un code
 d'échec sur le corpus actuel.
 
+**Supersession :** le modèle d'exploitation de `schema-qcm.sql` est remplacé par
+la zone de préparation ; la correspondance contrôle par contrôle et les cinq
+contrôles sans équivalent sont dans `docs/IMPORT-QCM-SUPERSESSION.md`.
+
 #### Correctif Q1.1 · livré · `af2ae76`
 
 La difficulté arbitraire du corpus ne devient plus une donnée de production :

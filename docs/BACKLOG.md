@@ -887,6 +887,20 @@ externe `outputs/lot-0/` et, pour F07/F09, leurs fiches homonymes originales.
 Elle ne remplace ni le rapport externe consolidé ni les arbitrages encore
 ouverts des fiches brouillon.
 
+### LOT-1A — Administration des personnes · livré · `821e732`
+
+Le panneau Filament expose l'annuaire du tenant courant sous `members.view`, la
+création et la mise à jour des comptes sous `members.invite`, et l'attribution
+des rôles sous `roles.assign`. Les rôles restent des appartenances tenantées ;
+aucun contrôle n'est fondé sur un nom de rôle. Un gestionnaire ne peut pas
+modifier ses propres rôles et aucun effacement de compte n'est offert.
+
+La création administrative est volontairement limitée au personnel : créer un
+candidat depuis le panneau contournerait les actes juridiques de l'inscription.
+Le socle ne possède pas encore de véritable invitation avec lien de définition
+du mot de passe ; le lot exige donc un mot de passe temporaire transmis par un
+canal sûr. Cette limite devra être fermée avant ouverture à une équipe large.
+
 ## 4. Pas non ouverts — ne pas auditer comme manquants
 
 | Lot | Contenu | Statut |

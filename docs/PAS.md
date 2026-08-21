@@ -89,6 +89,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 39 | CRMEF-2 phase 3 : 53 annales en file éditoriale, sans corrigé et sans pouvoir en sortir | `887aa83` |
 | — | Lot PORTES phase 2, côté serveur : la question sautée cesse d'être une erreur démontrée, le tableau de bord ouvre là où il y a du travail, la fuite de traduction est fermée sur toute sa famille, et le refus nomme ce qu'il refuse — DET-78, DET-79, DET-80 signalées | `521cda9` |
 | 0A | Gouvernance préalable à l'évolution commerciale : vocabulaire, versionnement des offres, séparation capacités/quotas, demande d'accès non financière, composition des droits et fiches F01/F02/F04/F05/F06/F07/F09 | `5e65d0d` |
+| 1A | Administration des personnes dans Filament : consultation, création de personnel, coordonnées et rôles sous permissions existantes, sans auto-escalade ni suppression | `821e732` |
 
 ## Lots frontend
 

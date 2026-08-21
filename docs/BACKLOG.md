@@ -896,7 +896,8 @@ correcte inventée. Le mode normal produit le rapport d'inspection ; `--strict`
 échoue tant qu'une anomalie bloquante subsiste. Aucun import ni aucune migration
 sur une base durable ne fait partie de ce lot.
 
-État mesuré du corpus : 1 413 questions, 29 matières, 701 suggestions de réponse,
+État mesuré du corpus : 1 413 questions, 29 sujets, 13 disciplines, 3 familles,
+701 suggestions de réponse,
 22 ambiguïtés, 75 doublons signalés, 5 énoncés illisibles et 27 fuites Markdown
 strictes. Seules 212 projections sont importables ; 1 200 lignes sans domaine
 doivent passer par une file de qualification pédagogique. Le lot suivant doit
@@ -906,6 +907,15 @@ affaiblir les invariants de la banque publiée ni fabriquer un domaine par défa
 **Vérification :** 9 tests ciblés, 53 assertions ; suite complète verte à
 682 tests et 2 392 assertions. Le mode strict retourne volontairement un code
 d'échec sur le corpus actuel.
+
+#### Correctif Q1.1 · livré · `af2ae76`
+
+La difficulté arbitraire du corpus ne devient plus une donnée de production :
+la projection laisse `questions.difficulty` nulle et conserve la valeur source
+uniquement dans `import_metadata.provisional`. L'échelle déclarée accepte les
+cinq crans décidés, sans inventer leurs libellés pédagogiques. Les métadonnées
+d'import sont masquées de la sérialisation par défaut. Vérification ciblée
+commune avec V-2 : 32 tests et 208 assertions.
 
 Cette intégration périme comme sources exécutoires les ADR homonymes du dossier
 externe `outputs/lot-0/` et, pour F07/F09, leurs fiches homonymes originales.

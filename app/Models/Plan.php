@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
+use App\Support\CapabilityRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 /**
  * Une offre : des CAPACITÉS pendant une DURÉE, à un PRIX.
@@ -22,6 +25,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Plan extends Model
 {
     use HasPublicUuid;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Plan $plan): void {
+            if (! $plan->isDirty('capabilities')) {
+                return;
+            }
+
+            try {
+                app(CapabilityRegistry::class)->assertCommercializable($plan->capabilities);
+            } catch (RuntimeException $exception) {
+                throw ValidationException::withMessages([
+                    'capabilities' => $exception->getMessage(),
+                ]);
+            }
+        });
+    }
 
     protected $fillable = [
         'code', 'name_fr', 'name_ar', 'description_fr', 'description_ar',

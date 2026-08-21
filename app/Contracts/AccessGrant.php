@@ -15,11 +15,21 @@ use App\Models\User;
  */
 interface AccessGrant
 {
+    public const QUESTIONS_ANSWER = 'questions.answer';
+
     public const CAUSE_REVEAL = 'corrections.cause';
+
+    public const ANNALES_PRACTICE = 'annales.practice';
 
     public const SERIES_TARGETED = 'series.targeted';
 
     public const SIMULATOR_FULL = 'simulator.full';
+
+    public const MASTERY_DETAIL = 'mastery.detail';
+
+    public const REMEDIATION_PLAN = 'remediation.plan';
+
+    public const MEMORY_SESSIONS = 'memory.sessions';
 
     public const CERTIFICATION = 'certification.take';
 

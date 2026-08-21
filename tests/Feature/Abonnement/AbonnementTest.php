@@ -14,6 +14,7 @@ use App\Services\Paiement\CouponGateway;
 use App\Services\Paiement\SimulatedGateway;
 use App\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Tests\TestCase;
@@ -423,7 +424,10 @@ class AbonnementTest extends TestCase
         /* Une faute de frappe dans le tableau JSON du back-office ferait payer
          * un droit que rien ne lit. On refuse d'honorer plutôt que d'ouvrir un
          * abonnement vide. */
-        $this->plan->update(['capabilities' => ['capacite.inventee']]);
+        /* On simule une corruption historique en contournant volontairement
+         * la garde du modèle. Le service doit rester la seconde serrure. */
+        DB::table('plans')->where('id', $this->plan->id)
+            ->update(['capabilities' => json_encode(['capacite.inventee'])]);
 
         $commande = app(CouponGateway::class)
             ->ouvrir($this->candidat, ['code' => $this->coupon()->code], (string) Str::uuid7());

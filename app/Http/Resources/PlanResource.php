@@ -2,16 +2,17 @@
 
 namespace App\Http\Resources;
 
+use App\Support\CapabilityRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Un plan, tel que la surface commerciale le montre.
  *
- * LISTE BLANCHE STRICTE, comme partout. `capabilities` SORT — c'est la seule
- * façon pour l'écran de dire ce que le plan ouvre sans recopier une table de
- * correspondance qui divergerait au premier plan ajouté. Ce sont des codes de
- * capacité, pas des identifiants internes : les exposer ne révèle rien.
+ * LISTE BLANCHE STRICTE, comme partout. `capabilities` conserve le contrat
+ * public historique (liste de codes) pour ne pas casser les clients livrés ;
+ * `capability_details` fournit la présentation localisée à afficher. Aucun
+ * écran candidat ne doit rendre le code brut.
  *
  * LE PRIX SORT EN CENTIMES, et la mise en forme appartient à l'écran. Rendre
  * « 199,00 MAD » ici figerait une convention typographique dans l'API, et le
@@ -31,6 +32,10 @@ class PlanResource extends JsonResource
              * fabrique pas un nombre. */
             'duration_days' => $this->duration_days,
             'capabilities' => $this->capabilities,
+            'capability_details' => app(CapabilityRegistry::class)->publicPresentation(
+                $this->capabilities,
+                app()->getLocale(),
+            ),
         ];
     }
 }

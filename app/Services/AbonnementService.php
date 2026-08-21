@@ -6,6 +6,7 @@ use App\Contracts\AccessGrant;
 use App\Models\AccessGrantRecord;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\CapabilityRegistry;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -28,6 +29,8 @@ use RuntimeException;
  */
 final class AbonnementService
 {
+    public function __construct(private readonly CapabilityRegistry $capabilities) {}
+
     /**
      * Honore une commande : elle produit exactement un octroi par capacité.
      *
@@ -187,22 +190,7 @@ final class AbonnementService
      */
     private function capacitesDe(?array $demandees): array
     {
-        $connues = [
-            AccessGrant::CAUSE_REVEAL,
-            AccessGrant::SERIES_TARGETED,
-            AccessGrant::SIMULATOR_FULL,
-            AccessGrant::CERTIFICATION,
-        ];
-
-        $retenues = array_values(array_intersect($demandees ?? [], $connues));
-
-        if ($retenues === []) {
-            throw new RuntimeException(
-                'Ce plan n\'octroie aucune capacité connue : il ne peut pas être honoré.'
-            );
-        }
-
-        return $retenues;
+        return $this->capabilities->assertCommercializable($demandees);
     }
 
     /**

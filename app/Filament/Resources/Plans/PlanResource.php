@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\Plans;
 
-use App\Contracts\AccessGrant;
 use App\Filament\Resources\Plans\Pages\CreatePlan;
 use App\Filament\Resources\Plans\Pages\EditPlan;
 use App\Filament\Resources\Plans\Pages\ListPlans;
 use App\Models\Plan;
+use App\Support\CapabilityRegistry;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Textarea;
@@ -18,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rule;
 
 /**
  * Les offres, gérées sans déploiement.
@@ -89,13 +90,10 @@ class PlanResource extends Resource
 
             CheckboxList::make('capabilities')
                 ->label('Capacités octroyées')
-                ->options([
-                    AccessGrant::CAUSE_REVEAL => 'Causes d’erreur sans limite',
-                    AccessGrant::SERIES_TARGETED => 'Entraînement ciblé',
-                    AccessGrant::SIMULATOR_FULL => 'Examens blancs',
-                    AccessGrant::CERTIFICATION => 'Attestation de niveau',
-                ])
+                ->options(fn (): array => app(CapabilityRegistry::class)
+                    ->commercializableOptions(app()->getLocale()))
                 ->required()
+                ->nestedRecursiveRules([Rule::in(CapabilityRegistry::COMMERCIALIZABLE)])
                 ->helperText('Ce que la commande honorée ouvrira, exactement.'),
 
             Toggle::make('active')

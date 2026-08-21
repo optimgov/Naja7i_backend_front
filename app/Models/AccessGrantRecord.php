@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\QuotaPeriodicity;
+use App\Enums\QuotaUnit;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -38,13 +40,20 @@ class AccessGrantRecord extends Model
     protected $fillable = [
         'user_id', 'capability', 'scope_type', 'scope_uuid', 'starts_at', 'ends_at',
         'origin', 'origin_tenant_id', 'origin_reference', 'note',
+        'quota_unit', 'quota_periodicity', 'quota_value',
     ];
 
     protected $hidden = ['id', 'user_id', 'origin_tenant_id'];
 
     protected function casts(): array
     {
-        return ['starts_at' => 'datetime', 'ends_at' => 'datetime'];
+        return [
+            'starts_at' => 'datetime',
+            'ends_at' => 'datetime',
+            'quota_unit' => QuotaUnit::class,
+            'quota_periodicity' => QuotaPeriodicity::class,
+            'quota_value' => 'integer',
+        ];
     }
 
     /** Actif MAINTENANT : évalué à chaque usage, jamais mis en cache en session. */

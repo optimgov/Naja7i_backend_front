@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\QuotaPeriodicity;
+use App\Enums\QuotaUnit;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +32,11 @@ class PlanVersion extends Model
             'duration_days' => 'integer',
             'capabilities' => 'array',
             'reconstructed' => 'boolean',
+            'quota_unit' => QuotaUnit::class,
+            'quota_periodicity' => QuotaPeriodicity::class,
+            'quota_value' => 'integer',
+            'quota_min_value' => 'integer',
+            'quota_max_value' => 'integer',
         ];
     }
 
@@ -41,5 +48,45 @@ class PlanVersion extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Le profil D'ORIGINE — trace, jamais source de lecture.
+     *
+     * Il dit d'où vient l'instantané ; il ne dit pas ce que la version vend.
+     * Relire `quotaProfile->value` pour honorer une commande reproduirait
+     * exactement le défaut que le figement ferme.
+     */
+    public function quotaProfile(): BelongsTo
+    {
+        return $this->belongsTo(QuotaProfile::class);
+    }
+
+    /** Cette version pose-t-elle une enveloppe ? */
+    public function poseUneEnveloppe(): bool
+    {
+        return $this->quota_unit !== null;
+    }
+
+    /**
+     * L'enveloppe que cette version alloue à une capacité, ou rien.
+     *
+     * Une seule capacité est concernée : celle que l'unité compte. Les autres
+     * capacités de l'offre s'ouvrent sans enveloppe — l'illimité est une
+     * ABSENCE, jamais un nombre (ADR-0027).
+     *
+     * @return array<string, mixed>
+     */
+    public function enveloppePour(string $capacite): array
+    {
+        if (! $this->poseUneEnveloppe() || $this->quota_unit->capability() !== $capacite) {
+            return [];
+        }
+
+        return [
+            'quota_unit' => $this->quota_unit,
+            'quota_periodicity' => $this->quota_periodicity,
+            'quota_value' => $this->quota_value,
+        ];
     }
 }

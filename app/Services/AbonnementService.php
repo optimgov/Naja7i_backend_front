@@ -94,7 +94,16 @@ final class AbonnementService
                     'origin' => 'purchase',
                     'origin_reference' => $verrouillee->uuid,
                     'note' => "Plan {$plan->code} v{$version->version}",
-                ]);
+                    /*
+                     * L'ENVELOPPE VIENT DE LA VERSION, JAMAIS DU PROFIL.
+                     *
+                     * `quota_profiles` est amendable : le relire ici livrerait
+                     * à une commande d'hier la valeur d'aujourd'hui, ce qui est
+                     * le défaut V-3 sous un autre nom. La version porte
+                     * l'instantané figé à sa composition — c'est ce qui a été
+                     * vendu, et c'est ce qui s'ouvre.
+                     */
+                ] + $version->enveloppePour($capacite));
             }
 
             $verrouillee->update([

@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
 use App\Services\PlanVersionService;
+use App\Services\QuotaProfileService;
 use App\Support\CapabilityRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Validation\ValidationException;
@@ -44,6 +46,27 @@ class Plan extends Model
             }
         });
 
+        /* LA SÉLECTION SE VÉRIFIE AVANT D'ÊTRE ÉCRITE, comme les capacités
+         * juste au-dessus. La vérifier seulement à la composition laisserait
+         * `plans.quota_profile_id` pointer un profil retiré, sans version pour
+         * le dire — un état que rien ne rattrape ensuite. */
+        static::saving(function (Plan $plan): void {
+            if (! $plan->isDirty('quota_profile_id') || $plan->quota_profile_id === null) {
+                return;
+            }
+
+            $profil = QuotaProfile::query()->whereKey($plan->quota_profile_id)->firstOrFail();
+
+            app(QuotaProfileService::class)->assertSelectionnable($profil, $profil->capability());
+
+            if (! in_array($profil->capability(), $plan->capabilities ?? [], true)) {
+                throw ValidationException::withMessages([
+                    'quota_profile_id' => "Le profil « {$profil->code} » borne {$profil->capability()}, "
+                        .'que cette offre ne vend pas : une enveloppe sans capacité ne compte rien.',
+                ]);
+            }
+        });
+
         static::created(function (Plan $plan): void {
             $version = app(PlanVersionService::class)->current($plan);
             $plan->setAttribute('current_version_id', $version->id);
@@ -60,7 +83,7 @@ class Plan extends Model
     protected $fillable = [
         'code', 'name_fr', 'name_ar', 'description_fr', 'description_ar',
         'price_cents', 'currency', 'duration_days', 'capabilities',
-        'active', 'position',
+        'quota_profile_id', 'active', 'position',
     ];
 
     protected $hidden = ['id'];
@@ -88,6 +111,12 @@ class Plan extends Model
     public function versions(): HasMany
     {
         return $this->hasMany(PlanVersion::class);
+    }
+
+    /** Le profil SÉLECTIONNÉ aujourd'hui — celui que la prochaine version figera. */
+    public function quotaProfile(): BelongsTo
+    {
+        return $this->belongsTo(QuotaProfile::class);
     }
 
     public function currentVersion(): HasOne

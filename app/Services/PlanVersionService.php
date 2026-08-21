@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Exceptions\PaiementRefuse;
 use App\Models\Plan;
 use App\Models\PlanVersion;
+use App\Models\QuotaProfile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /** Crée, sous verrou, la version correspondant à la projection courante. */
 final class PlanVersionService
@@ -20,6 +22,23 @@ final class PlanVersionService
         'currency',
         'duration_days',
         'capabilities',
+        /* La SÉLECTION du profil, pas ses valeurs. Changer de profil est un
+         * geste commercial : il versionne. Amender le profil sélectionné n'en
+         * est pas un — sinon l'admin pédagogique recomposerait, depuis son
+         * registre, des offres qu'elle ne voit pas. */
+        'quota_profile_id',
+    ];
+
+    /** Ce que la version COPIE du profil, en plus de la sélection elle-même. */
+    private const QUOTA_SNAPSHOT = [
+        'quota_profile_code',
+        'quota_unit',
+        'quota_periodicity',
+        'quota_value',
+        'quota_min_value',
+        'quota_max_value',
+        'quota_min_justification',
+        'quota_max_justification',
     ];
 
     public function current(Plan $plan): PlanVersion
@@ -38,7 +57,7 @@ final class PlanVersionService
                 return $latest;
             }
 
-            $version = $locked->versions()->create($snapshot + [
+            $version = $locked->versions()->create($snapshot + $this->instantaneDeQuota($locked) + [
                 'version' => ($latest?->version ?? 0) + 1,
                 'reconstructed' => false,
             ]);
@@ -63,6 +82,62 @@ final class PlanVersionService
         }
 
         return $current;
+    }
+
+    /**
+     * LE FIGEMENT. Les valeurs du profil au moment de la composition, copiées.
+     *
+     * `assertSelectionnable` reste le point de passage : elle vérifie ici, une
+     * dernière fois avant que le contrat ne devienne immuable, que le profil
+     * est encore proposé et que sa valeur tient dans ses propres bornes. Ce
+     * qui est copié ensuite ne se relit plus jamais depuis `quota_profiles` —
+     * c'est tout l'objet de P-Q.
+     *
+     * @return array<string, mixed>
+     */
+    private function instantaneDeQuota(Plan $plan): array
+    {
+        if ($plan->quota_profile_id === null) {
+            return array_fill_keys(self::QUOTA_SNAPSHOT, null);
+        }
+
+        /** @var QuotaProfile $profil */
+        $profil = QuotaProfile::query()->whereKey($plan->quota_profile_id)->firstOrFail();
+        $capacite = $profil->capability();
+
+        $this->assertVendue($plan, $profil, $capacite);
+        app(QuotaProfileService::class)->assertSelectionnable($profil, $capacite);
+
+        return [
+            'quota_profile_code' => $profil->code,
+            'quota_unit' => $profil->unit,
+            'quota_periodicity' => $profil->periodicity,
+            'quota_value' => $profil->value,
+            'quota_min_value' => $profil->min_value,
+            'quota_max_value' => $profil->max_value,
+            'quota_min_justification' => $profil->min_justification,
+            'quota_max_justification' => $profil->max_justification,
+        ];
+    }
+
+    /**
+     * Une enveloppe sans capacité vendue ne compte rien.
+     *
+     * Un profil « questions » sur une offre qui ne vend pas `questions.answer`
+     * poserait une enveloppe que rien ne débite, et l'écran promettrait
+     * quarante questions à qui n'a pas le droit d'en recevoir une seule. Le
+     * refus NOMME la capacité manquante : un refus muet se lit comme une panne.
+     */
+    private function assertVendue(Plan $plan, QuotaProfile $profil, string $capacite): void
+    {
+        if (in_array($capacite, $plan->capabilities ?? [], true)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'quota_profile_id' => "Le profil « {$profil->code} » borne {$capacite}, "
+                .'que cette offre ne vend pas : une enveloppe sans capacité ne compte rien.',
+        ]);
     }
 
     /** @param array<string, mixed> $snapshot */

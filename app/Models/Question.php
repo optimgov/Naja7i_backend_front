@@ -83,6 +83,9 @@ class Question extends Model
             'eligible_for_simulation' => 'boolean',
             'published_at' => 'datetime',
             'retired_at' => 'datetime',
+            /* Hors `$fillable` : seul le futur service d'import dédié pourra
+             * l'écrire explicitement, jamais un formulaire ordinaire. */
+            'import_metadata' => 'array',
         ];
     }
 

@@ -105,8 +105,16 @@ class RefusNommeTest extends TestCase
     /** Le rôle du produit qui porte la permission, et celui qui ne la porte pas. */
     private function rolesAutourDe(string $permission): array
     {
-        $porteurs = ['questions.view' => 'auteur', 'orders.view' => 'finance'];
-        $etrangers = ['questions.view' => 'finance', 'orders.view' => 'auteur'];
+        $porteurs = [
+            'questions.view' => 'auteur',
+            'orders.view' => 'finance',
+            'members.view' => 'support',
+        ];
+        $etrangers = [
+            'questions.view' => 'finance',
+            'orders.view' => 'auteur',
+            'members.view' => 'auteur',
+        ];
 
         $this->assertArrayHasKey(
             $permission, $porteurs,

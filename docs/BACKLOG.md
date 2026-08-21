@@ -888,9 +888,9 @@ capacités atomiques, dont huit commercialisables, et ADR-0031 fixe les portées
 typées et leur règle de contenance. Les exemples historiques et l'hypothèse
 d'une capacité agrégée de coaching sont explicitement supersédés.
 
-Restent à implémenter dans le lot commercial : profils de quota, administration
-commerciale complète, demandes d'accès gratuit, droits transitoires, politique
-de redemande, bornes F05/F07 et traitement de la divergence juridique DET-82.
+Restent à implémenter dans le lot commercial : administration commerciale
+complète, demandes d'accès gratuit, droits transitoires, politique de
+redemande, bornes F05/F07 et traitement de la divergence juridique DET-82.
 
 #### Lot 3A.1 · correction V-2 · livré · `117339b`
 
@@ -948,6 +948,48 @@ les anciens clients pendant la transition.
 Nuxt vert, puis suite backend complète séquentielle verte à **726 tests et
 2 563 assertions**. Aucune migration n'a été exécutée sur une base durable et
 aucun push n'a été effectué.
+
+#### Lot 3A.5 · profils de quota pédagogiques · livré · `85a7634`
+
+`quota_profiles` porte un objet typé et borné — unité, valeur, fenêtre, borne
+basse et borne haute, chacune avec sa justification écrite. L'unité et la
+fenêtre sont des énumérations fermées **en code ET en base** : `questions`,
+liée à `questions.answer`, et `cumulative_grant`, la règle Q-07. Le quota F03
+reste hors de ce registre, avec son compteur propre et son comportement
+inchangé.
+
+Les bornes sont tenues par contrainte (`min_value <= value <= max_value`,
+justifications d'au moins vingt caractères), pas seulement par le service. Un
+profil ne se supprime jamais : il se retire de la sélection, et un déclencheur
+refuse la suppression. `quota_profile_events` conserve en ajout seul l'auteur,
+l'avant et l'après de chaque geste.
+
+**Déplacer une borne exige une justification RENOUVELÉE**, pas seulement non
+vide — sans quoi le refus du scénario S-16 se contournerait en ne touchant
+qu'au nombre. Le code, l'unité et la fenêtre sont figés après création.
+
+La surface Filament est réservée à `quotas.manage`, permission dédiée portée
+par `editeur` et refusée à `finance` : celle qui vend ne borne pas. Le
+formulaire des offres reste dépourvu de tout champ numérique de quota — un
+test le vérifie champ par champ. `QuotaProfileService::assertSelectionnable()`
+livre au pas commercial la garde serveur correspondante : profil actif, unité
+compatible avec la capacité, valeur exactement celle du profil, message qui
+nomme la borne.
+
+Le profil « Découverte » est semé comme donnée de référence : 40 questions,
+bornes 35 et 120, valeurs de l'ADR-0027 et du scénario S-16. Il ne porte aucun
+événement de journal, un semis n'ayant pas d'auteur humain à inscrire.
+
+**Hors périmètre, assumé :** aucun rattachement d'un profil à une version
+d'offre — c'est le geste de l'admin commerciale, au pas suivant. Aucune
+enveloppe, aucune consommation : lot 3B.
+
+**Vérification :** 22 tests ciblés et 84 assertions, deux mutations éprouvées
+(retrait de l'exigence de justification renouvelée → les deux tests S-16
+rougissent, et eux seuls ; retrait du contrôle de cohérence des bornes → le
+test de refus nommé rougit seul), puis suite complète séquentielle verte à
+**748 tests et 2 648 assertions**. Aucune migration sur une base durable,
+aucun push.
 
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 

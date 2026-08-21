@@ -864,6 +864,30 @@ six écrans bilingues avec RTL ; recette manuelle en 11 points documentée.
 
 ---
 
+### LOT-0A — Gouvernance préalable à l'évolution commerciale · autorisé, non livré
+
+OptimGov a autorisé le 21 août 2026 l'intégration documentaire des ADR-0025 à
+ADR-0029 et des brouillons F01, F02, F04, F05, F06, F07 et F09. Aucun SHA n'est
+inscrit ici avant commit ; conformément à `docs/PAS.md`, ce lot n'est donc pas
+livré.
+
+Décisions acquises pour la suite : offre et version d'offre distinctes,
+capacités séparées des quotas, commande figée sur une version, demande d'accès
+non financière, composition concurrente des droits, quota de questions consommé
+au premier service idempotent. F05 miroir et F07 mémoire ne débitent pas ce
+quota général ; leurs protections anti-aspiration sont tenues côté serveur et
+leurs bornes chiffrées restent à spécifier avant implémentation.
+
+Prérequis encore ouverts avant le lot commercial applicatif : capacités
+commercialisables et inclusions, hiérarchie des portées, représentation des
+origines sous droit sans terme, politique de redemande, bornes F05/F07 et
+traitement de la divergence juridique DET-82.
+
+Cette intégration périme comme sources exécutoires les ADR homonymes du dossier
+externe `outputs/lot-0/` et, pour F07/F09, leurs fiches homonymes originales.
+Elle ne remplace ni le rapport externe consolidé ni les arbitrages encore
+ouverts des fiches brouillon.
+
 ## 4. Pas non ouverts — ne pas auditer comme manquants
 
 | Lot | Contenu | Statut |

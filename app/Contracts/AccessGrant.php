@@ -23,7 +23,12 @@ interface AccessGrant
 
     public const CERTIFICATION = 'certification.take';
 
-    public function allows(User $user, string $capability, ?string $scopeUuid = null): bool;
+    public function allows(
+        User $user,
+        string $capability,
+        ?string $scopeType = null,
+        ?string $scopeUuid = null,
+    ): bool;
 
     /** @return list<string> capacités actives, pour l'écran de compte */
     public function capabilities(User $user): array;

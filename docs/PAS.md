@@ -96,6 +96,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 2A | Mon dossier backend et invitation du personnel : coordonnées et mot de passe du propre compte, lien opaque hashé, unique et expirant, aucun mot de passe transmis par l'administration | `21fc459` |
 | 2C | Mon dossier personnel dans Filament : coordonnées et mot de passe par le service commun, vérifications, état et rôles en lecture seule | `b537d00` |
 | 2.1 | Correctif Mon dossier : réauthentification avant changement d'e-mail et parcours candidat réellement modifiable | backend `d719f75` · frontend `76e0325` |
+| Q0/Q1 | Corpus QCM : projection et validation sans écriture, conservation des métadonnées d'import, refus des réponses inventées et rapport strict d'anomalies | `0f01fa6` |
 
 ## Lots frontend
 

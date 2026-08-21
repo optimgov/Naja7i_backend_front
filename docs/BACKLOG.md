@@ -887,6 +887,26 @@ Restent à implémenter dans le lot commercial : capacités atomiques et portée
 typées, représentation des origines sous droit sans terme, politique de
 redemande, bornes F05/F07 et traitement de la divergence juridique DET-82.
 
+### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
+
+Le corpus externe reste hors base et inchangé. La commande
+`qcm:verifier` en construit une projection déterministe, conserve les faits et
+les métadonnées provisoires dans `import_metadata`, et interdit toute réponse
+correcte inventée. Le mode normal produit le rapport d'inspection ; `--strict`
+échoue tant qu'une anomalie bloquante subsiste. Aucun import ni aucune migration
+sur une base durable ne fait partie de ce lot.
+
+État mesuré du corpus : 1 413 questions, 29 matières, 701 suggestions de réponse,
+22 ambiguïtés, 75 doublons signalés, 5 énoncés illisibles et 27 fuites Markdown
+strictes. Seules 212 projections sont importables ; 1 200 lignes sans domaine
+doivent passer par une file de qualification pédagogique. Le lot suivant doit
+donc construire une zone de préparation et son interface Filament, et non
+affaiblir les invariants de la banque publiée ni fabriquer un domaine par défaut.
+
+**Vérification :** 9 tests ciblés, 53 assertions ; suite complète verte à
+682 tests et 2 392 assertions. Le mode strict retourne volontairement un code
+d'échec sur le corpus actuel.
+
 Cette intégration périme comme sources exécutoires les ADR homonymes du dossier
 externe `outputs/lot-0/` et, pour F07/F09, leurs fiches homonymes originales.
 Elle ne remplace ni le rapport externe consolidé ni les arbitrages encore

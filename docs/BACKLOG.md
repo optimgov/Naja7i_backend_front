@@ -935,6 +935,26 @@ externe `outputs/lot-0/` et, pour F07/F09, leurs fiches homonymes originales.
 Elle ne remplace ni le rapport externe consolidé ni les arbitrages encore
 ouverts des fiches brouillon.
 
+### LOT-Q2.1 — Socle de préparation pédagogique · livré · `1b7f171`
+
+Une zone de travail distincte reçoit les faits sources, hypothèses provisoires,
+anomalies et décisions humaines sans devenir une seconde banque. Elle ne porte
+ni publication, ni éligibilité candidat, ni transfert vers `questions`.
+
+Une retranscription remplace la ligne active sans effacer l'historique ; un
+doublon ne se transfère jamais ; suggestion et réponse confirmée restent deux
+faits différents. Chaque geste humain est journalisé en ajout seul avec acteur,
+date, ancienne et nouvelle valeur. La validation définitive reste exclusivement
+dans la chaîne éditoriale existante.
+
+**Vérification :** 19 tests Q2 et 61 assertions ; la première reconstruction a
+révélé un ordre invalide des auto-références, corrigé avant commit. Avec les
+portées 3A.2 et les régressions abonnement/parcours/mémoire : 94 tests et 500
+assertions verts. Aucun corpus n'a été importé et aucun transfert n'existe.
+
+L'interface Filament, le transfert contrôlé et l'ouverture aux experts restent
+des pas séparés. DET-85 et DET-86 en portent les préalables pédagogiques.
+
 ### LOT-1A — Administration des personnes · livré · `821e732`
 
 Le panneau Filament expose l'annuaire du tenant courant sous `members.view`, la

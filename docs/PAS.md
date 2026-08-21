@@ -100,6 +100,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | Q1.1 | La difficulté arbitraire reste provisoire, l'échelle déclarée couvre cinq crans et les métadonnées d'import restent hors sérialisation | `af2ae76` |
 | 3A.1 | V-2 : un droit sans terme reste effectif sans interrompre le chaînage des achats datés successifs | `117339b` |
 | 0A.3 | Registre normatif des neuf capacités atomiques et règle de contenance des portées typées ; contradiction de la capacité agrégée close | `16c0ede` |
+| Q2.1 | Zone de préparation pédagogique distincte de la banque : retranscription versionnée, doublons bloqués, décisions humaines tracées et aucun transfert réel | `1b7f171` |
 
 ## Lots frontend
 

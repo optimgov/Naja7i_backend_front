@@ -887,6 +887,14 @@ Restent à implémenter dans le lot commercial : capacités atomiques et portée
 typées, représentation des origines sous droit sans terme, politique de
 redemande, bornes F05/F07 et traitement de la divergence juridique DET-82.
 
+#### Lot 3A.1 · correction V-2 · livré · `117339b`
+
+Un droit sans terme ne court-circuite plus le chaînage des droits datés de même
+capacité. Il reste effectif, tandis que le premier achat daté démarre maintenant
+et que les suivants réservent leur durée à la suite. DET-81 est close avant la
+création de toute offre gratuite sans terme. Le scénario S-08 est couvert par
+un test discriminant.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

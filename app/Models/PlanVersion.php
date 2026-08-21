@@ -62,6 +62,12 @@ class PlanVersion extends Model
         return $this->belongsTo(QuotaProfile::class);
     }
 
+    /** Les coquilles corrigées sur cette version — en ajout seul. */
+    public function editorialFixes(): HasMany
+    {
+        return $this->hasMany(PlanVersionEditorialFix::class);
+    }
+
     /** Cette version pose-t-elle une enveloppe ? */
     public function poseUneEnveloppe(): bool
     {

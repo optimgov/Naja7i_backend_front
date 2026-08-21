@@ -65,6 +65,19 @@ class TenancyArchitectureTest extends TestCase
          * doit voir ce que la base contient, pas ce qu'un organisme en voit.
          */
         'app/Console/Commands/EtatDemonstration.php',
+
+        /*
+         * LE CANAL ÉDITORIAL EST UNE FONCTION SQL, ET IL DOIT L'ÊTRE.
+         *
+         * `corriger_version_editoriale()` écrit la ligne de journal et le
+         * nouveau texte dans la même transaction, sous la marque que le
+         * déclencheur d'immuabilité exige. Le refaire en Eloquent supposerait
+         * d'ouvrir `plan_versions` à l'écriture — c'est-à-dire de défaire
+         * l'invariant que ce canal existe pour préserver. L'appel est donc un
+         * SELECT d'une fonction nommée, sans SQL construit à l'exécution, sur
+         * un objet de CATALOGUE GLOBAL que le scope tenant ne concerne pas.
+         */
+        'app/Services/PlanVersionService.php',
     ];
 
     private const FORBIDDEN_SCOPE_PATTERNS = [

@@ -6,7 +6,9 @@ use App\Exceptions\PaiementRefuse;
 use App\Models\Plan;
 use App\Models\PlanVersion;
 use App\Models\QuotaProfile;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /** Crée, sous verrou, la version correspondant à la projection courante. */
@@ -82,6 +84,43 @@ final class PlanVersionService
         }
 
         return $current;
+    }
+
+    /**
+     * LA COQUILLE — le seul UPDATE qu'une version accepte.
+     *
+     * Corriger « Dècouverte » ne doit pas produire une version 2 : personne
+     * n'a rien acheté de neuf, et versionner une faute d'accord ferait du
+     * journal des versions un journal de fautes de frappe. La correction
+     * amende donc la version EN PLACE — et c'est précisément pour cela qu'elle
+     * ne peut pas être discrète : la fonction SQL écrit la ligne de journal et
+     * le nouveau texte dans la même transaction, ou ne fait rien.
+     *
+     * CE SERVICE NE VALIDE RIEN LUI-MÊME, et ce n'est pas un oubli. Le champ
+     * autorisé, le motif écrit, le texte non vide et l'identité du texte
+     * remplacé sont vérifiés EN BASE, par le canal : une console psql, un
+     * correctif à chaud ou un futur écran passent par les mêmes refus. Ce qui
+     * appartient à la couche PHP, c'est l'autorisation — la base ne connaît
+     * pas les permissions.
+     */
+    public function corrigerLeTexte(
+        PlanVersion $version,
+        string $champ,
+        string $texte,
+        User $acteur,
+        string $motif,
+    ): PlanVersion {
+        Gate::forUser($acteur)->authorize('editorialFix', $version);
+
+        DB::statement('SELECT corriger_version_editoriale(?, ?, ?, ?, ?)', [
+            $version->uuid,
+            $champ,
+            $texte,
+            $acteur->getKey(),
+            $motif,
+        ]);
+
+        return $version->fresh();
     }
 
     /**

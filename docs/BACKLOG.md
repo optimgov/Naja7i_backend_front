@@ -915,6 +915,14 @@ Vérification de sortie : suite complète séquentielle verte, **652 tests et
 refusera à l'acteur courant ; c'est une amélioration UX mineure à traiter sans
 affaiblir la garde serveur.
 
+### LOT-0A.2 — Arbitrages Q-07/Q-08/Q-13 · livré · `3eeff4a`
+
+Le quota gratuit est cumulatif sans remise à zéro automatique, la consommation
+se produit au premier service idempotent et tout changement contractuel crée
+automatiquement une version d'offre. Les exemptions F05 miroir et F07 mémoire
+restent acquises. La valeur initiale de 40 questions est un paramètre à calibrer,
+jamais une constante de code.
+
 ## 4. Pas non ouverts — ne pas auditer comme manquants
 
 | Lot | Contenu | Statut |

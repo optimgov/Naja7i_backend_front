@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\DemonstrationController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\MemoireController;
+use App\Http\Controllers\Api\V1\OwnAccountController;
 use App\Http\Controllers\Api\V1\ParcoursController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\V1\ProgressionController;
 use App\Http\Controllers\Api\V1\QuestionAdminController;
 use App\Http\Controllers\Api\V1\SimulationController;
 use App\Http\Controllers\Api\V1\SourceAdminController;
+use App\Http\Controllers\Api\V1\StaffInvitationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -85,6 +87,9 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/password/reset', [PasswordResetController::class, 'reset'])
         ->middleware('throttle:password-reset');
 
+    Route::post('auth/staff-invitations/accept', [StaffInvitationController::class, 'accept'])
+        ->middleware('throttle:staff-invitation');
+
     Route::middleware('guest')->group(function () {
         Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:register');
         Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -94,6 +99,8 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
+        Route::patch('me/account', [OwnAccountController::class, 'update'])->middleware('active.account');
+        Route::put('me/password', [OwnAccountController::class, 'password'])->middleware('active.account');
         Route::get('me/legal', [LegalController::class, 'myEvents']);
         Route::patch('me/legal/marketing', [LegalController::class, 'updateMarketing']);
 

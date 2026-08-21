@@ -20,4 +20,13 @@ return [
         'expiry' => 'Ce lien est valable 60 minutes.',
         'ignore' => "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.",
     ],
+
+    'staff_invitation' => [
+        'subject' => "Invitation à rejoindre l'équipe Naja7i.ma",
+        'greeting' => 'Bienvenue dans l’équipe Naja7i.ma',
+        'line_1' => 'Un compte personnel a été préparé pour vous. Définissez votre mot de passe pour l’activer.',
+        'action' => 'Accepter mon invitation',
+        'expiry' => 'Ce lien est valable :hours heures et ne peut être utilisé qu’une fois.',
+        'ignore' => 'Si vous n’attendiez pas cette invitation, ignorez ce message.',
+    ],
 ];

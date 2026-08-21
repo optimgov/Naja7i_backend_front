@@ -17,6 +17,10 @@ return [
     'reset_link_sent' => 'إذا كان هذا البريد مرتبطا بحساب، فقد تم إرسال رابط إعادة التعيين.',
     'reset_token_invalid' => 'رابط إعادة التعيين لم يعد صالحا. اطلب رابطا جديدا.',
     'password_updated' => 'تم تحديث كلمة المرور. يمكنك الآن تسجيل الدخول.',
+    'current_password_invalid' => 'كلمة المرور الحالية غير صحيحة.',
+    'password_identity_required' => 'هذا الحساب لا يملك بعد هوية بكلمة مرور.',
+    'invitation_invalid' => 'هذه الدعوة لم تعد صالحة.',
+    'invitation_accepted' => 'تم قبول دعوتك. يمكنك الآن تسجيل الدخول.',
 
     // PAS-11 — refus d'autorisation fine (ADR-0009).
     'permission_denied' => 'ليست لديك الصلاحية اللازمة للقيام بهذا الإجراء.',

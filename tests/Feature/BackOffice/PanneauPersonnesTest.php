@@ -3,7 +3,6 @@
 namespace Tests\Feature\BackOffice;
 
 use App\Filament\Resources\Users\UserResource;
-use App\Models\Identity;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -12,8 +11,8 @@ use App\Services\AccountAdministrationService;
 use App\Tenancy\TenantContext;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -26,6 +25,7 @@ final class PanneauPersonnesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Notification::fake();
         $this->plateforme = Tenant::where('kind', 'platform')->firstOrFail();
         app(TenantContext::class)->set($this->plateforme);
     }
@@ -50,7 +50,7 @@ final class PanneauPersonnesTest extends TestCase
         $this->actingAs($auteur)->get('/admin/users')->assertForbidden();
     }
 
-    public function test_la_creation_exige_invitation_et_attribution_et_cree_une_identite_utilisable(): void
+    public function test_la_creation_exige_invitation_et_attribution_sans_identite_utilisable(): void
     {
         $gestionnaire = $this->superAdmin('gestionnaire@naja7i.ma');
         $role = Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail();
@@ -58,14 +58,14 @@ final class PanneauPersonnesTest extends TestCase
         $cree = app(AccountAdministrationService::class)->create($gestionnaire, [
             'email' => 'nouveau@naja7i.ma',
             'phone' => null,
-            'password' => 'une-phrase-temporaire-solide',
             'locale' => 'fr',
             'status' => 'active',
             'role_uuids' => [$role->uuid],
         ]);
 
         $this->assertTrue($cree->memberships()->where('role_id', $role->id)->exists());
-        $this->assertTrue(Identity::where('user_id', $cree->id)->where('provider', 'password')->exists());
+        $this->assertNull($cree->password);
+        $this->assertFalse($cree->identities()->where('provider', 'password')->exists());
         $this->assertNull($cree->email_verified_at, 'Le panneau ne fabrique pas une vérification d’e-mail.');
     }
 
@@ -77,7 +77,7 @@ final class PanneauPersonnesTest extends TestCase
         $this->actingAs($gestionnaire)
             ->get('/admin/users/create')
             ->assertOk()
-            ->assertSee('Mot de passe temporaire');
+            ->assertSee('Invitation');
 
         $this->actingAs($gestionnaire)
             ->get(UserResource::getUrl('edit', ['record' => $cible]))
@@ -93,7 +93,7 @@ final class PanneauPersonnesTest extends TestCase
         try {
             app(AccountAdministrationService::class)->create($inviteur, [
                 'email' => 'orphelin@naja7i.ma', 'phone' => null,
-                'password' => 'une-phrase-temporaire-solide', 'locale' => 'fr', 'status' => 'active',
+                'locale' => 'fr', 'status' => 'active',
                 'role_uuids' => [$role->uuid],
             ]);
             $this->fail('La création aurait dû être refusée.');
@@ -169,7 +169,7 @@ final class PanneauPersonnesTest extends TestCase
         $this->expectException(ValidationException::class);
         app(AccountAdministrationService::class)->create($gestionnaire, [
             'email' => 'candidat-admin@naja7i.ma', 'phone' => null,
-            'password' => 'une-phrase-temporaire-solide', 'locale' => 'fr', 'status' => 'active',
+            'locale' => 'fr', 'status' => 'active',
             'role_uuids' => [$candidat->uuid],
         ]);
     }
@@ -182,7 +182,7 @@ final class PanneauPersonnesTest extends TestCase
         try {
             app(AccountAdministrationService::class)->create($gestionnaire, [
                 'email' => 'escalade-create@naja7i.ma', 'phone' => null,
-                'password' => 'une-phrase-temporaire-solide', 'locale' => 'fr', 'status' => 'active',
+                'locale' => 'fr', 'status' => 'active',
                 'role_uuids' => [$auteur->uuid],
             ]);
             $this->fail('Le rôle plus puissant aurait dû être refusé.');
@@ -284,53 +284,6 @@ final class PanneauPersonnesTest extends TestCase
         } catch (ValidationException) {
             $this->assertSame(['auteur'], $cible->memberships()->with('role')->get()->pluck('role.code')->all());
             $this->actingAs($gestionnaire)->get(UserResource::getUrl('edit', ['record' => $cible]))->assertOk();
-        }
-    }
-
-    public function test_creation_du_personnel_utilise_les_bornes_centrales_de_mot_de_passe(): void
-    {
-        config()->set('naja7i.password.min_length', 20);
-        config()->set('naja7i.password.max_length', 24);
-        config()->set('naja7i.password.check_compromised', false);
-        $gestionnaire = $this->superAdmin('politique-mdp@naja7i.ma');
-        $auteur = Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail();
-
-        foreach (['trop-court-mais-12', str_repeat('x', 25)] as $password) {
-            try {
-                app(AccountAdministrationService::class)->create($gestionnaire, [
-                    'email' => hash('sha256', $password).'@naja7i.ma', 'phone' => null,
-                    'password' => $password, 'locale' => 'fr', 'status' => 'active',
-                    'role_uuids' => [$auteur->uuid],
-                ]);
-                $this->fail('La borne centrale du mot de passe aurait dû refuser la valeur.');
-            } catch (ValidationException) {
-                $this->assertDatabaseMissing('users', ['email' => hash('sha256', $password).'@naja7i.ma']);
-            }
-        }
-    }
-
-    public function test_creation_du_personnel_applique_conditionnellement_le_controle_anti_fuite(): void
-    {
-        config()->set('naja7i.password.check_compromised', true);
-        app()->instance(UncompromisedVerifier::class, new class implements UncompromisedVerifier
-        {
-            public function verify($data): bool
-            {
-                return false;
-            }
-        });
-        $gestionnaire = $this->superAdmin('anti-fuite@naja7i.ma');
-        $auteur = Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail();
-
-        try {
-            app(AccountAdministrationService::class)->create($gestionnaire, [
-                'email' => 'mot-de-passe-fuite@naja7i.ma', 'phone' => null,
-                'password' => 'une-phrase-temporaire-solide', 'locale' => 'fr', 'status' => 'active',
-                'role_uuids' => [$auteur->uuid],
-            ]);
-            $this->fail('Le contrôle anti-fuite central aurait dû refuser le mot de passe.');
-        } catch (ValidationException) {
-            $this->assertDatabaseMissing('users', ['email' => 'mot-de-passe-fuite@naja7i.ma']);
         }
     }
 

@@ -6,6 +6,8 @@ use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use App\Services\AccountAdministrationService;
 use App\Services\PermissionResolver;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -38,5 +40,33 @@ final class EditUser extends EditRecord
         }
 
         return $record->refresh();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('reinviter')
+                ->label('Renvoyer l’invitation')
+                ->requiresConfirmation()
+                ->visible(function (): bool {
+                    /** @var User|null $actor */
+                    $actor = auth()->user();
+
+                    return $actor !== null
+                        && app(PermissionResolver::class)->has($actor, 'members.invite')
+                        && $this->record->password === null
+                        && ! $this->record->identities()->where('provider', 'password')->exists();
+                })
+                ->action(function (): void {
+                    /** @var User $actor */
+                    $actor = auth()->user();
+                    app(AccountAdministrationService::class)->reinvite($actor, $this->record);
+
+                    Notification::make()
+                        ->title('Une nouvelle invitation a été envoyée ; l’ancienne est révoquée.')
+                        ->success()
+                        ->send();
+                }),
+        ];
     }
 }

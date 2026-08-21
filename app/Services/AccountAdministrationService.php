@@ -2,12 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Identity;
 use App\Models\Membership;
 use App\Models\Role;
 use App\Models\User;
 use App\Tenancy\TenantContext;
-use App\Validation\PasswordPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -25,18 +23,20 @@ use Illuminate\Validation\ValidationException;
  */
 final class AccountAdministrationService
 {
-    public function __construct(private readonly PermissionResolver $permissions) {}
+    public function __construct(
+        private readonly PermissionResolver $permissions,
+        private readonly StaffInvitationService $invitations,
+    ) {}
 
-    /** @param array{email?: string|null, phone?: string|null, password: string, locale: string, status: string, role_uuids?: list<string>} $data */
+    /** @param array{email: string, phone?: string|null, locale: string, status: string, role_uuids?: list<string>} $data */
     public function create(User $actor, array $data): User
     {
         $this->authorize($actor, 'members.invite');
         $this->authorize($actor, 'roles.assign');
 
         $data = Validator::make($data, [
-            'email' => ['nullable', 'email', 'required_without:phone', Rule::unique('users', 'email')],
-            'phone' => ['nullable', 'required_without:email', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')],
-            'password' => ['required', PasswordPolicy::rule()],
+            'email' => ['required', 'email', Rule::unique('users', 'email')],
+            'phone' => ['nullable', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')],
             'locale' => ['required', Rule::in(['fr', 'ar'])],
             'status' => ['required', Rule::in(['active', 'suspended'])],
             'role_uuids' => ['required', 'array', 'min:1'],
@@ -60,22 +60,31 @@ final class AccountAdministrationService
                 ]);
             }
 
-            $user = User::create(Arr::only($data, ['email', 'phone', 'password', 'locale', 'status']));
-
-            Identity::create([
-                'user_id' => $user->id,
-                'provider' => 'password',
-                'last_used_at' => null,
-            ]);
+            $user = User::create(Arr::only($data, ['email', 'phone', 'locale', 'status']));
 
             foreach ($roles as $role) {
                 Membership::create(['user_id' => $user->id, 'role_id' => $role->id]);
             }
 
+            $this->invitations->issue($user, $actor);
             $this->permissions->forget();
 
             return $user->refresh();
         });
+    }
+
+    public function reinvite(User $actor, User $user): void
+    {
+        $this->authorize($actor, 'members.invite');
+        $this->ensureMember($user);
+
+        if ($user->password !== null || $user->identities()->where('provider', 'password')->exists()) {
+            throw ValidationException::withMessages([
+                'email' => 'Ce compte possède déjà une identité par mot de passe.',
+            ]);
+        }
+
+        DB::transaction(fn () => $this->invitations->issue($user, $actor));
     }
 
     /** @param array{email?: string|null, phone?: string|null, locale: string, status: string} $data */

@@ -40,6 +40,10 @@ return [
         'check_compromised' => env('PASSWORD_CHECK_COMPROMISED', true),
     ],
 
+    'staff_invitation' => [
+        'expire_hours' => env('STAFF_INVITATION_EXPIRE_HOURS', 24),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Limitation des tentatives de connexion
@@ -156,6 +160,7 @@ return [
             'email-resend' => ['production' => 6, 'recette' => 600],
             'password-request' => ['production' => 6, 'recette' => 600],
             'password-reset' => ['production' => 10, 'recette' => 600],
+            'staff-invitation' => ['production' => 10, 'recette' => 600],
             'register' => ['production' => 6, 'recette' => 600],
             'login' => ['production' => 20, 'recette' => 600],
 

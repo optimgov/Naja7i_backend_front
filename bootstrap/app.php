@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureBffRequestsAreStateful;
 use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\NoStore;
@@ -97,6 +98,7 @@ return Application::configure(basePath: dirname(__DIR__))
          * doit l'être avant que le contrôleur ne s'exécute, et le contrôle
          * reste lisible depuis la table des routes. */
         $middleware->alias([
+            'active.account' => EnsureAccountIsActive::class,
             'verified.api' => EnsureEmailIsVerified::class,
             'permission' => RequirePermission::class,
             /* Une contrainte de transport se lit dans la table des routes, au

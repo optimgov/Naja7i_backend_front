@@ -79,6 +79,11 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         return $this->hasMany(VerificationToken::class);
     }
 
+    public function staffInvitations(): HasMany
+    {
+        return $this->hasMany(StaffInvitation::class);
+    }
+
     /**
      * PAS-3 — On remplace la notification de Laravel, qui bâtit une URL signée
      * vers l'API. Le lien doit mener au FRONTEND et porter un jeton opaque

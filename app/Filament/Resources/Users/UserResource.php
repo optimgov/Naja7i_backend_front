@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\AccountAdministrationService;
 use App\Services\PermissionResolver;
 use App\Tenancy\TenantContext;
-use App\Validation\PasswordPolicy;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
@@ -62,15 +61,12 @@ final class UserResource extends Resource
                     'active' => 'Actif',
                     'suspended' => 'Suspendu',
                 ])->required()->disabled(fn (): bool => ! self::canAdministerAccount()),
-                TextInput::make('password')
-                    ->label('Mot de passe temporaire')
-                    ->password()
-                    ->revealable()
-                    ->required(fn (?User $record): bool => $record === null)
-                    ->rule(PasswordPolicy::rule())
-                    ->dehydrated(fn (?string $state): bool => filled($state))
-                    ->visible(fn (?User $record): bool => $record === null)
-                    ->helperText('À transmettre par un canal sûr. Aucun e-mail d’invitation n’est envoyé par le socle actuel.'),
+                TextInput::make('invitation_info')
+                    ->label('Invitation')
+                    ->default('Un lien personnel, unique et expirant sera envoyé par e-mail.')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->visible(fn (?User $record): bool => $record === null),
             ])->columns(2),
             Section::make('Rôles dans ce tenant')->schema([
                 CheckboxList::make('role_uuids')

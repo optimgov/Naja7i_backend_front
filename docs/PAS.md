@@ -104,6 +104,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.2 | Portées typées des droits et résolution par contenance : racine, filière, famille, épreuve et nœuds de compétence | `1a425c7` |
 | 3A.3 | Registre exécutable de neuf capacités, huit commercialisables, certification fermée et référentiel bilingue | `af66ff0` |
 | 3A.3c | Correctif d'architecture : référentiel par Eloquent et seule lecture bas niveau des portées explicitement justifiée | `cfc3d93` |
+| — | Outillage : 256 Mio pour le processus PHPUnit ; suite complète verte à 719 tests et 2 547 assertions | `9a9c2bd` |
 
 ## Lots frontend
 

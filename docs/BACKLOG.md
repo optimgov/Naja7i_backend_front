@@ -1244,6 +1244,12 @@ docker compose up -d                                  # PostgreSQL 16 + Redis
 php artisan migrate && php artisan test               # séquentiel
 ```
 
+Depuis `9a9c2bd`, `phpunit.xml` réserve 256 Mio au seul processus de test. La
+suite de 719 tests dépassait la valeur CLI de 128 Mio pendant la construction
+du cache de métadonnées PHPUnit ; sans cette enveloppe, elle s'arrêtait avant
+son verdict. La suite complète est verte à 2 547 assertions. Cette valeur ne
+modifie aucune limite de l'application ou des conteneurs de production.
+
 La suite tourne **en séquentiel**. Elle n'est toujours pas parallélisable —
 Collision exige `brianium/paratest`, absent des dépendances — et **ce n'est
 plus le sujet**. Mesurée au PAS-20, la lenteur ne venait pas du séquentiel :

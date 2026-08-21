@@ -109,11 +109,16 @@ class RefusNommeTest extends TestCase
             'questions.view' => 'auteur',
             'orders.view' => 'finance',
             'members.view' => 'support',
+            /* L'autorité pédagogique de la plateforme, qui porte déjà
+             * `questions.validate` et `taxonomy.manage`. */
+            'quotas.manage' => 'editeur',
         ];
         $etrangers = [
             'questions.view' => 'finance',
             'orders.view' => 'auteur',
             'members.view' => 'auteur',
+            /* Celle qui vend ne borne pas : c'est tout l'objet du partage. */
+            'quotas.manage' => 'finance',
         ];
 
         $this->assertArrayHasKey(

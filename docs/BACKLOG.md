@@ -901,6 +901,20 @@ Le socle ne possède pas encore de véritable invitation avec lien de définitio
 du mot de passe ; le lot exige donc un mot de passe temporaire transmis par un
 canal sûr. Cette limite devra être fermée avant ouverture à une équipe large.
 
+#### Correctif 1A.1 · livré · `3feb1bd`
+
+La délégation est désormais bornée : un acteur ne peut attribuer que des rôles
+dont il détient toutes les permissions, et `super_admin` ne se transmet que par
+un super-administrateur. Un compte suspendu perd immédiatement l'accès au
+panneau, une synchronisation ne peut pas retirer la dernière appartenance du
+tenant, et inscription, réinitialisation et administration partagent la même
+politique centralisée de mot de passe.
+
+Vérification de sortie : suite complète séquentielle verte, **652 tests et
+2 227 assertions**. L'interface peut encore afficher un rôle que le serveur
+refusera à l'acteur courant ; c'est une amélioration UX mineure à traiter sans
+affaiblir la garde serveur.
+
 ## 4. Pas non ouverts — ne pas auditer comme manquants
 
 | Lot | Contenu | Statut |

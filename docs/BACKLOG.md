@@ -924,6 +924,11 @@ sans casser sa liste historique de codes.
 du marqueur prévu par D-3. Aucun code agrégé de coaching ou de pack n'entre dans
 l'autorisation.
 
+Le correctif `cfc3d93` fait passer le référentiel bilingue par son modèle
+Eloquent. Le seul accès SQL bas niveau restant est la construction justifiée de
+la chaîne d'ascendance globale des portées ; le garde-fou d'architecture le
+nomme explicitement au lieu de tolérer toute la classe par accident.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

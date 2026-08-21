@@ -209,18 +209,19 @@ final class AbonnementService
      * Le départ d'un nouvel octroi : maintenant, ou la fin du droit courant.
      *
      * C'est ici que la prolongation empile. On prend la PLUS TARDIVE des fins
-     * actives pour cette capacité ; s'il en existe une sans terme, le candidat
-     * a déjà mieux que ce qu'il achète et l'octroi part de maintenant — il
-     * documente l'achat sans rien retirer.
+     * actives et datées pour cette capacité. Un droit sans terme reste effectif,
+     * mais ne participe pas à ce calcul : le premier achat daté part maintenant,
+     * puis les suivants se chaînent entre eux.
      */
     private function departDe(int $userId, string $capacite, Carbon $maintenant): Carbon
     {
         $courants = AccessGrantRecord::where('user_id', $userId)
             ->where('capability', $capacite)
             ->active()
+            ->whereNotNull('ends_at')
             ->get();
 
-        if ($courants->isEmpty() || $courants->contains(fn ($o) => $o->ends_at === null)) {
+        if ($courants->isEmpty()) {
             return $maintenant;
         }
 

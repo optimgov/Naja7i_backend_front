@@ -204,6 +204,51 @@ class AbonnementTest extends TestCase
         $this->travelBack();
     }
 
+    public function test_un_droit_sans_terme_n_interrompt_pas_le_chainage_des_achats_dates(): void
+    {
+        $maintenant = now()->startOfSecond();
+        $this->travelTo($maintenant);
+
+        AccessGrantRecord::create([
+            'user_id' => $this->candidat->id,
+            'capability' => AccessGrant::CAUSE_REVEAL,
+            'scope_uuid' => null,
+            'starts_at' => $maintenant,
+            'ends_at' => null,
+            'origin' => 'account_level',
+            'origin_reference' => 'gratuit-sans-terme',
+            'note' => 'Droit gratuit du scénario S-08',
+        ]);
+
+        $premiere = app(CouponGateway::class)
+            ->ouvrir($this->candidat, ['code' => $this->coupon()->code], (string) Str::uuid7());
+        $this->service()->honorer($premiere);
+
+        $seconde = app(CouponGateway::class)
+            ->ouvrir($this->candidat, ['code' => $this->coupon()->code], (string) Str::uuid7());
+        $this->service()->honorer($seconde);
+
+        $dates = AccessGrantRecord::where('user_id', $this->candidat->id)
+            ->where('capability', AccessGrant::CAUSE_REVEAL)
+            ->whereNotNull('ends_at')
+            ->orderBy('starts_at')
+            ->get();
+
+        $this->assertCount(2, $dates);
+        $this->assertTrue($dates[0]->starts_at->equalTo($maintenant));
+        $this->assertTrue($dates[0]->ends_at->equalTo($maintenant->copy()->addDays(30)));
+        $this->assertTrue($dates[1]->starts_at->equalTo($maintenant->copy()->addDays(30)));
+        $this->assertTrue($dates[1]->ends_at->equalTo($maintenant->copy()->addDays(60)));
+
+        $this->assertDatabaseHas('access_grants', [
+            'user_id' => $this->candidat->id,
+            'capability' => AccessGrant::CAUSE_REVEAL,
+            'ends_at' => null,
+        ]);
+
+        $this->travelBack();
+    }
+
     // ═════════════════════════════════════════ 3. Les refus de coupon
 
     public function test_un_coupon_epuise_est_refuse(): void

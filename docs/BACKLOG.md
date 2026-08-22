@@ -1584,6 +1584,55 @@ colonne, les deux absences testées comme les présences, et l'avertissement du
 pas 0.a qui ne se déclenche plus sur aucune des trois offres ; puis suite
 complète séquentielle verte à **910 tests et 3 346 assertions** en 243,7 s.
 
+#### Lot 3A.9 pas 1 · les cinq murs · livré · `510b8e6`
+
+**Le premier lot qui retire.** Cinq capacités étaient composables sans être
+consultées par aucun contrôleur ; elles décident désormais de ce que les gens
+voient.
+
+**Le mur est un CHAMP, pas une route.** Sans `remediation.plan`, `me/plan` ne
+porte plus de `data` — ni tableau vide, ni compteur, ni avertissement de
+non-prédiction, qui qualifie une ordonnance qu'il n'y a pas. Sans
+`memory.sessions`, `me/memory/*/due` ne porte **ni liste ni compteur** :
+annoncer « 42 dus » à qui ne peut pas ouvrir de séance construit un cul-de-sac.
+Les échéances restent en base — elles sont l'histoire du candidat — mais rien
+n'en sort. Précédent suivi : `CorrectionResource` et son `cause_locked`.
+
+**La maîtrise fait exception, et c'est l'option B arbitrée.** Elle se rend
+toujours, à la profondeur que le palier ouvre : racines pour tout le monde,
+arbre complet avec `mastery.detail`. A-02 vend la **granularité**, pas
+l'existence de la mesure — la fermer rendrait le produit signature invisible
+avant l'achat (piège P5), et le seuil d'évidence limite déjà ce qu'un compte
+d'essai y voit. Le filtrage est en base : les nœuds profonds ne quittent pas le
+serveur.
+
+**Les actions se refusent, en 403 NOMMÉ.** Ouvrir une série, un examen blanc ou
+une séance écrit. La règle « 404, jamais 403 » du dépôt vise l'**énumération**
+de ce qui appartient à autrui ; il n'y a rien à énumérer ici — la fonction est
+au catalogue, son prix est public, et répondre « introuvable » masquerait la
+raison sans rien protéger. C'est le raisonnement du 403 explicite de
+`RequirePermission` (PAS-9), appliqué au candidat. Le refus **nomme sa clé**
+avec le libellé du registre : un code d'énumération n'a jamais rien dit à
+personne.
+
+**L'ordre des refus est délibéré :** pour l'examen blanc, le mur précède la
+durée officielle et la banque — « la durée n'est pas établie » enverrait le
+candidat chercher un défaut de référentiel là où il n'y a qu'un palier.
+`GET me/simulations/{uuid}/report` ne porte **aucun** mur : un rapport déjà
+produit est un livrable acquis.
+
+**La portée est passée à la résolution** (épreuve → famille → filière →
+catégorie → plateforme) bien qu'aucune offre CRMEF n'en porte : interroger sans
+portée ferait échouer en silence tout droit vendu sur une portée fine, et le lot
+3A.6 en a livré un (S-11).
+
+**Vérification :** 11 tests ciblés et 66 assertions ; cinq fichiers existants
+ouvrent désormais les droits dont leur sujet a besoin, par un trait commun ;
+mutations éprouvées — l'arbre complet rendu sans `mastery.detail` fait rougir le
+test des racines et lui seul, un champ vide plus un drapeau `locked` fait rougir
+« aucun champ à débloquer » ; suite complète séquentielle verte à **921 tests et
+3 412 assertions**.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

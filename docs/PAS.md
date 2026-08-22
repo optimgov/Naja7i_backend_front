@@ -129,6 +129,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | — | Le lot 1.1 passe de « en cours » à « livré » au journal des jalons, avec ses SHA de bornes : une ligne d'état périmée a fait refuser un travail correct | `e62d4fc` |
 | 3A.9.0 | La garde du catalogue avant les murs : l'écran des offres avertit — sans bloquer — quand une version payante se compose sans `questions.answer`, règle lue du registre ; et le droit transitoire cesse de deviner son palier de référence, qui devient obligatoire dans les trois canaux | `869b630` |
 | 3A.9.0bis | La composition arbitrée D-CAT exécutée par le canal 3A.6 : `questions.answer` sans enveloppe sur les trois offres payantes, la profondeur à la seule Session complète, `annales.practice` fermée par choix, et les paliers nommés Entrée / Préparation / Session complète — plus jamais par un prix | `7036cc2` |
+| 3A.9.1 | Les cinq murs : l'ordonnance et les rendez-vous mémoire quittent le rendu — champ absent, jamais compteur factice ; la carte de maîtrise se rend à la profondeur que le palier ouvre ; série ciblée, examen blanc et séance mémoire refusent par un 403 qui nomme la clé, et le rapport déjà produit reste lisible | `510b8e6` |
 
 ## Lots frontend
 

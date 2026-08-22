@@ -120,6 +120,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.7.2 | Le palier gratuit s'attribue dans la transaction d'inscription, sous `account_level` et jamais `purchase`, par le même service d'octroi que l'honoration — idempotent, et le compte déjà inscrit garde l'enveloppe de sa version | `6aff8ef` |
 | 3A.7.3 | `naja7i:rattraper-le-gratuit` pose le palier sur les comptes candidats antérieurs — origine `rattrapage`, mode sec, compte rendu chiffré, idempotente et respectueuse du grandfathering ; livrée testée, exécutée sur aucune base durable | `5ed8d03` |
 | 3A.7.4 | L'écran d'abonnement rend les enveloppes une par une — jamais additionnées — avec leur nature en toutes lettres FR/AR et aucune fuite d'identifiant ni de code d'origine | `94bb888` |
+| 3A.8.1 | Le droit transitoire se pose par un geste tracé — commande et écran, prévisualisation obligatoire, durée et public en paramètres bornés, origine `transition`, idempotent, le gratuit sans terme intact dessous | `1c08918` |
 
 ## Lots frontend
 

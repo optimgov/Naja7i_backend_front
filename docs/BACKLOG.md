@@ -1351,6 +1351,44 @@ séquentielle verte à **841 tests et 2 978 assertions** en 232,9 s. Les trois
 mutations de la mission sont éprouvées ; la deuxième a conduit à **renforcer**
 le test de grandfathering, qui ne discriminait pas — détail au retour.
 
+#### Lot 3A.8 pas 1 · la pose du droit transitoire · livré · `1c08918`
+
+Q-17 tient en cinq mots — équivalent au 600, 60 jours, nommé, tracé, visible —
+et chacun a sa contrepartie. **Nommé** : origine `transition`, jamais
+`purchase`, aucune commande, aucun agrégat de vente. **Tracé** :
+`transition_batches`, en ajout seul, qui fige l'auteur, le motif, le périmètre,
+les trois nombres **et la version d'offre de référence** — « équivalent au
+palier 600 » n'a de sens que si l'on peut relire à quoi, exactement.
+
+**Le paramétrage d'abord, même pour un geste qui ne servira qu'une fois.**
+Durée, public visé, date de pose et palier de référence sont les paramètres du
+geste. 60 est la valeur de DÉPART, bornée 7–180 en base comme en service : sous
+une semaine le sevrage est subi plutôt qu'annoncé ; au-delà de six mois ce n'est
+plus une transition mais un palier gratuit déguisé.
+
+**« Équivalent au palier 600 » se lit dans le catalogue, pas dans le code.**
+Écrire les huit capacités ici en ferait une seconde source de vérité qui
+mentirait au premier changement. On lit la composition d'une offre réelle — par
+défaut la plus complète — et l'on **refuse en nommant la capacité** si elle porte
+du non-commercialisable. Filtrer en silence serait pire : le geste réussirait en
+donnant autre chose que ce qui a été demandé.
+
+**La prévisualisation n'est pas un confort** (Q-17 l'exige) : commande
+`--dry-run` et bouton d'écran annoncent comptes visés, déjà porteurs et à
+servir, sans rien écrire. La commande **refuse de poser sans auteur** — une
+commande anonyme serait la migration silencieuse que Q-17 refuse ; l'écran, lui,
+prend l'auteur de la session.
+
+Le public visé se déduit de l'épreuve déclarée par le candidat (épreuve →
+parcours → famille → catégorie, rattachement livré en 3A.6). Un compte sans
+épreuve déclarée n'a pas de public connu : un geste ciblé ne le touche pas.
+
+Le droit gratuit sans terme et son enveloppe **restent intacts dessous**
+(AR-2), et rejouer la pose ne double rien.
+
+**Vérification :** 21 tests ciblés et 84 assertions, puis suite complète
+séquentielle verte à **862 tests et 3 063 assertions** en 233,5 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

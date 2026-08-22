@@ -1323,6 +1323,30 @@ transitoire de 3A.8.
 l'exclusion du personnel et le grandfathering, puis suite complète séquentielle
 verte à **834 tests et 2 945 assertions** en 232,8 s.
 
+#### Lot 3A.7 pas 4 · ce que le candidat lit de son palier · livré · `94bb888`
+
+`me/subscription` porte désormais `quotas` : **une entrée par octroi
+enveloppé**, jamais un total. « Deux enveloppes sur des portées distinctes ne
+sont jamais additionnées » (ADR-0031), et un renouvellement crée une enveloppe
+neuve (ADR-0027) : un seul nombre effacerait la question qui compte pour le
+candidat — laquelle se vide en premier. Il n'y en a qu'une aujourd'hui, celle du
+palier gratuit ; la forme est juste dès maintenant.
+
+Le reliquat vaut l'enveloppe, et c'est exact : rien ne consomme encore, le débit
+est le lot 3B. Un reliquat inventé serait pire qu'un champ absent — le candidat
+le lirait comme une mesure.
+
+La NATURE du droit se dit en deux mots du produit (`gratuite` / `achetee`) et
+leur libellé traduit FR/AR, jamais par le code d'énumération qui la porte en
+base : `account_level` et `rattrapage` disent la même chose du point de vue du
+candidat — il ne l'a pas payé. Liste blanche stricte, vérifiée clé par clé :
+aucun identifiant, aucune origine technique.
+
+**Vérification :** 6 tests ciblés et 31 assertions, puis suite complète
+séquentielle verte à **841 tests et 2 978 assertions** en 232,9 s. Les trois
+mutations de la mission sont éprouvées ; la deuxième a conduit à **renforcer**
+le test de grandfathering, qui ne discriminait pas — détail au retour.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

@@ -121,6 +121,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.7.3 | `naja7i:rattraper-le-gratuit` pose le palier sur les comptes candidats antérieurs — origine `rattrapage`, mode sec, compte rendu chiffré, idempotente et respectueuse du grandfathering ; livrée testée, exécutée sur aucune base durable | `5ed8d03` |
 | 3A.7.4 | L'écran d'abonnement rend les enveloppes une par une — jamais additionnées — avec leur nature en toutes lettres FR/AR et aucune fuite d'identifiant ni de code d'origine | `94bb888` |
 | 3A.8.1 | Le droit transitoire se pose par un geste tracé — commande et écran, prévisualisation obligatoire, durée et public en paramètres bornés, origine `transition`, idempotent, le gratuit sans terme intact dessous | `1c08918` |
+| 3A.8.2 | L'écran d'abonnement rend les droits ligne par ligne, chacune avec sa nature en toutes lettres et sa date propre — le transitoire nommé et daté, le gratuit sans terme en dernier | `a487bf2` |
 
 ## Lots frontend
 

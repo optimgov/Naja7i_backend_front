@@ -1389,6 +1389,25 @@ Le droit gratuit sans terme et son enveloppe **restent intacts dessous**
 **Vérification :** 21 tests ciblés et 84 assertions, puis suite complète
 séquentielle verte à **862 tests et 3 063 assertions** en 233,5 s.
 
+#### Lot 3A.8 pas 2 · le sevrage s'annonce · livré · `a487bf2`
+
+Le droit transitoire n'a pas d'enveloppe — comme tout palier payant — il
+n'apparaissait donc nulle part sur un écran qui ne rendait que des quotas.
+`me/subscription` porte désormais `droits` : **une ligne par (nature,
+échéance)**, avec ce qu'elle ouvre, son libellé traduit et **sa date de fin**.
+
+Jamais un état « abonné » unique : un compte porte le même jour un palier
+gratuit sans terme et un accès transitoire de soixante jours, et rendre un
+booléen effacerait la seule chose que le candidat a besoin de savoir — ce qui
+s'arrête, et quand. Les lignes sont ordonnées par échéance la plus proche ; le
+sans-terme ferme la liste, faute d'avoir une décision à demander.
+
+La nature `transitoire` rejoint `gratuite` et `achetee` : trois mots du produit,
+leurs libellés FR/AR par clés de traduction, et jamais le code d'origine.
+
+**Vérification :** 6 tests ciblés et 25 assertions, puis suite complète
+séquentielle verte à **868 tests et 3 088 assertions** en 243,6 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

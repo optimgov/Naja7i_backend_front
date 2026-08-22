@@ -115,6 +115,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.6.2 | La table d'affichage des capacités s'édite sans développeur — libellés et descriptions FR/AR, ordre — pendant que la liste des neuf codes reste fermée : ni création, ni suppression, et enregistrer retire le badge « à relire » (ADR-0032) | `5ec4499` |
 | 3A.6.3 | Le formulaire des offres compose tout ce que la matrice §5 autorise — public, textes FR/AR, note interne, prix et devise fermée, calendrier, capacités, profil de quota sélectionné, portée typée — et chaque interdit a son refus serveur | `656ddd9` |
 | 3A.6.4 | L'historique des versions se lit sur la fiche de l'offre — numéro, date d'effet, auteur, champs déclencheurs, commandes, droits issus et droits actifs — et le bouton « corriger une coquille » appelle le canal éditorial sous `plans.editorial_fix` | `921c1ad` |
+| 3A.6.6 | Le scénario lycée devient un test : catégorie, pack « Suivi mensuel » 30 j, quatre capacités et portée `(audience, lycee)` créés à l'écran sans migration — avec les tests d'acceptation §6 du lot et leurs mutations | `b1fe327` |
 
 ## Lots frontend
 

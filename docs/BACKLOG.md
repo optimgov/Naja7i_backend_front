@@ -1209,6 +1209,31 @@ paquets Filament.
 **Vérification :** 8 tests ciblés et 43 assertions, puis suite complète
 séquentielle verte à **809 tests et 2 823 assertions** en 227,6 s.
 
+#### Lot 3A.6 pas 6 · le scénario lycée, et l'acceptation du lot · livré · `b1fe327`
+
+Le premier test d'acceptation de la spécification n'est pas une lecture de code :
+ce sont les gestes, à l'écran, avec les permissions d'une admin commerciale. Le
+test crée la catégorie `lycee`, puis le pack « Suivi mensuel » — 30 jours,
+`questions.answer` + `mastery.detail` + `remediation.plan` + `memory.sessions`,
+portée `(audience, lycee)` — et vérifie que la version 1 porte tout le contrat,
+que son auteur est signé, que **le compte de migrations n'a pas bougé** et que
+le catalogue rend l'offre au candidat dans la foulée. Les assertions d'USAGE de
+S-11 et S-12 (couverture des épreuves, enveloppe neuve au renouvellement)
+restent aux lots 3A.9 et 3B.
+
+`certification.take` n'est ni proposée à l'écran ni acceptée par le serveur, et
+le refus nomme la capacité **et** la raison. Un changement de prix compose une
+version nouvelle pendant qu'une commande en attente garde la sienne et est
+honorée à ses conditions. Aucun écran ne crée une capacité, un type de portée ni
+une règle de consommation : les deux registres fermés se rendent en liste, et la
+surface des libellés n'a pas de page de création.
+
+**Vérification :** 4 tests ciblés et 35 assertions, puis suite complète
+séquentielle verte à **813 tests et 2 858 assertions** en 226,1 s. Les quatre
+mutations applicables du §6 sont éprouvées et consignées dans
+`retours/M-004-retour.md` — la cinquième porte sur la demande de gratuité, qui
+appartient au lot 4.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

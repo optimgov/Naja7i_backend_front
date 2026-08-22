@@ -14,7 +14,7 @@ Cet ADR formalise l'existant et traite uniquement les compositions encore sensib
 ## Invariants
 
 1. Deux décisions concurrentes ne calculent jamais la même date de départ pour une même capacité et une même portée.
-2. Un droit sans terme n'est jamais raccourci, masqué ou remplacé par un droit daté.
+2. Un droit sans terme n'est jamais raccourci, masqué ou remplacé par un droit daté — **à une exception nommée : le droit d'ESSAI, et seulement par CONVERSION** (ADR-0033). La première activation d'un forfait payant clôt l'essai dans la transaction qui ouvre le forfait. Aucun autre chemin, aucune autre catégorie de droit, ne raccourcit un sans-terme.
 3. Un droit payant n'est jamais réduit par l'attribution ou la migration d'un droit gratuit.
 4. Une offre supérieure ajoute ses capacités et prolonge les capacités communes sans retirer le reliquat antérieur.
 5. Les capacités différentes coexistent.
@@ -43,8 +43,8 @@ L'idempotence porte aussi sur l'origine : la même décision rejouée ne crée p
 | Capacités différentes | Coexistence, sans date commune artificielle. |
 | Droit sans terme + premier droit daté | Le daté démarre immédiatement ; le sans-terme reste effectif et ne bloque pas. |
 | Droit sans terme + plusieurs droits datés | Les datés se chaînent entre eux ; le sans-terme est ignoré dans leur calcul de départ. |
-| Gratuit + payant, capacité commune | Le payant conserve ou prolonge le meilleur droit ; le gratuit ne le réduit pas. |
-| Gratuit + payant, capacités différentes | Union des capacités actives. |
+| ~~Gratuit + payant, capacité commune~~ | **Caduc depuis l'ADR-0033** : les deux ne coexistent plus. L'essai est clos par la conversion, et le forfait ouvre son enveloppe neuve. |
+| ~~Gratuit + payant, capacités différentes~~ | **Caduc depuis l'ADR-0033**, même raison. La composition entre droits PAYANTS successifs, elle, reste inchangée. |
 | Même capacité, portées disjointes | Coexistence indépendante. |
 | Portée large + portée incluse | La large autorise l'ensemble ; la fine reste traçable et reprend effet si la large expire avant elle. |
 

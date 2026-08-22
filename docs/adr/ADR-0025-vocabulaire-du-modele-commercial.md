@@ -30,6 +30,8 @@ Le gratuit n'est ni l'absence d'offre, ni un réglage global, ni un paiement nul
 - leur migration est un geste administratif explicite, prévisualisé et tracé ;
 - aucune modification ne réduit rétroactivement un droit déjà accordé.
 
+**Amendement du 22 août 2026 (ADR-0033) — le gratuit est un ESSAI.** L'offre gratuite auto-attribuée reste le porteur décrit ci-dessus, mais le droit qu'elle produit est un droit d'essai : il **se clôt définitivement à la première commande payante honorée**, dans la transaction qui ouvre le forfait, et **n'est jamais réattribué** — ni au renouvellement, ni au changement de forfait, ni par un rejeu d'attribution. La ligne close est conservée : elle est la preuve durable de la conversion. Un compte converti puis expiré ne revient pas à l'essai ; il renouvelle.
+
 Le quota F03 existant demeure un **quota global par compte de causes révélées**, cumulatif à vie selon la fiche F03 en vigueur. Il reste distinct du futur quota de questions et n'est ni remplacé ni dérivé par lui.
 
 ## Capacités commercialisables

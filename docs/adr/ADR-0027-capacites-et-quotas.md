@@ -13,6 +13,8 @@ Les capacités restent binaires et fermées en code. Les quotas sont des objets 
 
 Le quota de questions est **cumulatif sur la durée du droit**. Un renouvellement crée une nouvelle enveloppe. Un droit sans terme ne se remet pas automatiquement à zéro.
 
+**Amendement du 22 août 2026 (ADR-0033).** L'enveloppe d'ESSAI ne se compose avec aucune enveloppe payante, et ne lui survit pas : la première activation d'un forfait payant clôt l'essai, dont le reliquat n'est **ni transféré, ni additionné, ni retrouvé** à l'expiration du forfait. Il n'y a donc jamais deux enveloppes à départager pour une même capacité, et la consommation (3B) n'a pas à choisir laquelle débiter. La composition entre enveloppes PAYANTES successives, elle, reste celle décrite ici.
+
 La valeur de départ recommandée pour l'offre gratuite est **40 questions**.
 C'est un paramètre administrable à calibrer selon la taille réelle de la banque
 et les données d'usage, notamment après les premières inscriptions. Ce nombre

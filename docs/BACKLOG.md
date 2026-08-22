@@ -1080,6 +1080,37 @@ aucun test hors journal ne bouge), puis suite complète séquentielle verte à
 **766 tests et 2 704 assertions** en 220,2 s. Aucune migration sur une base
 durable, aucun push.
 
+#### Lot 3A.6 pas 1 · la catégorie de public · livré · `52ea8f4`
+
+`audiences` est un objet de catalogue global : code figé après création,
+libellé FR **et** AR obligatoires, rang d'affichage, retrait de la sélection.
+Deux interdits du §3 de la spécification sont tenus par déclencheur et non par
+l'écran : une catégorie ne se supprime jamais — une version vendue peut la
+désigner — et son code ne se change pas, puisque des droits le désignent.
+
+**Le rattachement se pose sur la FAMILLE, pas sur la filière.** Une filière
+regroupe des concours par nature administrative, une catégorie de public
+regroupe des candidats par situation : les deux se croisent sans se contenir, et
+deux familles d'une même filière peuvent viser deux publics. C'est aussi là que
+le scénario S-11 le pose — « une famille rattachée ».
+
+L'ascendance des droits en découle et ferme **DET-87** : un droit
+`(audience, X)` couvre la famille rattachée, ses épreuves et ses nœuds à toute
+profondeur ; il ne couvre rien d'une autre catégorie, et rien d'une famille que
+personne n'a rattachée. Les familles en liste d'attente n'ont donc reçu aucun
+public : leur en inventer un aurait posé une donnée fausse dans un chemin
+d'autorisation.
+
+Le public éligible entre aux champs contractuels (Q-19) : en changer versionne,
+et la version vendue garde le public sous lequel elle a été vendue. La migration
+rattache à `crmef` les familles et les offres existantes ; les semis font de
+même pour un catalogue frais, sans quoi une installation neuve porterait des
+offres sans public.
+
+**Vérification :** 15 tests ciblés et 35 assertions, puis suite complète
+séquentielle verte à **781 tests et 2 740 assertions** en 220,6 s. Aucune
+migration sur une base durable, aucun push.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

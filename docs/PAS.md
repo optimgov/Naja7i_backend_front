@@ -111,6 +111,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | P-E | L'immuabilité des versions devient différenciée : les quatre textes se corrigent par `corriger_version_editoriale()`, qui journalise dans la même transaction sous `plans.editorial_fix` ; tout le reste, et le DELETE, lèvent toujours | `d804621` |
 | P-V | Constat en lecture seule du frontend `e89e3a9` : le paiement simulé émet `version_uuid`, la saisie de coupon non — le repli « version courante » reste donc en place et part en dette DET-90, échéance avant le lot 4 | `e58391f` |
 | P-D | Reliquats documentaires : ADR-0032 ferme Q-06 (frontière du paramétrable et règle du badge), `IMPORT-QCM-SUPERSESSION.md` repositionne le schéma d'import et consigne les cinq contrôles sans équivalent, DET-64 porte l'arbitrage D-2 coefficient 5 réversible sur pièce | `f66dfb5` |
+| 3A.6.1 | La catégorie de public devient un objet du catalogue : code figé, libellé FR/AR, création à l'écran sous `orders.validate`, rattachement depuis une famille d'épreuves et ascendance des droits d'audience — DET-87 close | `52ea8f4` |
 
 ## Lots frontend
 

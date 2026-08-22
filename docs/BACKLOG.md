@@ -1133,6 +1133,44 @@ qu'on coche soi-même ne prouve rien — et il ne se repose pas.
 composition d'une capacité privée de son libellé, puis suite complète
 séquentielle verte à **786 tests et 2 754 assertions** en 221,5 s.
 
+#### Lot 3A.6 pas 3 · composer une offre sans développeur · livré · `656ddd9`
+
+`PlanResource` est ÉTENDU, pas remplacé. Il porte désormais tout ce que la
+matrice §5 confie à l'admin commerciale : catégorie de public, textes FR/AR,
+note de catalogue interne, prix, devise, durée, calendrier de
+commercialisation, capacités, profil de quota, portée typée, mise en vente et
+rang.
+
+**Ce qui versionne suit la règle, pas le formulaire** : public éligible,
+calendrier et portée entrent aux champs contractuels ; la note interne, la mise
+en vente et le rang n'y sont pas. Le calendrier est le cas limite — il dit quand
+l'offre se voit, mais décide aussi si la souscription est possible : la matrice
+le fait versionner, et la version porte sa propre fenêtre.
+
+**Une date se compare par instant, pas par identité d'objet.** `sameContract`
+normalise : deux `Carbon` égaux comparés par `!==` auraient composé une version
+neuve à chaque lecture du catalogue, jusqu'à refuser pour « version périmée » la
+commande du candidat qui a l'écran ouvert. Un test rejoue deux lectures et
+vérifie qu'aucune version n'apparaît.
+
+**Chaque interdit du §3 a son refus serveur**, jamais un masquage : type de
+portée hors énumération (fermée en code ET en base), objet de portée inexistant
+ou archivé, couple de portée mi-nul, fenêtre fermée avant d'être ouverte,
+catégorie retirée, devise hors liste, capacité non commercialisable, profil hors
+bornes. Hors calendrier, l'offre quitte le catalogue (`Plan::enVente`) et la
+souscription lève `hors_periode` sans consommer le coupon — aucun bouton grisé.
+
+**Le champ de quota est une liste, et le test le dit mieux qu'avant.** La garde
+du lot 3A.5 refusait « tout champ dont le nom contient quota » ; elle tenait tant
+que l'écran ne sélectionnait rien. Elle vérifie maintenant que le seul champ de
+quota est `quota_profile_id`, que c'est un `Select`, que ses options sont
+exactement celles du registre pédagogique, et qu'aucun champ de valeur ou de
+borne n'existe ici. L'intention est inchangée, la garde est plus étroite.
+
+**Vérification :** 15 tests ciblés et 28 assertions, plus la garde du quota
+resserrée, puis suite complète séquentielle verte à **801 tests et 2 780
+assertions** en 226,1 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

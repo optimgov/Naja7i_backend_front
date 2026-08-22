@@ -113,6 +113,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | P-D | Reliquats documentaires : ADR-0032 ferme Q-06 (frontière du paramétrable et règle du badge), `IMPORT-QCM-SUPERSESSION.md` repositionne le schéma d'import et consigne les cinq contrôles sans équivalent, DET-64 porte l'arbitrage D-2 coefficient 5 réversible sur pièce | `f66dfb5` |
 | 3A.6.1 | La catégorie de public devient un objet du catalogue : code figé, libellé FR/AR, création à l'écran sous `orders.validate`, rattachement depuis une famille d'épreuves et ascendance des droits d'audience — DET-87 close | `52ea8f4` |
 | 3A.6.2 | La table d'affichage des capacités s'édite sans développeur — libellés et descriptions FR/AR, ordre — pendant que la liste des neuf codes reste fermée : ni création, ni suppression, et enregistrer retire le badge « à relire » (ADR-0032) | `5ec4499` |
+| 3A.6.3 | Le formulaire des offres compose tout ce que la matrice §5 autorise — public, textes FR/AR, note interne, prix et devise fermée, calendrier, capacités, profil de quota sélectionné, portée typée — et chaque interdit a son refus serveur | `656ddd9` |
 
 ## Lots frontend
 

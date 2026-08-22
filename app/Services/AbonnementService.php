@@ -228,9 +228,53 @@ final class AbonnementService
         return [
             'capabilities' => $capacites,
             'expires_at' => $echeances->all(),
+            'droits' => $this->lignesDeDroit($user),
             'quotas' => $this->enveloppesDe($user),
             'pending_orders' => Order::where('user_id', $user->id)->enAttente()->count(),
         ];
+    }
+
+    /**
+     * Les droits du compte, LIGNE PAR LIGNE, chacune avec sa date propre.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * POURQUOI DES LIGNES ET PAS UN ÉTAT « ABONNÉ »
+     *
+     * Un compte peut porter, le même jour, un palier gratuit sans terme et un
+     * droit transitoire de soixante jours. Rendre « abonné : oui » effacerait
+     * la seule chose que le candidat a besoin de savoir : ce qui s'arrête, et
+     * quand. Le scénario S-12 le dit pour trois achats croisés — « jamais un
+     * état abonné unique » — et le droit transitoire en fait un cas immédiat.
+     *
+     * UN SEVRAGE S'ANNONCE. Q-17 exige que le droit transitoire apparaisse
+     * « avec sa date de fin » : c'est cette ligne, et son libellé le nomme pour
+     * ce qu'il est — un accès de transition, pas un abonnement.
+     *
+     * Les lignes se groupent par (nature, échéance) : deux capacités ouvertes
+     * par le même geste, pour la même durée, sont une ligne — pas huit.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function lignesDeDroit(User $user): array
+    {
+        return AccessGrantRecord::where('user_id', $user->id)
+            ->active()
+            ->orderBy('capability')
+            ->get()
+            ->groupBy(fn (AccessGrantRecord $droit): string => $this->natureDe($droit)
+                .'|'.($droit->ends_at?->toIso8601String() ?? ''))
+            ->map(fn ($droits): array => [
+                'source' => $this->natureDe($droits->first()),
+                'source_label' => __('abonnement.source_'.$this->natureDe($droits->first())),
+                'expires_at' => $droits->first()->ends_at?->toIso8601String(),
+                'capabilities' => $droits->pluck('capability')->unique()->sort()->values()->all(),
+            ])
+            /* CE QUI S'ARRÊTE D'ABORD SE LIT D'ABORD. Le sans-terme ferme la
+             * liste : il n'a pas d'échéance à surveiller, et le placer en tête
+             * enterrerait la seule ligne qui demande une décision. */
+            ->sortBy(fn (array $ligne): string => $ligne['expires_at'] ?? '9999')
+            ->values()
+            ->all();
     }
 
     /**
@@ -283,7 +327,14 @@ final class AbonnementService
      */
     private function natureDe(AccessGrantRecord $droit): string
     {
-        return $droit->origin === 'purchase' ? 'achetee' : 'gratuite';
+        return match ($droit->origin) {
+            'purchase' => 'achetee',
+            /* Nommé pour ce qu'il est : un sevrage annoncé n'est ni un cadeau
+             * ni un abonnement, et le confondre avec l'un des deux ferait
+             * découvrir sa fin le jour où elle tombe (Q-17). */
+            'transition' => 'transitoire',
+            default => 'gratuite',
+        };
     }
 
     /**

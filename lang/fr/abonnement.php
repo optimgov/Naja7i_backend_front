@@ -14,6 +14,7 @@ return [
     'coupon_version_indisponible' => "Cette version de l'offre n'est plus disponible. Actualisez la page.",
     'unite_questions' => 'questions',
     'source_gratuite' => 'Offert à l’inscription',
+    'source_transitoire' => 'Accès transitoire',
     'source_achetee' => 'Inclus dans votre abonnement',
     'en_attente' => 'Votre code est en cours de validation par notre équipe.',
 ];

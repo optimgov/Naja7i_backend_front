@@ -14,6 +14,7 @@ return [
     'coupon_version_indisponible' => 'لم تعد هذه النسخة من العرض متاحة. يرجى تحديث الصفحة.',
     'unite_questions' => 'أسئلة',
     'source_gratuite' => 'ممنوح عند التسجيل',
+    'source_transitoire' => 'وصول انتقالي',
     'source_achetee' => 'مضمّن في اشتراكك',
     'en_attente' => 'رمزك قيد التحقق من طرف فريقنا.',
 ];

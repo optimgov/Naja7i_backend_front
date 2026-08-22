@@ -19,23 +19,30 @@ conservés.
 
 ---
 
-## JALON 1 — « Le produit segmenté » : les trois paliers fonctionnent
+## JALON 1 — « Le produit segmenté » : essai, conversion, épuisement
 
 *Le moteur pédagogique existe déjà ; ce jalon le met sous le modèle commercial.
-C'est la fin du chantier en cours. Horizon : jours.*
+Ordre révisé le 22 août 2026 après la décision « le gratuit est un essai » :
+**on ne segmente pas avant de savoir compter** — la consommation précède
+l'allumage, et la recette précède la base durable. Horizon : jours.*
 
 | # | Lot | Contenu | État | Dépend de |
 |---|---|---|---|---|
-| 1.1 | **3A.8 — droit transitoire** (M-006) | Pose tracée paramétrable, 60 j capacités du 600, ajustable/révocable | **Mission prête, attend lancement** | — |
-| 1.2 | **3A.9 — les murs** (M-007) | Fermer `series.targeted`, `simulator.full`, `mastery.detail`, `remediation.plan`, `memory.sessions` dans les 4 contrôleurs ; restitution graduée (carte racine pour tous) ; refus d'éligibilité par public ; champ absent, jamais grisé ; S-02/S-04/S-05/S-06 en réel | À faire | 3A.8 |
-| 1.3 | **Allumage** — l'événement d'exploitation | Rattrapage + transition + murs, exécutés dans cet ordre sur la base durable | À faire — **uniquement sur votre ordre explicite** | 3A.9 livré |
-| 1.4 | **Q-21 — audit du marqueur d'annales** puis `annales.practice` au sélecteur (S-13) | Deux mesures à zéro, sinon fiabiliser le marquage d'abord | À faire | 3A.9 |
-| 1.5 | **3B — la consommation** | Table de débit `UNIQUE(user, attempt, item)` au premier service ; composition des enveloppes (couvrantes, l'illimité gagne, reliquats) ; **coût annoncé avant composition** ; bornes anti-aspiration (N miroirs — Q-22, invariant séance mémoire) ; verrous de concurrence (S-09/S-10) | À faire | 3A.9 |
-| 1.6 | **Frontend des murs** | Abonnement ligne à ligne avec dates propres (S-03), champs absents, reliquat visible et coût annoncé, écrans candidats des trois paliers | À faire — après chaque contrat backend, jamais en même temps | 1.2, 1.5 |
+| 1.1 | **La conversion** (M-006bis) | ADR-0033 · amendements ADR-0025/0027/0029 · clôture transactionnelle de l'essai · garde double d'attribution · état dérivé · S-01 réécrit, S-17/S-18 ajoutés | **en cours** | — |
+| 1.2 | **3A.9 — les murs** (M-007) | Fermer `series.targeted`, `simulator.full`, `mastery.detail`, `remediation.plan`, `memory.sessions` dans les 4 contrôleurs ; **trois états** de restitution ; champ absent, jamais grisé ; S-02/S-05/S-06/S-19 | À faire | 1.1 |
+| 1.3 | **3B — la consommation** (M-008) | Débit idempotent `(user, tentative, item)` au premier service ; **une seule enveloppe effective** ; coût annoncé avant composition ; bornes anti-aspiration (Q-22) ; S-09/S-10 | À faire | 1.2 |
+| 1.4 | **Frontend des trois états** (M-009) | Abonnement, tableau de bord, catalogue ; appel à l'action « renouveler » ; **jamais de retour au gratuit** | À faire — après chaque contrat backend, jamais en même temps | 1.2, 1.3 |
+| 1.5 | **Recette de bout en bout** (M-010) | Essai → conversion → épuisement → renouvellement, sans retour au gratuit, en concurrence | À faire | 1.4 |
+| 1.6 | **L'allumage** (M-011) | Rattrapage puis murs, sur la base durable — **en dernier**, après la consommation et la recette | À faire — **uniquement sur votre ordre explicite** | 1.5 |
 
-**Décisions propriétaire de ce jalon :** l'**ordre d'allumage** (1.3) · **Q-22**
-(miroirs par couple — reco : 3, paramètre borné) · confirmation **D-3/Q-21** si
-le marqueur s'avère lacunaire.
+**Le droit transitoire est livré mais DORMANT.** Le lot 3A.8 existe, testé
+(`1c08918` → `693ecd5`) ; il n'est posé sur aucune base. Sa pose appartient à
+l'allumage — **qui passe après la consommation, sans quoi un gratuit annoncé
+limité resterait illimité**. Il ne convertit pas et ne se pose jamais sur un
+compte converti (ADR-0033).
+
+**Décisions propriétaire de ce jalon :** l'**ordre d'allumage** (1.6) · **Q-22**
+(miroirs par couple — reco : 3, paramètre borné).
 
 ---
 

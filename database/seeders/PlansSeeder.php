@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Contracts\AccessGrant;
 use App\Models\Audience;
 use App\Models\Plan;
+use App\Models\QuotaProfile;
 use Illuminate\Database\Seeder;
 
 /**
@@ -26,6 +27,34 @@ class PlansSeeder extends Seeder
             AccessGrant::CAUSE_REVEAL,
             AccessGrant::SERIES_TARGETED,
             AccessGrant::SIMULATOR_FULL,
+        ];
+
+        /*
+         * LE PORTEUR DU GRATUIT — ADR-0025.
+         *
+         * Une offre comme les autres, semée par le même chemin : c'est le point
+         * de l'ADR. Prix RÉELLEMENT zéro — pas une remise, pas un paiement nul
+         * déguisé — durée vide, donc droit SANS TERME, et une seule capacité :
+         * répondre aux questions. Son enveloppe vient du profil pédagogique
+         * « Découverte » du registre, dont la version figera l'instantané
+         * (M-003). Elle ne paraît pas au catalogue : elle se reçoit.
+         *
+         * Les quatre nombres du quota ne sont pas ici et n'y seront jamais : ils
+         * appartiennent au registre pédagogique, et ce semis SÉLECTIONNE un
+         * profil comme le ferait l'admin commerciale à l'écran.
+         */
+        $gratuite = [
+            'code' => 'decouverte-gratuite',
+            'name_fr' => 'Découverte',
+            'name_ar' => 'الاكتشاف',
+            'description_fr' => 'Ce que chaque compte reçoit à l’inscription : de quoi voir '
+                .'la méthode à l’œuvre sur ses propres réponses.',
+            'description_ar' => 'ما يحصل عليه كل حساب عند التسجيل: ما يكفي لرؤية الطريقة '
+                .'وهي تشتغل على أجوبته الخاصة.',
+            'price_cents' => 0,
+            'duration_days' => null,
+            'capabilities' => [AccessGrant::QUESTIONS_ANSWER],
+            'position' => 0,
         ];
 
         $plans = [
@@ -79,5 +108,16 @@ class PlansSeeder extends Seeder
                 $plan + ['currency' => 'MAD', 'active' => true, 'audience_id' => $public],
             );
         }
+
+        Plan::updateOrCreate(
+            ['code' => $gratuite['code']],
+            $gratuite + [
+                'currency' => 'MAD',
+                'active' => true,
+                'auto_granted' => true,
+                'audience_id' => $public,
+                'quota_profile_id' => QuotaProfile::where('code', 'decouverte')->value('id'),
+            ],
+        );
     }
 }

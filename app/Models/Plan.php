@@ -132,7 +132,7 @@ class Plan extends Model
         'code', 'audience_id', 'name_fr', 'name_ar', 'description_fr', 'description_ar',
         'internal_note', 'price_cents', 'currency', 'duration_days',
         'sale_opens_at', 'sale_closes_at', 'capabilities',
-        'quota_profile_id', 'scope_type', 'scope_uuid', 'active', 'position',
+        'quota_profile_id', 'scope_type', 'scope_uuid', 'active', 'auto_granted', 'position',
     ];
 
     protected $hidden = ['id'];
@@ -142,6 +142,7 @@ class Plan extends Model
         return [
             'capabilities' => 'array',
             'active' => 'boolean',
+            'auto_granted' => 'boolean',
             'price_cents' => 'integer',
             'duration_days' => 'integer',
             'sale_opens_at' => 'datetime',
@@ -181,6 +182,12 @@ class Plan extends Model
         return $this->hasOne(PlanVersion::class, 'id', 'current_version_id');
     }
 
+    /** Le porteur du gratuit — au plus un, l'index unique partiel le tient. */
+    public function scopeAutoGranted(Builder $query): Builder
+    {
+        return $query->where('auto_granted', true);
+    }
+
     /** Ce qui n'a pas été retiré de la vente. */
     public function scopeActive(Builder $query): Builder
     {
@@ -197,6 +204,11 @@ class Plan extends Model
     public function scopeEnVente(Builder $query): Builder
     {
         return $query->active()
+            /* Le gratuit ne se vend pas : il se reçoit. Le laisser au catalogue
+             * commercial ferait cliquer « souscrire » sur ce que le compte
+             * possède déjà (ADR-0028 : rien de gratuit ne ressemble à une
+             * vente). */
+            ->where('auto_granted', false)
             ->where(fn (Builder $q) => $q->whereNull('sale_opens_at')->orWhere('sale_opens_at', '<=', now()))
             ->where(fn (Builder $q) => $q->whereNull('sale_closes_at')->orWhere('sale_closes_at', '>', now()));
     }

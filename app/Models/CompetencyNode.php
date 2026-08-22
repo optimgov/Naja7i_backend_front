@@ -26,7 +26,7 @@ class CompetencyNode extends Model
         'exam_family_id', 'exam_id', 'parent_id', 'code',
         'name_fr', 'name_ar', 'description_fr', 'description_ar',
         'depth', 'path', 'position',
-        'weight_percent', 'source_id', 'provenance',
+        'weight_percent', 'weight_justification', 'source_id', 'provenance',
     ];
 
     protected $hidden = ['id', 'exam_family_id', 'exam_id', 'source_id', 'parent_id'];

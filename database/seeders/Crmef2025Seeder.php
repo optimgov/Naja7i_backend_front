@@ -429,22 +429,44 @@ class Crmef2025Seeder extends Seeder
     }
 
     /** @param  array<int, array{0:string,1:string,2:string,3:int,4:array}>  $domaines */
+    /**
+     * LE SEMIS DIT DÉSORMAIS CE QU'IL SAIT, ET RIEN DE PLUS — lot TAXO.
+     *
+     * Il écrivait `official`. La migration 000530 existait précisément pour
+     * défaire cela après coup : « aucun cadre de référence n'est dans les
+     * 33 fichiers », et un poids dont personne n'a lu la pièce n'est pas
+     * officiel. Un semis qui affirme une chose qu'une migration s'empresse de
+     * démentir est un semis qui ment deux minutes — le déclencheur du lot TAXO
+     * le refuse maintenant à la source, ce qui est mieux.
+     *
+     * `reported` est le mot juste : une origine identifiée, datée, paginée,
+     * jamais vue. La justification l'écrit en toutes lettres plutôt que de
+     * laisser croire à une valeur d'architecte.
+     *
+     * CE SEMIS NE DÉCIDE TOUJOURS AUCUN ARBRE : la découpe et les poids sont
+     * inchangés, seule leur ÉTIQUETTE cesse d'être fausse.
+     */
+    private const POIDS_RAPPORTE = 'Poids rapporté par le descriptif de l\'épreuve, dont la pièce '
+        .'n\'a pas été vérifiée dans ce dépôt (DET-60). Repris tel quel : rien ne le contredit.';
+
     private function arbre(Exam $exam, Source $source, array $domaines): void
     {
         foreach ($domaines as $i => [$code, $fr, $ar, $poids, $enfants]) {
             $parent = CompetencyNode::create([
                 'exam_id' => $exam->id, 'parent_id' => null,
                 'code' => $code, 'name_fr' => $fr, 'name_ar' => $ar,
-                'weight_percent' => $poids, 'source_id' => $source->id,
-                'provenance' => 'official', 'position' => $i + 1,
+                'weight_percent' => $poids, 'weight_justification' => self::POIDS_RAPPORTE,
+                'source_id' => $source->id,
+                'provenance' => 'reported', 'position' => $i + 1,
             ]);
 
             foreach ($enfants as $j => [$codeEnfant, $frEnfant, $arEnfant, $poidsEnfant]) {
                 CompetencyNode::create([
                     'exam_id' => $exam->id, 'parent_id' => $parent->id,
                     'code' => $codeEnfant, 'name_fr' => $frEnfant, 'name_ar' => $arEnfant,
-                    'weight_percent' => $poidsEnfant, 'source_id' => $source->id,
-                    'provenance' => 'official', 'position' => $j + 1,
+                    'weight_percent' => $poidsEnfant, 'weight_justification' => self::POIDS_RAPPORTE,
+                    'source_id' => $source->id,
+                    'provenance' => 'reported', 'position' => $j + 1,
                 ]);
             }
         }

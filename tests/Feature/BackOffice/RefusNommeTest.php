@@ -112,6 +112,10 @@ class RefusNommeTest extends TestCase
             /* L'autorité pédagogique de la plateforme, qui porte déjà
              * `questions.validate` et `taxonomy.manage`. */
             'quotas.manage' => 'editeur',
+            /* L'arbre de compétences appartient à la même autorité pédagogique :
+             * `taxonomy.manage` est attachée au rôle `editeur` depuis le PAS-1,
+             * et le lot TAXO lui donne enfin une surface. */
+            'taxonomy.manage' => 'editeur',
             /* Écrire dans le catalogue commercial — composer une offre, poser
              * un droit transitoire — engage l'argent au même titre que valider
              * un coupon (`PlanPolicy`). */
@@ -123,6 +127,8 @@ class RefusNommeTest extends TestCase
             'members.view' => 'auteur',
             /* Celle qui vend ne borne pas : c'est tout l'objet du partage. */
             'quotas.manage' => 'finance',
+            /* Ni ne redécoupe l'arbre d'une épreuve. */
+            'taxonomy.manage' => 'finance',
             /* L'autorité éditoriale ne distribue pas de droits commerciaux. */
             'orders.validate' => 'editeur',
         ];

@@ -1171,6 +1171,44 @@ borne n'existe ici. L'intention est inchangée, la garde est plus étroite.
 resserrée, puis suite complète séquentielle verte à **801 tests et 2 780
 assertions** en 226,1 s.
 
+#### Lot 3A.6 pas 4 · l'historique et ses dépendances · livré · `921c1ad`
+
+Le journal des versions existe depuis 3A.4 ; ce pas l'EXPOSE et complète les
+deux colonnes que la spécification §2.6 demandait sans qu'elles existent :
+`composed_by` — nullable, parce que trois compositions n'ont pas d'auteur humain
+et lui en fabriquer un serait la première ligne fausse du journal — et
+`triggered_by`, liste fermée par `<@` sur le vocabulaire des champs
+contractuels, au pluriel parce qu'un enregistrement peut en changer deux à la
+fois.
+
+Le panneau des versions rend, par version : numéro, date d'effet, auteur, champs
+déclencheurs, prix, **commandes qui la référencent, droits qui en découlent et
+droits encore actifs**. Les deux derniers nombres ne disent pas la même chose —
+un droit expiré reste une dépendance. C'est cette lecture qui rend le §3
+compréhensible plutôt que frustrant : un refus de modification qu'on ne peut pas
+expliquer se lit comme une panne.
+
+Les droits se comptent par la chaîne commande → octroi, sans dénormalisation :
+`origin_reference` porte l'uuid de la commande. La sous-requête cast
+explicitement (`uuid::text`), la colonne étant une chaîne qui accueille aussi
+des références de dossier support.
+
+Le bouton « corriger une coquille » APPELLE le canal éditorial de M-003 : champ
+choisi dans la liste des quatre textes, motif obligatoire, journal écrit dans la
+même transaction. Il n'apparaît que sous `plans.editorial_fix` — et s'il
+apparaissait à tort, la fonction SQL refuserait quand même. Aucune version ne se
+crée ni ne se supprime depuis l'écran.
+
+**Une fuite de traduction fermée en chemin** : le panneau est la première
+surface à rendre une section repliable, et `filament/support` ne traduit pas
+`components/section` en français. `fallback_locale` valant `fr`, la clé
+s'imprimait au lieu de se résoudre. Les six fichiers manquants du paquet sont
+désormais traduits — même correctif que celui déjà appliqué aux dix autres
+paquets Filament.
+
+**Vérification :** 8 tests ciblés et 43 assertions, puis suite complète
+séquentielle verte à **809 tests et 2 823 assertions** en 227,6 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

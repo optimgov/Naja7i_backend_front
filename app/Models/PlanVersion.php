@@ -81,9 +81,10 @@ class PlanVersion extends Model
     /**
      * Les droits issus de cette version, par la chaîne commande → octroi.
      *
-     * `origin_reference` porte l'uuid de la commande : c'est ce qui rend la
-     * chaîne relisible, et c'est par là qu'on répond à « combien de droits
-     * dépendent de cette version » sans dénormaliser quoi que ce soit.
+     * `origin_reference` porte l'uuid de la commande — ou celui de la VERSION
+     * quand le droit vient du palier gratuit, qui n'a pas de commande. C'est ce
+     * qui rend la chaîne relisible, et c'est par là qu'on répond à « combien de
+     * droits dépendent de cette version » sans dénormaliser quoi que ce soit.
      */
     public function droitsIssus(): Builder
     {
@@ -91,8 +92,15 @@ class PlanVersion extends Model
          * d'une commande qu'une référence de dossier support — tandis que
          * `orders.uuid` est un `uuid` PostgreSQL. La sous-requête cast donc
          * explicitement : sans cela, l'opérateur n'existe pas. */
-        return AccessGrantRecord::query()
-            ->whereIn('origin_reference', $this->orders()->selectRaw('uuid::text'));
+        return AccessGrantRecord::query()->where(function (Builder $requete): void {
+            $requete
+                ->whereIn('origin_reference', $this->orders()->selectRaw('uuid::text'))
+                /* Le palier gratuit n'a pas de commande : il est auto-attribué,
+                 * et son octroi référence directement la version (ADR-0025).
+                 * L'ignorer ferait dire à l'écran qu'une version distribuée à
+                 * dix mille comptes n'a aucune dépendance. */
+                ->orWhere('origin_reference', (string) $this->uuid);
+        });
     }
 
     /** Les coquilles corrigées sur cette version — en ajout seul. */

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\AccessGrant;
 use App\Models\AccessGrantRecord;
 use App\Models\Order;
+use App\Models\PlanVersion;
 use App\Models\User;
 use App\Support\CapabilityRegistry;
 use Illuminate\Support\Carbon;
@@ -80,31 +81,13 @@ final class AbonnementService
             $version = $verrouillee->planVersion()->firstOrFail();
             $maintenant = now();
 
-            foreach ($this->capacitesDe($version->capabilities) as $capacite) {
-                $depart = $this->departDe($verrouillee->user_id, $capacite, $maintenant);
-
-                AccessGrantRecord::create([
-                    'user_id' => $verrouillee->user_id,
-                    'capability' => $capacite,
-                    'scope_uuid' => null,
-                    'starts_at' => $depart,
-                    'ends_at' => $version->duration_days === null
-                        ? null
-                        : $depart->copy()->addDays($version->duration_days),
-                    'origin' => 'purchase',
-                    'origin_reference' => $verrouillee->uuid,
-                    'note' => "Plan {$plan->code} v{$version->version}",
-                    /*
-                     * L'ENVELOPPE VIENT DE LA VERSION, JAMAIS DU PROFIL.
-                     *
-                     * `quota_profiles` est amendable : le relire ici livrerait
-                     * à une commande d'hier la valeur d'aujourd'hui, ce qui est
-                     * le défaut V-3 sous un autre nom. La version porte
-                     * l'instantané figé à sa composition — c'est ce qui a été
-                     * vendu, et c'est ce qui s'ouvre.
-                     */
-                ] + $version->enveloppePour($capacite));
-            }
+            $this->octroyerLesDroits(
+                $verrouillee->user_id,
+                $version,
+                'purchase',
+                $verrouillee->uuid,
+                "Plan {$plan->code} v{$version->version}",
+            );
 
             $verrouillee->update([
                 'status' => 'honoree',
@@ -115,6 +98,68 @@ final class AbonnementService
 
             return $verrouillee->fresh();
         });
+    }
+
+    /**
+     * POSER LES OCTROIS D'UNE VERSION — le seul endroit qui le fait.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * POURQUOI CETTE MÉTHODE EXISTE
+     *
+     * Un achat et une inscription ouvrent le même genre de droit : une capacité
+     * par ligne, l'échéance calculée sur la durée de la VERSION, l'enveloppe
+     * lue sur son instantané. Ce qui diffère tient en trois chaînes — l'origine,
+     * la référence et la note. Laisser l'attribution gratuite écrire ses propres
+     * `AccessGrantRecord::create()` aurait produit un SECOND CIRCUIT D'OCTROI :
+     * deux façons subtilement différentes d'ouvrir un droit, et la troisième
+     * révélerait les écarts des deux premières un an plus tard.
+     *
+     * L'ORIGINE EST UN PARAMÈTRE, PAS UNE CONSTANTE : `purchase` pour un achat,
+     * `account_level` pour ce que le compte reçoit à l'inscription,
+     * `rattrapage` pour ce qu'une commande d'administration pose après coup.
+     * Aucun agrégat de vente ne doit compter un droit que personne n'a acheté.
+     *
+     * @return int le nombre d'octrois posés
+     */
+    public function octroyerLesDroits(
+        int $userId,
+        PlanVersion $version,
+        string $origine,
+        string $reference,
+        string $note,
+    ): int {
+        $maintenant = now();
+        $poses = 0;
+
+        foreach ($this->capacitesDe($version->capabilities) as $capacite) {
+            $depart = $this->departDe($userId, $capacite, $maintenant);
+
+            AccessGrantRecord::create([
+                'user_id' => $userId,
+                'capability' => $capacite,
+                'scope_uuid' => null,
+                'starts_at' => $depart,
+                'ends_at' => $version->duration_days === null
+                    ? null
+                    : $depart->copy()->addDays($version->duration_days),
+                'origin' => $origine,
+                'origin_reference' => $reference,
+                'note' => $note,
+                /*
+                 * L'ENVELOPPE VIENT DE LA VERSION, JAMAIS DU PROFIL.
+                 *
+                 * `quota_profiles` est amendable : le relire ici livrerait
+                 * à une commande d'hier la valeur d'aujourd'hui, ce qui est
+                 * le défaut V-3 sous un autre nom. La version porte
+                 * l'instantané figé à sa composition — c'est ce qui a été
+                 * vendu, et c'est ce qui s'ouvre.
+                 */
+            ] + $version->enveloppePour($capacite));
+
+            $poses++;
+        }
+
+        return $poses;
     }
 
     /**

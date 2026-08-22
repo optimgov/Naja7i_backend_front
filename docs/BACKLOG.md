@@ -1508,6 +1508,41 @@ coupon/simulé, rejeu, succession), trois mutations éprouvées **chacune rougis
 exactement un test**, puis suite complète séquentielle verte à **892 tests et
 3 245 assertions** en 238,2 s.
 
+#### Lot 3A.9 pas 0 · la garde du catalogue · livré · `869b630`
+
+**Ce lot-ci transforme un catalogue mal composé en incident candidat**, et c'est
+ce qui rend ces deux gardes préalables au reste. La note
+`NOTE-CATALOGUE-TROIS-PALIERS` avait mesuré l'écart sans y toucher — composer
+une offre est une décision commerciale, rendue administrable précisément pour
+qu'un développeur n'ait pas à la prendre. Ce pas ne compose rien non plus : il
+pose ce qui relève du code.
+
+**L'ADR-0032 sépare les deux moitiés**, et elles ne se traitent pas pareil.
+
+*Un mauvais produit s'avertit.* Depuis l'ADR-0033, la première commande honorée
+clôt définitivement l'essai. Une offre **payante** qui ne compose pas
+`questions.answer` fait donc **payer pour perdre l'accès principal**, que seul
+l'essai donnait. L'écran des offres le dit désormais en toutes lettres, dans les
+mots du produit — et ne bloque pas : un module d'entraînement vendu seul peut
+être un choix légitime demain. La règle et son texte vivent au **registre**
+(`CapabilityRegistry::ACCES_PRINCIPAL`, `avertissementsDeComposition`), pas dans
+l'écran : une règle produit écrite dans une vue meurt à la deuxième vue.
+L'offre gratuite ne la déclenche jamais — elle ne clôt aucun essai, elle EST
+l'essai.
+
+*Un état que le domaine interdit se refuse.* « Le palier le plus complet du
+catalogue » était une **devinette**, et la mesure du 22 août l'a démentie sur
+pièce : aucune offre ne composant les huit capacités, ce défaut aurait posé
+**trois** capacités en se présentant comme « équivalent au palier 600 ». Un droit
+qui ment sur ce qu'il égale n'est pas un paramètre discutable. L'offre de
+référence devient donc obligatoire dans les **trois canaux** — service, écran,
+commande — et le refus dit en clair qu'il n'y a pas de repli, parce qu'un refus
+muet se lit comme une panne.
+
+**Vérification :** 9 tests ciblés et 33 assertions ; mutation éprouvée — rétablir
+le repli fait rougir les trois tests de refus, un par canal, et eux seuls ; puis
+suite complète séquentielle verte à **901 tests et 3 278 assertions** en 243,4 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

@@ -33,5 +33,14 @@ return [
      */
     'simulation_base_de_notation_rapportee' => "Cette note porte sur une série composée selon les poids des domaines rapportés par le descriptif de l'épreuve, que nous n'avons pas pu vérifier sur pièce. Elle mesure ce que vous avez démontré aujourd'hui, sur cette série.",
     'simulation_bareme_non_officiel' => "Le barème officiel du concours n'est pas public : cette note est exprimée en pourcentage pondéré, elle n'est pas une note sur 20.",
+    /*
+     * LE REFUS DU MUR PAYANT — lot 3A.9.
+     *
+     * Il nomme ce qui l'ouvrirait, et rien de plus : ni prix, ni palier, ni
+     * « à partir de ». Le catalogue porte les offres et leurs montants ; les
+     * répéter ici les ferait vieillir dans un fichier de langue.
+     */
+    'capacite_requise' => "Cette fonction n'est pas comprise dans votre accès actuel : elle demande « :capacite ». Le catalogue des offres indique lesquelles l'ouvrent.",
+
     'tentative_expiree' => "Le temps imparti est écoulé. Cette réponse n'a pas été enregistrée, et l'épreuve a été clôturée.",
 ];

@@ -15,6 +15,7 @@ use App\Services\CauseRevealService;
 use App\Services\CouvertureBanque;
 use App\Services\MemoryScheduler;
 use App\Support\ApiError;
+use App\Support\MurPayant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -62,6 +63,22 @@ class MemoireController extends Controller
         }
 
         $user = $request->user();
+
+        /*
+         * LE CUL-DE-SAC QU'ON REFUSE DE CONSTRUIRE — lot 3A.9.
+         *
+         * Sans `memory.sessions`, la réponse ne porte NI liste NI compteur.
+         * Annoncer « 42 dus » à qui ne peut pas ouvrir de séance est la
+         * définition même d'une porte qui montre sans ouvrir : le candidat
+         * apprend qu'il a du retard et n'a aucun geste à faire. Les échéances
+         * restent en base — elles sont son histoire — mais rien n'en sort.
+         *
+         * Le champ n'est pas vidé, il est ABSENT : un `due_total` à zéro
+         * mentirait sur la mesure autant qu'un tableau vide.
+         */
+        if (! MurPayant::ouvre($this->access, $user, AccessGrant::MEMORY_SESSIONS, $exam)) {
+            return response()->json(['meta' => ['exam_code' => $exam->code]]);
+        }
 
         $echus = $this->memory->dueCount($user, $exam->id);
         $rendezVous = $echus === 0 ? collect() : $this->memory->due($user, $exam->id);
@@ -123,6 +140,14 @@ class MemoireController extends Controller
         }
 
         $user = $request->user();
+
+        /* L'ACTION SE REFUSE, ELLE. Une séance écrit — une tentative, des
+         * items servis. Le client ne propose plus le geste ; le serveur ne se
+         * contente pas de compter là-dessus. */
+        if (! MurPayant::ouvre($this->access, $user, AccessGrant::MEMORY_SESSIONS, $exam)) {
+            return MurPayant::refus(AccessGrant::MEMORY_SESSIONS);
+        }
+
         $cle = $request->header('Idempotency-Key') ?: (string) Str::uuid7();
 
         try {

@@ -25,6 +25,7 @@ use App\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Concerns\OuvreLesDroits;
 use Tests\TestCase;
 
 /**
@@ -35,7 +36,7 @@ use Tests\TestCase;
  */
 class RendezVousMemoireTest extends TestCase
 {
-    use RefreshDatabase;
+    use OuvreLesDroits, RefreshDatabase;
 
     private Exam $epreuve;
 
@@ -59,6 +60,11 @@ class RendezVousMemoireTest extends TestCase
         $this->valideur = $this->utilisateur('valideur@naja7i.ma');
         $this->candidat = $this->utilisateur('candidat@naja7i.ma');
         $this->candidat->grantCandidateRole();
+
+        /* Ce fichier porte sur la MÉCANIQUE du rendez-vous mémoire — ce qui est
+         * échu, ce qu'une séance sert, ce qu'elle annonce. Le mur de 3A.9 a ses
+         * propres tests ; ici on ouvre le droit et on va au sujet. */
+        $this->ouvrirLesDroits($this->candidat, AccessGrant::MEMORY_SESSIONS);
 
         /* Les routes du parcours exigent un e-mail vérifié. `email_verified_at`
          * n'est pas assignable en masse — on passe par le contrat. */

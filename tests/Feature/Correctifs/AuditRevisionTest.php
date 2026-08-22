@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Correctifs;
 
+use App\Contracts\AccessGrant;
 use App\Models\Attempt;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
@@ -19,6 +20,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Concerns\OuvreLesDroits;
 use Tests\TestCase;
 
 /**
@@ -46,7 +48,7 @@ class AuditRevisionTest extends TestCase
      *
      * Même raisonnement, et même prix, qu'à `CorrectifsContreRevueTest`.
      */
-    use DatabaseMigrations;
+    use DatabaseMigrations, OuvreLesDroits;
 
     private Exam $epreuve;
 
@@ -72,6 +74,13 @@ class AuditRevisionTest extends TestCase
         $this->candidat = $this->utilisateur('candidat@naja7i.ma');
         $this->candidat->grantCandidateRole();
         $this->candidat->markEmailAsVerified();
+
+        /* Cet audit porte sur la RÉVISION et l'ENTRAÎNEMENT eux-mêmes — sœurs
+         * resservies, sessions concurrentes, clés rejouées. Les deux fonctions
+         * se vendent depuis 3A.9 : on ouvre le droit pour rester sur le sujet. */
+        $this->ouvrirLesDroits(
+            $this->candidat, AccessGrant::MEMORY_SESSIONS, AccessGrant::SERIES_TARGETED,
+        );
     }
 
     private function utilisateur(string $email): User

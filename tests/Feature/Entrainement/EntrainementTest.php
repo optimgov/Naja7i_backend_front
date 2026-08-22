@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Entrainement;
 
+use App\Contracts\AccessGrant;
 use App\Exceptions\TrainingScopeTooNarrow;
 use App\Models\Attempt;
 use App\Models\CompetencyNode;
@@ -20,6 +21,7 @@ use App\Services\RemediationPlanner;
 use App\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Concerns\OuvreLesDroits;
 use Tests\TestCase;
 
 /**
@@ -32,7 +34,7 @@ use Tests\TestCase;
  */
 class EntrainementTest extends TestCase
 {
-    use RefreshDatabase;
+    use OuvreLesDroits, RefreshDatabase;
 
     private Exam $epreuve;
 
@@ -52,6 +54,10 @@ class EntrainementTest extends TestCase
 
         $this->candidat = $this->utilisateur('candidat@naja7i.ma');
         $this->candidat->grantCandidateRole();
+
+        /* La série ciblée se vend depuis 3A.9 ; ce fichier éprouve sa
+         * composition, pas son mur. */
+        $this->ouvrirLesDroits($this->candidat, AccessGrant::SERIES_TARGETED);
         $this->valideur = $this->utilisateur('valideur@naja7i.ma');
     }
 

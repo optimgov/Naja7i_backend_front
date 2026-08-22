@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Simulation;
 
+use App\Contracts\AccessGrant;
 use App\Exceptions\AttemptExpired;
 use App\Exceptions\IdempotencyKeyReused;
 use App\Models\Attempt;
@@ -21,6 +22,7 @@ use App\Tenancy\TenantContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Concerns\OuvreLesDroits;
 use Tests\TestCase;
 
 /**
@@ -32,7 +34,7 @@ use Tests\TestCase;
  */
 class SimulationTest extends TestCase
 {
-    use RefreshDatabase;
+    use OuvreLesDroits, RefreshDatabase;
 
     private Exam $epreuve;
 
@@ -45,6 +47,10 @@ class SimulationTest extends TestCase
 
         $this->epreuve = Exam::where('code', 'CRMEF-SE-2025')->firstOrFail();
         $this->candidat = $this->compte('candidat@naja7i.ma');
+
+        /* L'examen blanc se vend depuis 3A.9 : ce fichier éprouve ce qu'il
+         * compose et ce qu'il rapporte, pas le mur qui l'ouvre. */
+        $this->ouvrirLesDroits($this->candidat, AccessGrant::SIMULATOR_FULL);
 
         $this->peuplerBanque(6);
     }

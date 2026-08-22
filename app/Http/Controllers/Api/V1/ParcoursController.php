@@ -24,6 +24,7 @@ use App\Services\QuestionsSoeurs;
 use App\Services\RemediationPlanner;
 use App\Services\TrainingComposer;
 use App\Support\ApiError;
+use App\Support\MurPayant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -119,6 +120,22 @@ class ParcoursController extends Controller
         }
 
         $user = $request->user();
+
+        /*
+         * LA SÉRIE CIBLÉE EST VENDUE — lot 3A.9.
+         *
+         * Le refus vient AVANT le calcul du périmètre : composer une série pour
+         * la refuser ensuite ferait travailler le serveur pour rien, et pourrait
+         * rendre « périmètre trop étroit » à quelqu'un dont le vrai obstacle est
+         * ailleurs. Le premier refus qui s'applique est celui qu'on dit.
+         *
+         * Sans ordonnance, un compte d'essai n'a de toute façon pas de cible à
+         * travailler : ces deux murs vont ensemble.
+         */
+        if (! MurPayant::ouvre($this->access, $user, AccessGrant::SERIES_TARGETED, $exam)) {
+            return MurPayant::refus(AccessGrant::SERIES_TARGETED);
+        }
+
         $total = $validated['total'] ?? 15;
 
         $noeuds = $this->perimetre($user, $exam, $validated['node_uuid'] ?? null);

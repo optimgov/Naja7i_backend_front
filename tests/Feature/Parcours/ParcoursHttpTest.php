@@ -581,6 +581,15 @@ class ParcoursHttpTest extends TestCase
 
     public function test_l_ordonnance_rappelle_qu_aucune_prediction_n_est_produite(): void
     {
+        /* L'ordonnance se vend depuis 3A.9. Ce test porte sur l'AVERTISSEMENT
+         * qu'elle transporte (METHODE §7.3) — il lui faut donc une ordonnance ;
+         * ce que voit un compte qui ne l'a pas est tenu par `MursDuPalierTest`. */
+        AccessGrantRecord::create([
+            'user_id' => $this->candidat->id,
+            'capability' => AccessGrant::REMEDIATION_PLAN,
+            'starts_at' => now()->subDay(), 'origin' => 'purchase',
+        ]);
+
         $this->actingAs($this->candidat)
             ->getJson("/api/v1/me/plan/{$this->epreuve->code}")
             ->assertOk()

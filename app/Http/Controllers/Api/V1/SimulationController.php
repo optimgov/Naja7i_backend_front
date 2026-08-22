@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Contracts\AccessGrant;
 use App\Exceptions\IdempotencyKeyReused;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AttemptResource;
@@ -12,6 +13,7 @@ use App\Services\AttemptService;
 use App\Services\DiagnosticComposer;
 use App\Services\SimulationReport;
 use App\Support\ApiError;
+use App\Support\MurPayant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -27,7 +29,9 @@ use RuntimeException;
  * révision n'en ont aucune. Mêler les deux surfaces ferait de l'échéance une
  * option parmi d'autres, alors qu'elle est ici la raison d'être.
  *
- * 404, jamais 403 : la tentative d'un autre candidat est introuvable.
+ * 404, jamais 403 : la tentative d'un autre candidat est introuvable. Le refus
+ * du mur payant, lui, est un 403 nommé — il n'y a rien à énumérer, la fonction
+ * est au catalogue (voir `MurPayant`).
  */
 class SimulationController extends Controller
 {
@@ -35,6 +39,7 @@ class SimulationController extends Controller
         private readonly AttemptService $attempts,
         private readonly DiagnosticComposer $composer,
         private readonly SimulationReport $report,
+        private readonly AccessGrant $access,
     ) {}
 
     /**
@@ -57,6 +62,25 @@ class SimulationController extends Controller
         }
 
         $user = $request->user();
+
+        /*
+         * L'EXAMEN BLANC EST VENDU — lot 3A.9.
+         *
+         * C'est le chemin le plus coûteux en items du produit : vingt questions
+         * publiées, servies d'un coup, sur la durée officielle de l'épreuve.
+         *
+         * Le refus passe AVANT la durée et avant la banque, et l'ordre n'est pas
+         * indifférent : « la durée officielle n'est pas établie » enverrait le
+         * candidat chercher un défaut de référentiel là où il n'y a qu'un
+         * palier. Le premier obstacle réel est celui qu'on nomme.
+         *
+         * `show()` ne porte AUCUN mur : un rapport déjà produit est un livrable
+         * acquis, et le retirer serait reprendre ce qui a été payé.
+         */
+        if (! MurPayant::ouvre($this->access, $user, AccessGrant::SIMULATOR_FULL, $exam)) {
+            return MurPayant::refus(AccessGrant::SIMULATOR_FULL);
+        }
+
         $total = $validated['total'] ?? config('naja7i.simulation.default_question_count');
 
         /*

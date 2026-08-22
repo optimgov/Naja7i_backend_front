@@ -1463,6 +1463,51 @@ journal est le seul endroit où cet ordre reste vérifiable après coup.
 séquentielle verte à **883 tests et 3 208 assertions** en 237,0 s. Les trois
 mutations de la mission sont éprouvées — détail au retour.
 
+#### Conversion · le gratuit est un essai · livré · `1d49ff6`
+
+**Une écriture de date suffit à tout fermer.** `DatabaseAccessGrant::allows()`
+est un `exists()` sur les octrois actifs, sans priorité ni catégorie : un essai
+non clos continuerait d'ouvrir `questions.answer` sous un abonnement payant, et
+3B devrait choisir laquelle des deux enveloppes débiter. Poser `ends_at` suffit —
+`scopeActive()` l'exclut, la résolution ne le voit plus. La simplification
+s'obtient sans refonte.
+
+**Dans la transaction qui ouvre le forfait, et avant l'octroi.** Si l'octroi
+échoue, la clôture est annulée avec lui : le candidat ne se retrouve jamais sans
+droit du tout, ce qui serait le pire des trois états.
+
+**« Payante » se lit sur la MÉTHODE, jamais sur le montant.** Le coupon convertit
+(D-C) — c'est l'activation manuelle d'un forfait payé hors ligne. Le paiement
+simulé ne convertit pas : il n'existe pas en production, et le laisser clore un
+essai ferait perdre en recette ce qu'aucun candidat n'a acheté. Un montant nul
+n'est pas un critère : une offre à zéro peut être un forfait réel.
+
+**La garde d'attribution est double et lit des faits DURABLES** : ni essai déjà
+reçu, ni conversion déjà survenue. Sans le second terme, un compte qui a payé
+sans jamais être passé par l'essai en recevrait un neuf au premier rattrapage.
+La preuve est la ligne d'essai close — qui porte la référence de la commande —
+et, pour les comptes d'avant l'offre gratuite, la commande honorée elle-même,
+lue **hors scope tenant** : « cette personne a déjà payé » est un fait de la
+personne, pas l'activité d'un organisme, et le compte suit la personne (DET-24).
+
+**L'état se déduit, il ne se stocke pas** : `essai`, `actif`, `epuise`. Une
+colonne divergerait au premier `ends_at` — l'expiration d'un forfait n'écrit
+rien, elle laisse une date passer. L'écran rend l'état, son libellé et, pour un
+compte épuisé, **sa sortie** : renouveler ou changer de forfait, jamais un
+retour à l'essai. La nature `gratuite` devient `essai` — le mot dit ce que le
+droit EST plutôt que ce qu'il coûte.
+
+**Un test livré en M-005 a été réécrit, et c'est le point à relire** : il
+faisait cohabiter l'essai et un achat, cas que la règle nouvelle rend
+impossible. Il garde désormais la même règle — deux enveloppes ne s'additionnent
+jamais — entre droits PAYANTS successifs, où la composition du lot 3A est
+conservée (D-U).
+
+**Vérification :** 9 tests ciblés et 37 assertions (S-01 réécrit, S-17, S-18,
+coupon/simulé, rejeu, succession), trois mutations éprouvées **chacune rougissant
+exactement un test**, puis suite complète séquentielle verte à **892 tests et
+3 245 assertions** en 238,2 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

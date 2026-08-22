@@ -125,6 +125,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.8.3 | Ajuster la fin et révoquer le droit transitoire depuis l'écran commercial — clos jamais effacé, journal avant/après par octroi, et ces gestes ne touchent que l'origine `transition` | `513eb08` |
 | 3A.8.4 | S-14 de bout en bout : un compte ancien avec son histoire, la pose, l'écran, la révocation, la restitution — et l'ordre Q-18 vérifié dans ce journal même | `c466166` |
 | CONV.1 | ADR-0033 — le gratuit est un essai clos au premier paiement : les dix règles, les trois états déduits des droits, la règle transactionnelle ; AR-2 restreint aux droits payants entre eux et l'invariant 2 de l'ADR-0029 doté de son exception nommée | `958ca52` |
+| CONV.2 | La conversion : l'essai se clôt dans la transaction qui ouvre le forfait, la garde d'attribution devient double et lit des faits durables, et l'écran rend l'état dérivé — `essai`, `actif`, `epuise` — avec sa sortie | `1d49ff6` |
 
 ## Lots frontend
 

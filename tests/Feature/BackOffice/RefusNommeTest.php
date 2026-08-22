@@ -112,6 +112,10 @@ class RefusNommeTest extends TestCase
             /* L'autorité pédagogique de la plateforme, qui porte déjà
              * `questions.validate` et `taxonomy.manage`. */
             'quotas.manage' => 'editeur',
+            /* Écrire dans le catalogue commercial — composer une offre, poser
+             * un droit transitoire — engage l'argent au même titre que valider
+             * un coupon (`PlanPolicy`). */
+            'orders.validate' => 'finance',
         ];
         $etrangers = [
             'questions.view' => 'finance',
@@ -119,6 +123,8 @@ class RefusNommeTest extends TestCase
             'members.view' => 'auteur',
             /* Celle qui vend ne borne pas : c'est tout l'objet du partage. */
             'quotas.manage' => 'finance',
+            /* L'autorité éditoriale ne distribue pas de droits commerciaux. */
+            'orders.validate' => 'editeur',
         ];
 
         $this->assertArrayHasKey(

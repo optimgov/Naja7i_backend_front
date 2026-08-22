@@ -56,6 +56,12 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
      * donc préparer une épreuve en B2C et une autre dans un centre partenaire
      * sans que les deux se voient.
      */
+    /** Les droits d'accès du compte — globaux, jamais isolés par organisme. */
+    public function accessGrants(): HasMany
+    {
+        return $this->hasMany(AccessGrantRecord::class);
+    }
+
     public function candidateProfile(): HasOne
     {
         return $this->hasOne(CandidateProfile::class);

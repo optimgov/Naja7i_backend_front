@@ -1234,6 +1234,33 @@ mutations applicables du §6 sont éprouvées et consignées dans
 `retours/M-004-retour.md` — la cinquième porte sur la demande de gratuité, qui
 appartient au lot 4.
 
+#### Lot 3A.7 pas 1 · le porteur du gratuit · livré · `46d267a`
+
+L'ADR-0025 le dit : « le gratuit n'est ni l'absence d'offre, ni un réglage
+global, ni un paiement nul ». C'est donc un `Plan` ordinaire — prix réellement
+zéro, durée vide donc sans terme, `questions.answer` seule — semé par le même
+chemin que l'écran commercial, et qui SÉLECTIONNE le profil « Découverte » du
+registre pédagogique au lieu d'écrire quatre nombres. Sa version 1 en porte
+l'instantané (M-003).
+
+**`auto_granted` plutôt que `active = false`.** Le drapeau dit la seule chose
+vraie : cette offre se reçoit au lieu de s'acheter. `active = false` aurait dit
+« retirée de la vente » — ce qu'elle n'est pas — et `CouponGateway` lit cette
+colonne pour refuser une souscription. Le drapeau n'est pas contractuel : il ne
+vit pas sur la version et ne versionne pas, puisqu'il change par quel chemin on
+obtient, pas ce qu'on obtient.
+
+**Un seul porteur, tenu par un index unique partiel.** Deux offres
+auto-attribuées et l'inscription choisirait en silence, à l'ordre d'insertion
+près. L'index rend la question impossible plutôt qu'arbitraire.
+
+L'offre quitte le catalogue candidat (`Plan::enVente`) sans quitter
+l'administration. Changer son profil de quota versionne, et la version déjà
+distribuée garde son enveloppe : personne ne perd rien.
+
+**Vérification :** 8 tests ciblés et 26 assertions, puis suite complète
+séquentielle verte à **821 tests et 2 884 assertions** en 226,3 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

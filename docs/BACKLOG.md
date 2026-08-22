@@ -1670,6 +1670,40 @@ arrêter le recalcul fait rougir le test du recalcul et lui seul, reverrouiller
 une cause acquise fait rougir la non-régression et les deux gardes PAS-19 déjà
 en place ; suite complète séquentielle verte à **927 tests et 3 503 assertions**.
 
+#### Lot 3A.9 pas 3 · l'éligibilité par public · livré · `d5734cf`
+
+Le champ existe depuis 3A.6 et il versionne. Ce qui manquait n'était pas le champ
+mais le **calcul** de la catégorie d'un candidat : le rattachement famille →
+audience livré en M-004 le rend possible pour la première fois. Le refus arrive
+ici parce qu'il ferme une porte, comme le reste de ce lot.
+
+**Il se lit sur la VERSION**, pas sur l'offre courante : une commande ouverte sur
+l'ancienne garde le public sous lequel elle a été vendue. Lire
+`Plan::audience_id` referait le défaut V-3 à l'envers.
+
+**Il vit au point de passage commun** — `purchasable()`, seule porte des deux
+moyens de paiement. Un contrôle recopié dans deux passerelles diverge à la
+troisième.
+
+**On ne refuse que ce qu'on sait.** Un compte sans épreuve déclarée n'a pas de
+catégorie connue ; lui en supposer une pour lui refuser un achat opposerait une
+déduction inventée à quelqu'un qui paie. Même raisonnement que le geste ciblé du
+droit transitoire, et il vaut ici a fortiori : là-bas on s'abstient de **donner**,
+ici on s'abstiendrait de **vendre**. Une version sans public ne refuse personne.
+
+La lecture du profil candidat est **bas niveau et délibérée** : « cette personne
+prépare telle épreuve » est un fait de la personne, pas l'activité d'un
+organisme ; le lire sous la portée tenant ferait dépendre l'éligibilité d'un
+achat du centre où le compte est passé en dernier (DET-24).
+
+**Le message est sobre** : il dit que l'offre vise une autre catégorie et renvoie
+au catalogue, où chaque offre porte déjà la sienne. Il ne nomme aucun autre
+compte.
+
+**Vérification :** 7 tests ciblés et 19 assertions — refus par paiement simulé et
+par coupon, et les trois cas qu'il ne doit pas attraper ; suite complète
+séquentielle verte à **934 tests et 3 522 assertions**.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

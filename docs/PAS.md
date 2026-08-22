@@ -131,6 +131,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.9.0bis | La composition arbitrée D-CAT exécutée par le canal 3A.6 : `questions.answer` sans enveloppe sur les trois offres payantes, la profondeur à la seule Session complète, `annales.practice` fermée par choix, et les paliers nommés Entrée / Préparation / Session complète — plus jamais par un prix | `7036cc2` |
 | 3A.9.1 | Les cinq murs : l'ordonnance et les rendez-vous mémoire quittent le rendu — champ absent, jamais compteur factice ; la carte de maîtrise se rend à la profondeur que le palier ouvre ; série ciblée, examen blanc et séance mémoire refusent par un 403 qui nomme la clé, et le rapport déjà produit reste lisible | `510b8e6` |
 | 3A.9.2 | S-19 de bout en bout : le compte épuisé garde son passé — tentatives, causes acquises, rapports déjà produits, carte au dernier niveau rendu — le recalcul de maîtrise ne s'arrête jamais, l'expiration en cours de session raccourcit la carte sans erreur, et « Mon dossier », l'historique et le catalogue restent la sortie | `10a163c` |
+| 3A.9.3 | Le refus d'éligibilité par public (Q-19, reporté de M-004) : jugé sur la version vendue et non sur l'offre courante, au point de passage commun des deux moyens de paiement, et jamais sur une catégorie devinée — un compte sans épreuve déclarée n'est pas refusé | `d5734cf` |
 
 ## Lots frontend
 

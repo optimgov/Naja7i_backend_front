@@ -16,6 +16,10 @@ final class PlanVersionService
 {
     /** @var list<string> */
     public const CONTRACTUAL_FIELDS = [
+        /* Q-19 : le public éligible appartient à la version et versionne. Une
+         * demande sur une version dont on n'est plus éligible se refuse ; elle
+         * ne se remplace jamais par la version courante (P4). */
+        'audience_id',
         'name_fr',
         'name_ar',
         'description_fr',

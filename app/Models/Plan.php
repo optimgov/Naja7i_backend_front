@@ -81,7 +81,7 @@ class Plan extends Model
     }
 
     protected $fillable = [
-        'code', 'name_fr', 'name_ar', 'description_fr', 'description_ar',
+        'code', 'audience_id', 'name_fr', 'name_ar', 'description_fr', 'description_ar',
         'price_cents', 'currency', 'duration_days', 'capabilities',
         'quota_profile_id', 'active', 'position',
     ];
@@ -111,6 +111,12 @@ class Plan extends Model
     public function versions(): HasMany
     {
         return $this->hasMany(PlanVersion::class);
+    }
+
+    /** Le public éligible SÉLECTIONNÉ aujourd'hui (Q-19) — contractuel, donc versionné. */
+    public function audience(): BelongsTo
+    {
+        return $this->belongsTo(Audience::class);
     }
 
     /** Le profil SÉLECTIONNÉ aujourd'hui — celui que la prochaine version figera. */

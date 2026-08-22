@@ -45,6 +45,12 @@ class PlanVersion extends Model
         return $this->belongsTo(Plan::class);
     }
 
+    /** Le public éligible figé par cette version (Q-19). */
+    public function audience(): BelongsTo
+    {
+        return $this->belongsTo(Audience::class);
+    }
+
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);

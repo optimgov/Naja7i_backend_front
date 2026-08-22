@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Audience;
 use App\Models\CompetencyNode;
 use App\Models\ExamFamily;
 use App\Models\ExamSession;
@@ -39,10 +40,20 @@ class CatalogueSeeder extends Seeder
                 'التوظيف والمباريات المهنية بالإدارات العمومية.', 3, 'waitlist');
 
             // --- Sciences de l'éducation --------------------------------------
+            /* La famille CRMEF est rattachée à la catégorie de public du même
+             * nom, semée par la migration des catégories : c'est ce
+             * rattachement, et lui seul, qui fait qu'un droit
+             * `(audience, crmef)` couvre ses épreuves (DET-87, S-11). Les
+             * familles en liste d'attente n'en reçoivent aucun — personne n'a
+             * décidé de leur public. */
+            $publicCrmef = Audience::where('code', 'crmef')->value('id');
+
             $crmef = $this->family($education, 'crmef', 'CRMEF', 'المراكز الجهوية لمهن التربية والتكوين',
                 'Ministère de l\'Éducation nationale', 'وزارة التربية الوطنية',
                 'Concours d\'accès aux Centres régionaux des métiers de l\'éducation et de la formation.',
                 'مباراة ولوج المراكز الجهوية لمهن التربية والتكوين.', 1, 'open');
+
+            $crmef->update(['audience_id' => $publicCrmef]);
 
             $this->family($education, 'licences-education', 'Licences d\'éducation', 'الإجازة في التربية',
                 'Universités marocaines', 'الجامعات المغربية',

@@ -18,7 +18,7 @@ class ExamFamily extends Model
     use IsCatalogueEntry;
 
     protected $fillable = [
-        'filiere_id', 'slug', 'name_fr', 'name_ar',
+        'filiere_id', 'audience_id', 'slug', 'name_fr', 'name_ar',
         'authority_fr', 'authority_ar', 'description_fr', 'description_ar',
         'position', 'status', 'availability', 'published_at',
     ];
@@ -33,6 +33,19 @@ class ExamFamily extends Model
     public function filiere(): BelongsTo
     {
         return $this->belongsTo(Filiere::class);
+    }
+
+    /**
+     * La catégorie de public à laquelle cette famille appartient, s'il y en a.
+     *
+     * NULLE PAR DÉFAUT, et c'est volontaire : personne n'a décidé du public des
+     * familles en liste d'attente, et un rattachement inventé serait une donnée
+     * fausse dans un chemin d'autorisation — un droit `(audience, X)` couvrirait
+     * des épreuves que personne n'a vendues sous X.
+     */
+    public function audience(): BelongsTo
+    {
+        return $this->belongsTo(Audience::class);
     }
 
     public function specialties(): HasMany

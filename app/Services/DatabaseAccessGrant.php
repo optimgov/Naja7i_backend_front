@@ -107,24 +107,45 @@ final class DatabaseAccessGrant implements AccessGrant
             : [[AccessGrantRecord::SCOPE_FILIERE, $filiere], [null, null]];
     }
 
-    /** @return list<array{0: string|null, 1: string|null}> */
+    /**
+     * @return list<array{0: string|null, 1: string|null}>
+     *
+     * LA CATÉGORIE DE PUBLIC ENTRE DANS LA CHAÎNE ICI (DET-87, S-11). Un droit
+     * `(audience, lycee)` couvre toute épreuve dont la famille est rattachée à
+     * `lycee`, à toute profondeur, et ne couvre rien de ce qui ne l'est pas.
+     * Elle ne remonte pas depuis la filière : une filière regroupe des concours
+     * par nature administrative, pas des candidats par situation, et deux
+     * familles d'une même filière peuvent viser deux publics.
+     */
     private function examFamilyChain(string $uuid): array
     {
         $family = DB::table('exam_families as family')
             ->join('filieres as filiere', 'filiere.id', '=', 'family.filiere_id')
+            ->leftJoin('audiences as audience', 'audience.id', '=', 'family.audience_id')
             ->where('family.uuid', $uuid)
-            ->select('family.uuid as family_uuid', 'filiere.uuid as filiere_uuid')
+            ->select(
+                'family.uuid as family_uuid',
+                'filiere.uuid as filiere_uuid',
+                'audience.uuid as audience_uuid',
+            )
             ->first();
 
         if ($family === null) {
             return [];
         }
 
-        return [
+        $chain = [
             [AccessGrantRecord::SCOPE_EXAM_FAMILY, $family->family_uuid],
             [AccessGrantRecord::SCOPE_FILIERE, $family->filiere_uuid],
-            [null, null],
         ];
+
+        if ($family->audience_uuid !== null) {
+            $chain[] = [AccessGrantRecord::SCOPE_AUDIENCE, $family->audience_uuid];
+        }
+
+        $chain[] = [null, null];
+
+        return $chain;
     }
 
     /** @return list<array{0: string|null, 1: string|null}> */
@@ -134,11 +155,13 @@ final class DatabaseAccessGrant implements AccessGrant
             ->join('tracks as track', 'track.id', '=', 'exam.track_id')
             ->join('exam_families as family', 'family.id', '=', 'track.exam_family_id')
             ->join('filieres as filiere', 'filiere.id', '=', 'family.filiere_id')
+            ->leftJoin('audiences as audience', 'audience.id', '=', 'family.audience_id')
             ->where('exam.uuid', $uuid)
             ->select(
                 'exam.uuid as exam_uuid',
                 'family.uuid as family_uuid',
                 'filiere.uuid as filiere_uuid',
+                'audience.uuid as audience_uuid',
             )
             ->first();
 
@@ -146,12 +169,19 @@ final class DatabaseAccessGrant implements AccessGrant
             return [];
         }
 
-        return [
+        $chain = [
             [AccessGrantRecord::SCOPE_EXAM, $exam->exam_uuid],
             [AccessGrantRecord::SCOPE_EXAM_FAMILY, $exam->family_uuid],
             [AccessGrantRecord::SCOPE_FILIERE, $exam->filiere_uuid],
-            [null, null],
         ];
+
+        if ($exam->audience_uuid !== null) {
+            $chain[] = [AccessGrantRecord::SCOPE_AUDIENCE, $exam->audience_uuid];
+        }
+
+        $chain[] = [null, null];
+
+        return $chain;
     }
 
     /** @return list<array{0: string|null, 1: string|null}> */
@@ -161,7 +191,8 @@ final class DatabaseAccessGrant implements AccessGrant
             SELECT ancestor.uuid AS node_uuid,
                    exam.uuid AS exam_uuid,
                    family.uuid AS family_uuid,
-                   filiere.uuid AS filiere_uuid
+                   filiere.uuid AS filiere_uuid,
+                   audience.uuid AS audience_uuid
             FROM competency_nodes AS requested
             JOIN LATERAL unnest(string_to_array(requested.path, '.')::bigint[])
                  WITH ORDINALITY AS path_node(id, position) ON TRUE
@@ -171,6 +202,7 @@ final class DatabaseAccessGrant implements AccessGrant
             LEFT JOIN exam_families AS family
                    ON family.id = COALESCE(track.exam_family_id, requested.exam_family_id)
             LEFT JOIN filieres AS filiere ON filiere.id = family.filiere_id
+            LEFT JOIN audiences AS audience ON audience.id = family.audience_id
             WHERE requested.uuid = ?
             ORDER BY path_node.position DESC
             SQL, [$uuid]);
@@ -197,6 +229,10 @@ final class DatabaseAccessGrant implements AccessGrant
 
         if ($first->filiere_uuid !== null) {
             $chain[] = [AccessGrantRecord::SCOPE_FILIERE, $first->filiere_uuid];
+        }
+
+        if ($first->audience_uuid !== null) {
+            $chain[] = [AccessGrantRecord::SCOPE_AUDIENCE, $first->audience_uuid];
         }
 
         $chain[] = [null, null];

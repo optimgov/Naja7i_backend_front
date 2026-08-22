@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Contracts\AccessGrant;
+use App\Models\Audience;
 use App\Models\Plan;
 use Illuminate\Database\Seeder;
 
@@ -66,10 +67,16 @@ class PlansSeeder extends Seeder
             ],
         ];
 
+        /* Le public éligible est contractuel (Q-19) : ces trois offres sont
+         * celles du concours CRMEF, et le dire ici évite qu'un catalogue frais
+         * porte des offres sans public — la migration ne rattache que ce qui
+         * existait avant elle. */
+        $public = Audience::where('code', 'crmef')->value('id');
+
         foreach ($plans as $plan) {
             Plan::updateOrCreate(
                 ['code' => $plan['code']],
-                $plan + ['currency' => 'MAD', 'active' => true],
+                $plan + ['currency' => 'MAD', 'active' => true, 'audience_id' => $public],
             );
         }
     }

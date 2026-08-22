@@ -47,6 +47,8 @@ class PanneauDroitsTransitoiresTest extends TestCase
         app(OffreGratuiteService::class)->attribuer($this->candidat);
 
         app(DroitTransitoireService::class)->poser($this->commerciale, [
+            /* NOMMÉE : le geste n'a plus de palier par défaut (3A.9 pas 0). */
+            'offre' => 'session-180j',
             'motif' => 'Allumage du mur payant, sevrage annoncé.',
         ]);
     }

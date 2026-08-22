@@ -42,6 +42,9 @@ use Illuminate\Validation\ValidationException;
  * Filtrer en silence serait pire : le geste réussirait en donnant autre chose
  * que ce qui a été demandé.
  *
+ * ET L'OFFRE SE NOMME. Lire le catalogue ne dispense pas de choisir dedans :
+ * sans offre nommée, le geste refuse. Voir `offreDeReference()`.
+ *
  * ═══════════════════════════════════════════════════════════════════════════
  * LA PRÉVISUALISATION N'EST PAS UN CONFORT
  *
@@ -66,37 +69,44 @@ final class DroitTransitoireService
     public function __construct(private readonly AbonnementService $abonnements) {}
 
     /**
-     * L'offre dont le droit transitoire copie la composition.
+     * L'offre dont le droit transitoire copie la composition — NOMMÉE, toujours.
      *
-     * Par défaut, la plus complète du catalogue commercial — celle qui compose
-     * le plus de capacités vendables, le prix départageant les ex æquo. C'est
-     * « le palier 600 » exprimé en fait plutôt qu'en nom : un code en dur
-     * cesserait d'être vrai au premier renommage.
+     * ═══════════════════════════════════════════════════════════════════════
+     * IL N'Y A PLUS DE REPLI, ET C'EST LE POINT
+     *
+     * Le défaut d'origine choisissait « la plus complète du catalogue » — celle
+     * qui compose le plus de capacités vendables, le prix départageant les ex
+     * æquo. C'était « le palier 600 » exprimé en fait plutôt qu'en nom, et
+     * l'intention était bonne : un code en dur cesse d'être vrai au premier
+     * renommage.
+     *
+     * La mesure du 22 août l'a démenti sur pièce. Aucune offre du catalogue ne
+     * composait alors les huit capacités : le repli aurait posé TROIS capacités
+     * en se présentant comme « équivalent au palier 600 ». Un droit transitoire
+     * dont personne n'a choisi la composition n'est pas un mauvais produit
+     * paramétrable — c'est un ÉTAT QUE LE DOMAINE INTERDIT, un droit qui ment
+     * sur ce qu'il égale. ADR-0032 range donc ce cas du côté du refus en code.
+     *
+     * On refuse, on ne devine pas. Le motif dit quoi faire, parce qu'un refus
+     * muet se lit comme une panne.
      */
     public function offreDeReference(?string $code = null): Plan
     {
-        if ($code !== null) {
-            $offre = Plan::query()->where('code', $code)->first();
-
-            if ($offre === null) {
-                throw ValidationException::withMessages([
-                    'offre' => "Aucune offre ne porte le code « {$code} ».",
-                ]);
-            }
-
-            return $offre;
+        if ($code === null || $code === '') {
+            throw ValidationException::withMessages([
+                'offre' => 'L’offre de référence doit être nommée : sa composition définit, '
+                    .'capacité par capacité, ce que le droit transitoire ouvrira. '
+                    .'Aucun repli n’est possible — « le palier le plus complet du catalogue » '
+                    .'est une devinette, et un droit posé sur une devinette se présente '
+                    .'comme l’égal d’un palier que personne n’a choisi.',
+            ]);
         }
 
-        $offre = Plan::query()
-            ->where('active', true)
-            ->where('auto_granted', false)
-            ->get()
-            ->sortByDesc(fn (Plan $plan): array => [count($plan->capabilities ?? []), $plan->price_cents])
-            ->first();
+        $offre = Plan::query()->where('code', $code)->first();
 
         if ($offre === null) {
             throw ValidationException::withMessages([
-                'offre' => 'Aucune offre commerciale au catalogue : il n’y a aucun palier à égaler.',
+                'offre' => "Aucune offre ne porte le code « {$code} ».",
             ]);
         }
 

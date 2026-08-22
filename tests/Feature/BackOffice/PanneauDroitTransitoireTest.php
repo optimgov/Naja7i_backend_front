@@ -78,7 +78,7 @@ class PanneauDroitTransitoireTest extends TestCase
     {
         Livewire::actingAs($this->commerciale)
             ->test(DroitTransitoire::class)
-            ->callAction('previsualiser', ['duree' => 60])
+            ->callAction('previsualiser', ['offre' => 'session-180j', 'duree' => 60])
             ->assertHasNoActionErrors()
             ->assertNotified();
 
@@ -91,6 +91,7 @@ class PanneauDroitTransitoireTest extends TestCase
         Livewire::actingAs($this->commerciale)
             ->test(DroitTransitoire::class)
             ->callAction('poser', [
+                'offre' => 'session-180j',
                 'duree' => 60,
                 'motif' => 'Allumage du mur payant, sevrage de soixante jours.',
             ])
@@ -107,7 +108,7 @@ class PanneauDroitTransitoireTest extends TestCase
     {
         Livewire::actingAs($this->commerciale)
             ->test(DroitTransitoire::class)
-            ->callAction('poser', ['duree' => 60, 'motif' => ''])
+            ->callAction('poser', ['offre' => 'session-180j', 'duree' => 60, 'motif' => ''])
             ->assertHasActionErrors(['motif']);
 
         $this->assertSame(0, TransitionBatch::query()->count());
@@ -118,6 +119,7 @@ class PanneauDroitTransitoireTest extends TestCase
         Livewire::actingAs($this->commerciale)
             ->test(DroitTransitoire::class)
             ->callAction('poser', [
+                'offre' => 'session-180j',
                 'duree' => 60,
                 'motif' => 'Allumage du mur payant, sevrage de soixante jours.',
             ]);

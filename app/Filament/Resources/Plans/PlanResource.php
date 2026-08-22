@@ -22,6 +22,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -121,6 +122,10 @@ class PlanResource extends Resource
                 ->numeric()
                 ->required()
                 ->minValue(0)
+                /* Vivant parce que l'avertissement de composition en dépend :
+                 * « payante » se lit sur le prix, et une offre qui passe de 0 à
+                 * 19900 doit voir l'avertissement apparaître sans enregistrer. */
+                ->live(onBlur: true)
                 ->helperText('19900 = 199,00 MAD. Jamais de virgule : la monnaie est un entier.'),
 
             Select::make('currency')
@@ -152,8 +157,29 @@ class PlanResource extends Resource
                 ->options(fn (): array => app(CapabilityRegistry::class)
                     ->commercializableOptions(app()->getLocale()))
                 ->required()
+                ->live()
                 ->nestedRecursiveRules([Rule::in(CapabilityRegistry::COMMERCIALIZABLE)])
                 ->helperText('Ce que la commande honorée ouvrira, exactement.'),
+
+            /*
+             * L'AVERTISSEMENT DE COMPOSITION — il prévient, il ne bloque pas.
+             *
+             * Le texte et la règle viennent du registre (`CapabilityRegistry::
+             * avertissementsDeComposition`), pas d'ici : cet écran n'est qu'une
+             * des vues possibles de la composition, et une règle produit écrite
+             * dans une vue meurt à la deuxième vue.
+             *
+             * Pourquoi il existe : depuis l'ADR-0033, la première commande
+             * honorée clôt l'essai. Une offre payante sans `questions.answer`
+             * fait donc payer pour PERDRE l'accès principal — et c'est une
+             * composition, pas un défaut de code. On la nomme ; ADR-0032
+             * interdit de la refuser, puisqu'elle peut être voulue demain.
+             */
+            Callout::make('Composition à vérifier')
+                ->color('warning')
+                ->icon(Heroicon::OutlinedExclamationTriangle)
+                ->description(fn ($get): string => implode(' ', self::avertissements($get)))
+                ->visible(fn ($get): bool => self::avertissements($get) !== []),
 
             Select::make('quota_profile_id')
                 ->label('Profil de quota')
@@ -183,6 +209,22 @@ class PlanResource extends Resource
 
             TextInput::make('position')->label('Ordre d’affichage')->numeric()->default(0),
         ]);
+    }
+
+    /**
+     * Ce que le registre a à dire sur la composition en cours de saisie.
+     *
+     * « Payante » se lit sur le PRIX, comme partout ailleurs dans cet écran :
+     * l'offre d'essai est à zéro, et c'est ce qui la distingue.
+     *
+     * @return list<string>
+     */
+    private static function avertissements(mixed $get): array
+    {
+        return app(CapabilityRegistry::class)->avertissementsDeComposition(
+            is_array($get('capabilities')) ? array_values($get('capabilities')) : [],
+            payante: (int) $get('price_cents') > 0,
+        );
     }
 
     /**

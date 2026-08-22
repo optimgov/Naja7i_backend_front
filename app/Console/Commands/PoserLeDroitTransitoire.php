@@ -23,6 +23,15 @@ use Illuminate\Validation\ValidationException;
  * demande explicitement.
  *
  * ═══════════════════════════════════════════════════════════════════════════
+ * ELLE NE DEVINE PAS NON PLUS L'OFFRE DE RÉFÉRENCE
+ *
+ * `--offre` est obligatoire, y compris en mode sec : le service refuse sans
+ * elle. Le repli « le palier le plus complet du catalogue » a été retiré parce
+ * qu'il donnait trois capacités là où Q-17 en promet huit, sans que rien ne le
+ * dise. Une prévisualisation qui devine n'annonce pas un impact, elle en
+ * invente un.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  * LA PRÉVISUALISATION EST LE MODE PAR DÉFAUT DE LA PRUDENCE
  *
  * `--dry-run` annonce sans écrire. Ce n'est pas une option de confort : Q-17
@@ -35,7 +44,7 @@ class PoserLeDroitTransitoire extends Command
                             {--auteur= : E-mail du membre du personnel qui pose le geste}
                             {--motif= : Ce que ce geste accompagne, en une phrase}
                             {--duree= : Durée en jours (défaut 60, borné 7–180)}
-                            {--offre= : Code de l’offre dont la composition fait référence}
+                            {--offre= : Code de l’offre de référence — OBLIGATOIRE, aucun repli}
                             {--public= : Code de la catégorie de public visée (défaut : tous)}
                             {--pose-le= : Date de pose (défaut : maintenant)}
                             {--dry-run : Annoncer l’impact sans rien écrire}';

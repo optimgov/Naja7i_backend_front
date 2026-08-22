@@ -37,6 +37,16 @@ class DroitTransitoireTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * L'OFFRE DE RÉFÉRENCE SE NOMME DANS CHAQUE APPEL.
+     *
+     * Depuis le pas 0 de 3A.9, le geste n'a plus de repli : « le palier le plus
+     * complet du catalogue » était une devinette, et elle donnait trois
+     * capacités là où Q-17 en promet huit. Ces tests nomment donc l'offre comme
+     * l'écran et la commande l'exigent désormais.
+     */
+    private const OFFRE = 'session-180j';
+
     private User $commerciale;
 
     protected function setUp(): void
@@ -96,7 +106,7 @@ class DroitTransitoireTest extends TestCase
         $this->candidat('vise-1@naja7i.ma');
         $this->candidat('vise-2@naja7i.ma');
 
-        $apercu = $this->service()->previsualiser(['motif' => 'Allumage du mur payant.']);
+        $apercu = $this->service()->previsualiser(['offre' => self::OFFRE, 'motif' => 'Allumage du mur payant.']);
 
         $this->assertSame(2, $apercu['comptes_vises']);
         $this->assertSame(0, $apercu['deja_porteurs']);
@@ -110,7 +120,9 @@ class DroitTransitoireTest extends TestCase
     {
         $this->candidat('sec-transition@naja7i.ma');
 
-        $this->artisan('naja7i:poser-le-droit-transitoire', ['--dry-run' => true])
+        $this->artisan('naja7i:poser-le-droit-transitoire', [
+            '--offre' => self::OFFRE, '--dry-run' => true,
+        ])
             ->expectsOutput('comptes_vises=1')
             ->expectsOutput('a_poser=1')
             ->expectsOutput('mode=sec')
@@ -123,7 +135,9 @@ class DroitTransitoireTest extends TestCase
     {
         $this->candidat('sans-auteur@naja7i.ma');
 
-        $this->artisan('naja7i:poser-le-droit-transitoire', ['--motif' => 'Allumage du mur payant.'])
+        $this->artisan('naja7i:poser-le-droit-transitoire', [
+            '--offre' => self::OFFRE, '--motif' => 'Allumage du mur payant.',
+        ])
             ->expectsOutput('auteur_absent=1')
             ->assertFailed();
 
@@ -135,9 +149,10 @@ class DroitTransitoireTest extends TestCase
     public function test_la_pose_ouvre_les_capacites_du_palier_de_reference(): void
     {
         $compte = $this->candidat('pose@naja7i.ma');
-        $reference = $this->service()->offreDeReference();
+        $reference = $this->service()->offreDeReference(self::OFFRE);
 
         $trace = $this->service()->poser($this->commerciale, [
+            'offre' => self::OFFRE,
             'motif' => 'Allumage du mur payant, sevrage de soixante jours.',
         ]);
 
@@ -158,6 +173,7 @@ class DroitTransitoireTest extends TestCase
         $this->candidat('trace@naja7i.ma');
 
         $trace = $this->service()->poser($this->commerciale, [
+            'offre' => self::OFFRE,
             'motif' => 'Allumage du mur payant, sevrage de soixante jours.',
             'duree' => 90,
         ]);
@@ -174,7 +190,7 @@ class DroitTransitoireTest extends TestCase
     public function test_le_journal_des_poses_est_en_ajout_seul(): void
     {
         $this->candidat('journal@naja7i.ma');
-        $trace = $this->service()->poser($this->commerciale, ['motif' => 'Allumage du mur payant.']);
+        $trace = $this->service()->poser($this->commerciale, ['offre' => self::OFFRE, 'motif' => 'Allumage du mur payant.']);
 
         $this->expectException(QueryException::class);
 
@@ -187,7 +203,7 @@ class DroitTransitoireTest extends TestCase
         $gratuit = AccessGrantRecord::where('user_id', $compte->id)
             ->where('origin', OffreGratuiteService::ORIGINE_INSCRIPTION)->sole();
 
-        $this->service()->poser($this->commerciale, ['motif' => 'Allumage du mur payant.']);
+        $this->service()->poser($this->commerciale, ['offre' => self::OFFRE, 'motif' => 'Allumage du mur payant.']);
 
         $relu = $gratuit->fresh();
         $this->assertNull($relu->ends_at, 'AR-2 : le sans-terme n’est ni bloqué ni court-circuité.');
@@ -198,7 +214,7 @@ class DroitTransitoireTest extends TestCase
     {
         $this->candidat('agregat@naja7i.ma');
 
-        $this->service()->poser($this->commerciale, ['motif' => 'Allumage du mur payant.']);
+        $this->service()->poser($this->commerciale, ['offre' => self::OFFRE, 'motif' => 'Allumage du mur payant.']);
 
         $this->assertSame(0, Order::query()->count());
         $this->assertSame(
@@ -212,14 +228,14 @@ class DroitTransitoireTest extends TestCase
     {
         $compte = $this->candidat('rejeu-transition@naja7i.ma');
 
-        $premier = $this->service()->poser($this->commerciale, ['motif' => 'Allumage du mur payant.']);
-        $second = $this->service()->poser($this->commerciale, ['motif' => 'Reprise après interruption.']);
+        $premier = $this->service()->poser($this->commerciale, ['offre' => self::OFFRE, 'motif' => 'Allumage du mur payant.']);
+        $second = $this->service()->poser($this->commerciale, ['offre' => self::OFFRE, 'motif' => 'Reprise après interruption.']);
 
         $this->assertSame(1, $premier->accounts_granted);
         $this->assertSame(0, $second->accounts_granted);
         $this->assertSame(1, $second->accounts_skipped);
         $this->assertCount(
-            count($this->service()->offreDeReference()->capabilities),
+            count($this->service()->offreDeReference(self::OFFRE)->capabilities),
             $this->droitsTransitoires($compte),
         );
     }
@@ -228,7 +244,7 @@ class DroitTransitoireTest extends TestCase
 
     public function test_une_composition_alteree_qui_porte_certification_est_refusee_en_la_nommant(): void
     {
-        $reference = $this->service()->offreDeReference();
+        $reference = $this->service()->offreDeReference(self::OFFRE);
 
         /* Le modèle refuserait cette composition : on force donc en base, ce
          * qu'un correctif à chaud ferait. La garde du geste doit tenir seule. */
@@ -250,7 +266,7 @@ class DroitTransitoireTest extends TestCase
     {
         foreach ([3, 400] as $duree) {
             try {
-                $this->service()->previsualiser(['duree' => $duree]);
+                $this->service()->previsualiser(['offre' => self::OFFRE, 'duree' => $duree]);
                 $this->fail("La durée {$duree} devait être refusée.");
             } catch (ValidationException $exception) {
                 $this->assertStringContainsString('jours', $exception->validator->errors()->first('duree'));
@@ -280,14 +296,14 @@ class DroitTransitoireTest extends TestCase
 
         $this->expectException(ValidationException::class);
 
-        $this->service()->poser($this->commerciale, ['motif' => 'court']);
+        $this->service()->poser($this->commerciale, ['offre' => self::OFFRE, 'motif' => 'court']);
     }
 
     public function test_une_pose_datee_dans_le_passe_est_refusee(): void
     {
         $this->expectException(ValidationException::class);
 
-        $this->service()->previsualiser(['pose_le' => now()->subWeek()->toDateString()]);
+        $this->service()->previsualiser(['offre' => self::OFFRE, 'pose_le' => now()->subWeek()->toDateString()]);
     }
 
     // ═══ Le public visé ════════════════════════════════════════════════════
@@ -303,11 +319,11 @@ class DroitTransitoireTest extends TestCase
         $crmef = $this->candidat('crmef-cible@naja7i.ma', $epreuveCrmef);
         $sansProfil = $this->candidat('sans-profil@naja7i.ma');
 
-        $apercu = $this->service()->previsualiser(['public' => 'crmef']);
+        $apercu = $this->service()->previsualiser(['offre' => self::OFFRE, 'public' => 'crmef']);
         $this->assertSame(1, $apercu['comptes_vises'], 'Seul le compte dont l’épreuve relève du public.');
 
         $this->service()->poser($this->commerciale, [
-            'public' => 'crmef', 'motif' => 'Allumage limité au public CRMEF.',
+            'offre' => self::OFFRE, 'public' => 'crmef', 'motif' => 'Allumage limité au public CRMEF.',
         ]);
 
         $this->assertNotEmpty($this->droitsTransitoires($crmef));
@@ -315,12 +331,12 @@ class DroitTransitoireTest extends TestCase
             $this->droitsTransitoires($sansProfil),
             'Un compte sans épreuve déclarée n’a pas de public connu : on ne lui en suppose pas un.',
         );
-        $this->assertSame(0, $this->service()->previsualiser(['public' => $lycee->code])['comptes_vises']);
+        $this->assertSame(0, $this->service()->previsualiser(['offre' => self::OFFRE, 'public' => $lycee->code])['comptes_vises']);
     }
 
     public function test_le_personnel_n_est_jamais_vise(): void
     {
-        $apercu = $this->service()->previsualiser([]);
+        $apercu = $this->service()->previsualiser(['offre' => self::OFFRE]);
 
         $this->assertSame(0, $apercu['comptes_vises'], 'Seuls les comptes candidats sont concernés.');
     }

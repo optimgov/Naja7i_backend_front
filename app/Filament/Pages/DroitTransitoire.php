@@ -58,7 +58,7 @@ class DroitTransitoire extends Page implements HasTable
     public function getSubheading(): ?string
     {
         return 'À l’allumage du mur payant, tout compte déjà inscrit reçoit un droit équivalent '
-            .'au palier le plus complet, pour une durée bornée, nommé et visible. Un sevrage '
+            .'au palier NOMMÉ ici, pour une durée bornée, nommé et visible. Un sevrage '
             .'annoncé, jamais subi — et posé par un geste tracé, jamais par une migration.';
     }
 
@@ -125,12 +125,18 @@ class DroitTransitoire extends Page implements HasTable
     private function parametres(bool $motifRequis): array
     {
         $champs = [
+            /* NOMMÉE, jamais devinée. Le service refuse sans elle : « le palier
+             * le plus complet du catalogue » a donné trois capacités là où
+             * Q-17 en promet huit, et un droit qui se présente comme l'égal
+             * d'un palier que personne n'a choisi est un droit qui ment. */
             Select::make('offre')
                 ->label('Palier de référence')
                 ->options(fn (): array => Plan::query()
                     ->where('active', true)->where('auto_granted', false)
                     ->orderByDesc('price_cents')->pluck('name_fr', 'code')->all())
-                ->helperText('Sa composition définit ce que le droit ouvre. Vide = le palier le plus complet.'),
+                ->required()
+                ->helperText('Sa composition définit, capacité par capacité, ce que le droit ouvre. '
+                    .'Sans elle, le geste refuse : il n’y a pas de palier par défaut.'),
 
             TextInput::make('duree')
                 ->label('Durée en jours')

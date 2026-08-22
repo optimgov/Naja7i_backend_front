@@ -40,6 +40,59 @@ final class CapabilityRegistry
         AccessGrant::MEMORY_SESSIONS,
     ];
 
+    /**
+     * L'ACCÈS PRINCIPAL — ce sans quoi une offre payante ne rend rien.
+     *
+     * Le registre porte déjà ce que le produit VEND ; il doit aussi porter ce
+     * que le produit ne peut pas ne pas vendre. Depuis l'ADR-0033, la première
+     * commande honorée clôt définitivement l'essai : une offre payante qui ne
+     * compose pas `questions.answer` fait donc PAYER POUR PERDRE le droit de
+     * répondre aux questions, que seul l'essai donnait.
+     *
+     * La règle vit ici et non dans l'écran, pour la même raison que la liste
+     * des commercialisables : un écran est une vue, et une règle produit qui
+     * vit dans une vue meurt à la deuxième vue.
+     */
+    public const ACCES_PRINCIPAL = AccessGrant::QUESTIONS_ANSWER;
+
+    /**
+     * Ce qu'il faut DIRE à qui compose une offre — jamais ce qu'il faut lui
+     * interdire.
+     *
+     * ADR-0032 tranche la frontière : une valeur fausse qui produit un MAUVAIS
+     * PRODUIT reste paramétrable ; seul ce qui produit un ÉTAT QUE LE DOMAINE
+     * INTERDIT se refuse en code. Vendre demain un module d'entraînement seul,
+     * sans le droit de répondre, est un choix commercial légitime. On prévient,
+     * on n'empêche pas.
+     *
+     * L'offre gratuite ne déclenche rien : elle ne clôt aucun essai, elle EST
+     * l'essai.
+     *
+     * @param  list<string>|null  $codes
+     * @return list<string>
+     */
+    public function avertissementsDeComposition(?array $codes, bool $payante): array
+    {
+        if (! $payante || in_array(self::ACCES_PRINCIPAL, $codes ?? [], true)) {
+            return [];
+        }
+
+        return [
+            'Cette offre ne rend pas au candidat le droit de répondre aux questions '
+            .'(« '.$this->libelleDe(self::ACCES_PRINCIPAL).' ») : un candidat qui la '
+            .'souscrit clôt son essai et perd l’accès principal. Composez-la ainsi '
+            .'seulement si c’est voulu.',
+        ];
+    }
+
+    /** Le libellé d'affichage d'une capacité, tel que le registre le porte. */
+    private function libelleDe(string $code, ?string $locale = null): string
+    {
+        $locale = $locale === 'ar' ? 'ar' : 'fr';
+
+        return CapabilityDefinition::query()->where('code', $code)->value("label_{$locale}") ?? $code;
+    }
+
     /** @return array<string, string> */
     public function commercializableOptions(?string $locale = null): array
     {

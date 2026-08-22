@@ -6,9 +6,11 @@ use App\Models\AccessGrantRecord;
 use App\Models\Audience;
 use App\Models\Plan;
 use App\Models\TransitionBatch;
+use App\Models\TransitionGrantChange;
 use App\Models\User;
 use App\Support\CapabilityRegistry;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -224,6 +226,118 @@ final class DroitTransitoireService
 
             return $trace->fresh();
         });
+    }
+
+    /**
+     * AJUSTER LA FIN d'un droit transitoire — Q-17, « ajustable ».
+     *
+     * Le geste porte sur le droit du COMPTE, c'est-à-dire sur tous les octrois
+     * transitoires qu'il détient : ajuster une capacité et pas les sept autres
+     * produirait un sevrage en escalier que personne n'a décidé.
+     *
+     * @return int le nombre d'octrois touchés
+     */
+    public function ajusterLaFin(User $compte, User $acteur, mixed $fin, string $motif): int
+    {
+        $nouvelle = Carbon::parse((string) $fin);
+        $motif = $this->motif($motif);
+
+        return DB::transaction(function () use ($compte, $acteur, $nouvelle, $motif): int {
+            $octrois = $this->octroisTransitoiresDe($compte);
+
+            if ($octrois->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'compte' => 'Ce compte ne porte aucun droit transitoire à ajuster.',
+                ]);
+            }
+
+            foreach ($octrois as $octroi) {
+                if ($nouvelle->isBefore($octroi->starts_at)) {
+                    throw ValidationException::withMessages([
+                        'fin' => 'Une fin ne se place pas avant le début du droit. '
+                            .'Pour couper court, révoquez : le droit sera clos, pas réécrit.',
+                    ]);
+                }
+
+                $this->journaliser($octroi, $acteur, TransitionGrantChange::KIND_ADJUSTED, $nouvelle, $motif);
+                $octroi->forceFill(['ends_at' => $nouvelle])->save();
+            }
+
+            return $octrois->count();
+        });
+    }
+
+    /**
+     * RÉVOQUER — clos, jamais effacé (Q-17).
+     *
+     * La ligne subsiste et l'autorisation cesse : `ends_at` est ramené à
+     * maintenant. Un droit qui n'avait pas encore pris effet est clos sur sa
+     * propre date de début — une période vide, que `active()` ne satisfait
+     * jamais — plutôt que sur une date antérieure qui réécrirait son histoire.
+     *
+     * @return int le nombre d'octrois clos
+     */
+    public function revoquer(User $compte, User $acteur, string $motif): int
+    {
+        $motif = $this->motif($motif);
+
+        return DB::transaction(function () use ($compte, $acteur, $motif): int {
+            $octrois = $this->octroisTransitoiresDe($compte);
+
+            if ($octrois->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'compte' => 'Ce compte ne porte aucun droit transitoire à révoquer.',
+                ]);
+            }
+
+            $maintenant = now();
+
+            foreach ($octrois as $octroi) {
+                $fin = $octroi->starts_at->isAfter($maintenant) ? $octroi->starts_at->copy() : $maintenant;
+
+                $this->journaliser($octroi, $acteur, TransitionGrantChange::KIND_REVOKED, $fin, $motif);
+                $octroi->forceFill(['ends_at' => $fin])->save();
+            }
+
+            return $octrois->count();
+        });
+    }
+
+    /**
+     * Les octrois transitoires d'un compte, et EUX SEULS.
+     *
+     * « Ces gestes ne touchent que les droits d'origine `transition` — jamais un
+     * droit acheté ni le gratuit. » La garde est ici, à la source : aucun
+     * appelant ne peut élargir le périmètre en passant un identifiant.
+     *
+     * @return Collection<int, AccessGrantRecord>
+     */
+    public function octroisTransitoiresDe(User $compte)
+    {
+        return AccessGrantRecord::query()
+            ->where('user_id', $compte->id)
+            ->where('origin', 'transition')
+            ->orderBy('capability')
+            ->get();
+    }
+
+    private function journaliser(
+        AccessGrantRecord $octroi,
+        User $acteur,
+        string $genre,
+        Carbon $apres,
+        string $motif,
+    ): void {
+        $trace = new TransitionGrantChange;
+        $trace->forceFill([
+            'access_grant_id' => $octroi->id,
+            'actor_id' => $acteur->id,
+            'kind' => $genre,
+            'ends_at_before' => $octroi->ends_at,
+            'ends_at_after' => $apres,
+            'reason' => $motif,
+            'occurred_at' => now(),
+        ])->save();
     }
 
     /** Un compte porte-t-il déjà un droit transitoire encore ouvert ? */

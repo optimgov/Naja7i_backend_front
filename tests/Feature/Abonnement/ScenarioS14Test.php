@@ -170,7 +170,7 @@ class ScenarioS14Test extends TestCase
         $this->assertContains(AccessGrant::MASTERY_DETAIL, $pose['capabilities']);
 
         // Le gratuit sans terme et son enveloppe coexistent dessous, intacts.
-        $gratuite = collect($pose['droits'])->firstWhere('source', 'gratuite');
+        $gratuite = collect($pose['droits'])->firstWhere('source', 'essai');
         $this->assertNull($gratuite['expires_at']);
         $this->assertSame(40, $pose['quotas'][0]['granted']);
 
@@ -195,7 +195,7 @@ class ScenarioS14Test extends TestCase
         $apres = $this->etat();
         $this->assertSame([AccessGrant::QUESTIONS_ANSWER], $apres['capabilities']);
         $this->assertCount(1, $apres['droits']);
-        $this->assertSame('gratuite', $apres['droits'][0]['source']);
+        $this->assertSame('essai', $apres['droits'][0]['source']);
 
         // La restitution retombe au palier courant : l'enveloppe est intacte.
         $this->assertSame(40, $apres['quotas'][0]['granted']);

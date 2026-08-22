@@ -77,8 +77,8 @@ class EcranAbonnementGratuitTest extends TestCase
     {
         $enveloppe = $this->etat()['quotas'][0];
 
-        $this->assertSame('gratuite', $enveloppe['source']);
-        $this->assertSame('Offert à l’inscription', $enveloppe['source_label']);
+        $this->assertSame('essai', $enveloppe['source']);
+        $this->assertSame('Essai', $enveloppe['source_label']);
         $this->assertSame('questions', $enveloppe['unit_label']);
     }
 
@@ -88,7 +88,7 @@ class EcranAbonnementGratuitTest extends TestCase
 
         $enveloppe = $this->etat()['quotas'][0];
 
-        $this->assertSame('ممنوح عند التسجيل', $enveloppe['source_label']);
+        $this->assertSame('تجربة', $enveloppe['source_label']);
         $this->assertSame('أسئلة', $enveloppe['unit_label']);
     }
 
@@ -126,24 +126,38 @@ class EcranAbonnementGratuitTest extends TestCase
         );
     }
 
-    public function test_deux_enveloppes_ne_sont_jamais_additionnees(): void
+    /**
+     * DEUX ENVELOPPES PAYANTES NE S'ADDITIONNENT PAS — et depuis l'ADR-0033,
+     * ce sont les seules qui peuvent coexister.
+     *
+     * La version d'origine de ce test faisait cohabiter l'essai et un achat.
+     * Ce cas n'existe plus : la conversion clôt l'essai dans la transaction qui
+     * ouvre le forfait. Ce qui reste vrai, et que ce test garde, c'est la règle
+     * de l'ADR-0031 — deux enveloppes ne se somment jamais — entre droits
+     * PAYANTS successifs, où la composition du lot 3A est conservée (D-U).
+     */
+    public function test_deux_enveloppes_payantes_ne_sont_jamais_additionnees(): void
     {
-        AccessGrantRecord::create([
-            'user_id' => $this->candidat->id,
-            'capability' => AccessGrant::QUESTIONS_ANSWER,
-            'starts_at' => now()->subMinute(),
-            'ends_at' => now()->addMonth(),
-            'origin' => 'purchase',
-            'origin_reference' => 'commande-simulee-1',
-            'quota_unit' => 'questions',
-            'quota_periodicity' => 'cumulative_grant',
-            'quota_value' => 120,
-        ]);
+        AccessGrantRecord::where('user_id', $this->candidat->id)->delete();
+
+        foreach ([[40, 'commande-payante-1'], [120, 'commande-payante-2']] as [$valeur, $reference]) {
+            AccessGrantRecord::create([
+                'user_id' => $this->candidat->id,
+                'capability' => AccessGrant::QUESTIONS_ANSWER,
+                'starts_at' => now()->subMinute(),
+                'ends_at' => now()->addMonth(),
+                'origin' => 'purchase',
+                'origin_reference' => $reference,
+                'quota_unit' => 'questions',
+                'quota_periodicity' => 'cumulative_grant',
+                'quota_value' => $valeur,
+            ]);
+        }
 
         $quotas = $this->etat()['quotas'];
 
         $this->assertCount(2, $quotas);
         $this->assertSame([40, 120], array_column($quotas, 'granted'));
-        $this->assertSame(['gratuite', 'achetee'], array_column($quotas, 'source'));
+        $this->assertSame(['achetee', 'achetee'], array_column($quotas, 'source'));
     }
 }

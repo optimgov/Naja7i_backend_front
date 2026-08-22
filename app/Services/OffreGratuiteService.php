@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Models\AccessGrantRecord;
+use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Tenancy\TenantBypass;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
@@ -43,6 +46,9 @@ final class OffreGratuiteService
     /** Ce qu'une commande d'administration pose après coup, des mois plus tard. */
     public const ORIGINE_RATTRAPAGE = 'rattrapage';
 
+    /** Ce que porte la note d'un essai clos par une conversion (ADR-0033). */
+    public const MARQUE_CONVERSION = 'clos par conversion, commande';
+
     public function __construct(
         private readonly AbonnementService $abonnements,
         private readonly PlanVersionService $versions,
@@ -71,7 +77,13 @@ final class OffreGratuiteService
         }
 
         return DB::transaction(function () use ($user, $offre, $origine): bool {
-            if ($this->porteDejaLeGratuit($user, $offre)) {
+            /* LA GARDE EST DOUBLE — ADR-0033, règle 10. « Ni essai déjà reçu,
+             * ni conversion déjà survenue » : sans le second terme, un compte
+             * qui a payé sans être jamais passé par l'essai en recevrait un
+             * neuf au premier rattrapage. Les deux se lisent sur des faits
+             * DURABLES, jamais sur un droit actif — un forfait finit toujours
+             * par expirer, et l'éligibilité ne doit pas revenir avec. */
+            if ($this->porteDejaLeGratuit($user, $offre) || $this->aDejaConverti($user)) {
                 return false;
             }
 
@@ -93,6 +105,98 @@ final class OffreGratuiteService
 
             return true;
         });
+    }
+
+    /**
+     * CLORE L'ESSAI PARCE QU'UN FORFAIT PAYANT S'OUVRE — ADR-0033.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * UNE ÉCRITURE DE DATE SUFFIT À TOUT FERMER
+     *
+     * `DatabaseAccessGrant::allows()` est un `exists()` sur les octrois ACTIFS,
+     * sans notion de priorité ni de catégorie : un essai non clos continuerait
+     * d'ouvrir `questions.answer` sous un abonnement payant, et la consommation
+     * devrait choisir laquelle des deux enveloppes débiter. Poser `ends_at`
+     * suffit — `scopeActive()` l'exclut, la résolution ne le voit plus, il ne
+     * reste qu'une enveloppe. La simplification s'obtient par une date, pas par
+     * une refonte de la résolution.
+     *
+     * LA LIGNE N'EST JAMAIS SUPPRIMÉE. Elle devient la preuve durable de la
+     * conversion, et porte la référence de la commande qui l'a close : c'est ce
+     * qui interdit de recréer l'éligibilité douze mois plus tard.
+     *
+     * REJOUER NE FAIT RIEN : un essai déjà clos n'est plus actif, donc plus
+     * sélectionné.
+     *
+     * @return int le nombre d'octrois d'essai clos
+     */
+    public function clorePourConversion(Order $commande): int
+    {
+        $offre = $this->porteuse();
+
+        if ($offre === null) {
+            return 0;
+        }
+
+        $maintenant = now();
+
+        $essais = AccessGrantRecord::query()
+            ->where('user_id', $commande->user_id)
+            ->whereIn('origin_reference', $offre->versions()->selectRaw('uuid::text'))
+            ->where(fn (Builder $q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', $maintenant))
+            ->get();
+
+        foreach ($essais as $essai) {
+            $essai->forceFill([
+                'ends_at' => $maintenant,
+                /* La trace vit sur les colonnes existantes : `note` porte déjà
+                 * l'origine lisible de l'octroi, et une colonne `converted_at`
+                 * serait une seconde source de vérité pour un fait que la ligne
+                 * close dit déjà. */
+                'note' => trim(($essai->note ?? '').' — '.self::MARQUE_CONVERSION.' '.$commande->uuid),
+            ])->save();
+        }
+
+        return $essais->count();
+    }
+
+    /**
+     * LE COMPTE A-T-IL DÉJÀ CONVERTI ? — la preuve durable de l'ADR-0033.
+     *
+     * Deux faits, et aucun n'est un droit actif :
+     *
+     *   1. un octroi d'essai CLOS par une conversion — la ligne porte la
+     *      référence de la commande, et un octroi ne se supprime jamais ;
+     *   2. une commande HONORÉE dont la méthode convertit — pour les comptes
+     *      qui ont payé sans être jamais passés par l'essai, ceux d'avant
+     *      l'offre gratuite.
+     *
+     * LE SECOND FAIT SE LIT HORS SCOPE TENANT, DÉLIBÉRÉMENT. Une commande est
+     * isolée par organisme parce que c'est une activité ; « cette personne a
+     * déjà payé une fois » est un fait de la PERSONNE, et son compte la suit
+     * s'il quitte un organisme (DET-24). Lire sous le seul tenant courant
+     * rendrait l'éligibilité à qui a payé ailleurs.
+     */
+    public function aDejaConverti(User $user): bool
+    {
+        $essaiClos = AccessGrantRecord::query()
+            ->where('user_id', $user->id)
+            ->where('note', 'like', '%'.self::MARQUE_CONVERSION.'%')
+            ->exists();
+
+        if ($essaiClos) {
+            return true;
+        }
+
+        return TenantBypass::run(
+            'Verifier si ce compte a deja converti : la premiere conversion est un fait de la '
+            .'personne, pas une activite d organisme, et le compte suit la personne',
+            fn (): bool => Order::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'honoree')
+                ->whereIn('method', AbonnementService::MOYENS_QUI_CONVERTISSENT)
+                ->exists(),
+        );
     }
 
     /** Le compte porte-t-il déjà un droit issu d'une version de l'offre gratuite ? */

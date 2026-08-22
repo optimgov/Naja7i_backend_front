@@ -181,7 +181,7 @@ class AjusterEtRevoquerLeTransitoireTest extends TestCase
             'Il retombe au palier gratuit qu’il détenait par ailleurs — sans erreur, sans page blanche.',
         );
         $this->assertCount(1, $apres['droits']);
-        $this->assertSame('gratuite', $apres['droits'][0]['source']);
+        $this->assertSame('essai', $apres['droits'][0]['source']);
         $this->assertSame(40, $apres['quotas'][0]['granted'], 'Son enveloppe n’a jamais bougé.');
     }
 

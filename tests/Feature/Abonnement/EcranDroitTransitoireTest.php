@@ -96,7 +96,7 @@ class EcranDroitTransitoireTest extends TestCase
         $lignes = $this->etat()['droits'];
 
         $this->assertCount(1, $lignes);
-        $this->assertSame('gratuite', $lignes[0]['source']);
+        $this->assertSame('essai', $lignes[0]['source']);
         $this->assertNull($lignes[0]['expires_at']);
     }
 
@@ -123,9 +123,9 @@ class EcranDroitTransitoireTest extends TestCase
         $lignes = collect($this->etat()['droits']);
 
         $this->assertCount(2, $lignes, 'Jamais un état « abonné » unique.');
-        $this->assertSame(['transitoire', 'gratuite'], $lignes->pluck('source')->all());
+        $this->assertSame(['transitoire', 'essai'], $lignes->pluck('source')->all());
 
-        $gratuite = $lignes->firstWhere('source', 'gratuite');
+        $gratuite = $lignes->firstWhere('source', 'essai');
         $this->assertNull($gratuite['expires_at'], 'Le sans-terme reste sans terme, dessous.');
         $this->assertSame([AccessGrant::QUESTIONS_ANSWER], $gratuite['capabilities']);
 
@@ -142,7 +142,7 @@ class EcranDroitTransitoireTest extends TestCase
 
         $this->assertCount(1, $quotas, 'Le transitoire n’a pas d’enveloppe : comme tout palier payant.');
         $this->assertSame(40, $quotas[0]['granted']);
-        $this->assertSame('gratuite', $quotas[0]['source']);
+        $this->assertSame('essai', $quotas[0]['source']);
     }
 
     public function test_le_libelle_suit_la_langue_du_candidat(): void

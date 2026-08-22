@@ -68,12 +68,24 @@ class RattraperLeGratuit extends Command
 
         $poses = 0;
         $dejaPorteurs = 0;
+        $dejaConvertis = 0;
 
         User::query()
             ->whereHas('memberships', fn ($q) => $q->where('role_id', $roleCandidat))
             ->orderBy('id')
-            ->chunkById(200, function ($comptes) use ($gratuite, $offre, $sec, &$poses, &$dejaPorteurs): void {
+            ->chunkById(200, function ($comptes) use (
+                $gratuite, $offre, $sec, &$poses, &$dejaPorteurs, &$dejaConvertis
+            ): void {
                 foreach ($comptes as $compte) {
+                    /* Converti d'abord : c'est l'exclusion qui compte
+                     * commercialement, et un compte converti a souvent aussi
+                     * un essai — clos, précisément par sa conversion. */
+                    if ($gratuite->aDejaConverti($compte)) {
+                        $dejaConvertis++;
+
+                        continue;
+                    }
+
                     if ($gratuite->porteDejaLeGratuit($compte, $offre)) {
                         $dejaPorteurs++;
 
@@ -94,7 +106,8 @@ class RattraperLeGratuit extends Command
         $this->line('enveloppe='.($version->quota_value ?? 'aucune'));
         $this->line('poses='.$poses);
         $this->line('deja_porteurs='.$dejaPorteurs);
-        $this->line('examines='.($poses + $dejaPorteurs));
+        $this->line('deja_convertis='.$dejaConvertis);
+        $this->line('examines='.($poses + $dejaPorteurs + $dejaConvertis));
         $this->line('mode='.($sec ? 'sec' : 'ecriture'));
 
         return self::SUCCESS;

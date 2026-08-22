@@ -13,8 +13,12 @@ return [
     'coupon_hors_periode' => 'هذا العرض غير معروض للبيع في الوقت الحالي.',
     'coupon_version_indisponible' => 'لم تعد هذه النسخة من العرض متاحة. يرجى تحديث الصفحة.',
     'unite_questions' => 'أسئلة',
-    'source_gratuite' => 'ممنوح عند التسجيل',
+    'source_essai' => 'تجربة',
     'source_transitoire' => 'وصول انتقالي',
     'source_achetee' => 'مضمّن في اشتراكك',
+    'etat_essai' => 'تجربة en cours',
+    'etat_actif' => 'اشتراك نشط',
+    'etat_epuise' => 'انتهى الاشتراك',
+    'sortie_epuise' => 'جدّد اشتراكك أو اختر صيغة أخرى لاستعادة صلاحياتك.',
     'en_attente' => 'رمزك قيد التحقق من طرف فريقنا.',
 ];

@@ -30,7 +30,30 @@ use RuntimeException;
  */
 final class AbonnementService
 {
+    /**
+     * LES MOYENS DE PAIEMENT QUI CONVERTISSENT — ADR-0033.
+     *
+     * « Payante » se lit sur la MÉTHODE, jamais sur le montant. Un montant nul
+     * n'est pas un critère : une offre à zéro peut être un forfait réel, et un
+     * futur octroi d'expert ne passera pas par une commande commerciale.
+     *
+     * `coupon` convertit : c'est l'activation manuelle d'un forfait payé hors
+     * ligne (décision D-C). `simule` ne convertit PAS — il n'existe pas en
+     * production (`SimulatedGateway` refuse de s'y instancier), et le laisser
+     * clore un essai ferait perdre en recette ce qu'aucun candidat n'a acheté.
+     * Un prestataire réel s'ajoutera ici, et nulle part ailleurs.
+     *
+     * @var list<string>
+     */
+    public const MOYENS_QUI_CONVERTISSENT = ['coupon'];
+
     public function __construct(private readonly CapabilityRegistry $capabilities) {}
+
+    /** Cette commande active-t-elle un forfait payé ? */
+    public static function convertit(?string $moyen): bool
+    {
+        return $moyen !== null && in_array($moyen, self::MOYENS_QUI_CONVERTISSENT, true);
+    }
 
     /**
      * Honore une commande : elle produit exactement un octroi par capacité.
@@ -80,6 +103,27 @@ final class AbonnementService
             $plan = $verrouillee->plan()->firstOrFail();
             $version = $verrouillee->planVersion()->firstOrFail();
             $maintenant = now();
+
+            /*
+             * LA CONVERSION, AVANT L'OCTROI ET DANS LA MÊME TRANSACTION.
+             *
+             * ADR-0033 : « la première activation d'un forfait payant clôt
+             * l'essai définitivement ». L'ordre et la transaction ne sont pas
+             * des détails d'implémentation, ce sont les deux garanties :
+             *
+             *   · MÊME TRANSACTION — si l'octroi échoue en dessous, la clôture
+             *     est annulée avec lui. Le candidat ne se retrouve jamais sans
+             *     droit du tout, ce qui serait le pire des trois états.
+             *   · AVANT L'OCTROI — pour que la fenêtre où les deux coexistent
+             *     n'existe dans aucun état intermédiaire lisible.
+             *
+             * `OffreGratuiteService` est résolu ici et non au constructeur :
+             * c'est lui qui sait reconnaître un essai, et il dépend déjà de ce
+             * service pour poser ses octrois.
+             */
+            if (self::convertit($verrouillee->method)) {
+                app(OffreGratuiteService::class)->clorePourConversion($verrouillee);
+            }
 
             $this->octroyerLesDroits(
                 $verrouillee->user_id,
@@ -225,9 +269,17 @@ final class AbonnementService
                 return $octrois->max('ends_at')?->toIso8601String();
             });
 
+        $etat = $user->etatCommercial();
+
         return [
             'capabilities' => $capacites,
             'expires_at' => $echeances->all(),
+            /* L'ÉTAT, ET SA SORTIE. Un compte épuisé n'est pas un compte cassé :
+             * il lui manque une décision, et l'écran la nomme. Jamais un retour
+             * à l'essai — la seule sortie est d'acheter (ADR-0033). */
+            'etat' => $etat,
+            'etat_label' => __('abonnement.etat_'.$etat),
+            'sortie' => $etat === 'epuise' ? __('abonnement.sortie_epuise') : null,
             'droits' => $this->lignesDeDroit($user),
             'quotas' => $this->enveloppesDe($user),
             'pending_orders' => Order::where('user_id', $user->id)->enAttente()->count(),
@@ -333,7 +385,10 @@ final class AbonnementService
              * ni un abonnement, et le confondre avec l'un des deux ferait
              * découvrir sa fin le jour où elle tombe (Q-17). */
             'transition' => 'transitoire',
-            default => 'gratuite',
+            /* `essai` et non `gratuite` : le mot dit ce que le droit EST — une
+             * découverte qui se clôt au premier paiement — plutôt que ce qu'il
+             * coûte. Renommé avec l'ADR-0033 ; c'est le même objet. */
+            default => 'essai',
         };
     }
 

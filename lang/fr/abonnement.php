@@ -13,8 +13,12 @@ return [
     'coupon_hors_periode' => "Cette offre n'est pas proposée à la vente en ce moment.",
     'coupon_version_indisponible' => "Cette version de l'offre n'est plus disponible. Actualisez la page.",
     'unite_questions' => 'questions',
-    'source_gratuite' => 'Offert à l’inscription',
+    'source_essai' => 'Essai',
     'source_transitoire' => 'Accès transitoire',
     'source_achetee' => 'Inclus dans votre abonnement',
+    'etat_essai' => 'Essai en cours',
+    'etat_actif' => 'Forfait actif',
+    'etat_epuise' => 'Forfait terminé',
+    'sortie_epuise' => 'Renouvelez ou choisissez un autre forfait pour retrouver vos accès.',
     'en_attente' => 'Votre code est en cours de validation par notre équipe.',
 ];

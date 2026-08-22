@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\HasPublicUuid;
 use App\Notifications\ResetPasswordNotification;
 use App\Services\EmailVerificationService;
+use App\Services\OffreGratuiteService;
 use App\Services\PermissionResolver;
 use App\Tenancy\TenantContext;
 use Filament\Models\Contracts\FilamentUser;
@@ -56,6 +57,48 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
      * donc préparer une épreuve en B2C et une autre dans un centre partenaire
      * sans que les deux se voient.
      */
+    /**
+     * L'ÉTAT COMMERCIAL DU COMPTE — déduit des droits, jamais stocké (ADR-0033).
+     *
+     * Une colonne d'état serait une seconde source de vérité et divergerait au
+     * premier `ends_at` écrit ailleurs : l'expiration d'un forfait n'écrit rien,
+     * elle laisse simplement une date passer. L'état se LIT donc, à chaque fois.
+     *
+     * Trois valeurs, et l'ordre de lecture compte :
+     *
+     *   `actif`  — au moins un octroi PAYANT actif ; c'est ce que le forfait vend ;
+     *   `essai`  — un octroi d'essai actif, et aucun payant ;
+     *   `epuise` — plus aucun des deux : « Mon dossier », historique et catalogue
+     *              restent ouverts, les fonctions à droit sont fermées.
+     *
+     * LE DROIT TRANSITOIRE NE CHANGE PAS L'ÉTAT. Il n'est pas un forfait et ne
+     * convertit pas : un compte transitoire garde son essai dessous, intact, et
+     * le retrouve à l'échéance. Il reste donc en `essai` — avec des capacités en
+     * plus, ce que la liste des droits montre ligne par ligne.
+     *
+     * `epuise` est aussi le repli d'un compte sans aucun droit : du point de vue
+     * du mur, ne plus rien avoir et n'avoir jamais rien eu se traitent pareil —
+     * la sortie est la même, acheter.
+     */
+    public function etatCommercial(): string
+    {
+        $actifs = $this->accessGrants()->active();
+
+        if ((clone $actifs)->where('origin', 'purchase')->exists()) {
+            return 'actif';
+        }
+
+        $offre = app(OffreGratuiteService::class)->porteuse();
+
+        if ($offre !== null && (clone $actifs)
+            ->whereIn('origin_reference', $offre->versions()->selectRaw('uuid::text'))
+            ->exists()) {
+            return 'essai';
+        }
+
+        return 'epuise';
+    }
+
     /** Les droits d'accès du compte — globaux, jamais isolés par organisme. */
     public function accessGrants(): HasMany
     {

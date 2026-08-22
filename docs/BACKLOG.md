@@ -1261,6 +1261,43 @@ distribuée garde son enveloppe : personne ne perd rien.
 **Vérification :** 8 tests ciblés et 26 assertions, puis suite complète
 séquentielle verte à **821 tests et 2 884 assertions** en 226,3 s.
 
+#### Lot 3A.7 pas 2 · l'auto-attribution à l'inscription · livré · `6aff8ef`
+
+`AbonnementService::octroyerLesDroits()` est extrait de `honorer()` et devient
+le seul endroit qui pose des octrois. L'origine, la référence et la note sont
+des paramètres ; tout le reste — une ligne par capacité, l'échéance calculée sur
+la durée de la version, l'enveloppe lue sur l'instantané — est commun. Sans
+cette extraction, l'attribution gratuite aurait été un second circuit d'octroi,
+et le gratuit aurait vieilli autrement que le payant.
+
+`OffreGratuiteService` choisit l'offre, vérifie, et appelle ce service. Il
+n'ouvre aucun droit lui-même : c'est la condition posée par l'ADR-0025 — « son
+attribution crée des droits par la chaîne normale ».
+
+**Attribué dans la transaction d'inscription**, pas à la vérification d'e-mail :
+`RegistrationService` énonce déjà qu'« un compte sans identité, sans rôle ou
+sans acceptation des CGU serait invalide » ; un compte sans son palier gratuit
+l'est de la même façon. La vérification d'e-mail est une porte sur l'USAGE, pas
+un changement de nature du compte.
+
+**Origine `account_level`**, valeur qui existe depuis le PAS-8 et qui dit
+exactement ce dont il s'agit : un droit qui vient du niveau du compte. Jamais
+`purchase` — aucun agrégat de vente ne compte un droit que personne n'a acheté
+(ADR-0028, C-05). Aucune commande n'est créée.
+
+**Idempotence jugée sur TOUTES les versions**, pas sur la courante : un compte
+inscrit sous la v1 ne doit pas recevoir la v2 parce qu'un rattrapage passe après
+un changement de quota. L'index unique `(user_id, capability, origin_reference)`
+reste la dernière serrure contre deux attributions concurrentes.
+
+Le droit gratuit référence la version, et le journal des versions le compte
+désormais dans ses dépendances — une version distribuée à dix mille comptes ne
+peut pas s'afficher « sans dépendance » faute de commande.
+
+**Vérification :** 6 tests ciblés et 28 assertions, dont le grandfathering
+(inscrit avant : 40 ; inscrit après : 60), puis suite complète séquentielle verte
+à **827 tests et 2 912 assertions** en 228,8 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

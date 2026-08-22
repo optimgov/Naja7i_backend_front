@@ -118,6 +118,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.6.6 | Le scénario lycée devient un test : catégorie, pack « Suivi mensuel » 30 j, quatre capacités et portée `(audience, lycee)` créés à l'écran sans migration — avec les tests d'acceptation §6 du lot et leurs mutations | `b1fe327` |
 | 3A.7.1 | Le porteur du gratuit : une offre ordinaire à 0 MAD, sans terme, `questions.answer` seule, profil « Découverte » sélectionné et figé par sa version — un drapeau `auto_granted` la sort du catalogue sans la retirer de la vente, et un index unique interdit un second porteur | `46d267a` |
 | 3A.7.2 | Le palier gratuit s'attribue dans la transaction d'inscription, sous `account_level` et jamais `purchase`, par le même service d'octroi que l'honoration — idempotent, et le compte déjà inscrit garde l'enveloppe de sa version | `6aff8ef` |
+| 3A.7.3 | `naja7i:rattraper-le-gratuit` pose le palier sur les comptes candidats antérieurs — origine `rattrapage`, mode sec, compte rendu chiffré, idempotente et respectueuse du grandfathering ; livrée testée, exécutée sur aucune base durable | `5ed8d03` |
 
 ## Lots frontend
 

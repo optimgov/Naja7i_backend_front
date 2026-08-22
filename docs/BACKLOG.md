@@ -1298,6 +1298,31 @@ peut pas s'afficher « sans dépendance » faute de commande.
 (inscrit avant : 40 ; inscrit après : 60), puis suite complète séquentielle verte
 à **827 tests et 2 912 assertions** en 228,8 s.
 
+#### Lot 3A.7 pas 3 · le rattrapage des comptes existants · livré · `5ed8d03`
+
+Une commande, pas une migration : une migration de schéma qui distribue des
+droits mélange la forme de la base, qui se déploie une fois, et une décision
+d'exploitation, qui se prévisualise et se relance. `naja7i:rattraper-le-gratuit`
+parcourt les comptes CANDIDATS, saute ceux qui portent déjà le gratuit — quelle
+que soit la version dont il vient — et rend un compte rendu chiffré :
+`poses`, `deja_porteurs`, `examines`, plus l'offre, sa version et son enveloppe.
+
+`--dry-run` compte sans écrire. Une distribution de droits se prévisualise avant
+de se faire (ADR-0025 : « geste explicite, prévisualisé et tracé »).
+
+Les droits posés portent l'origine **`rattrapage`** : ils n'ont pas été posés à
+l'inscription mais des mois après, par une décision d'exploitation, et un audit
+doit pouvoir les distinguer sans deviner. Sans offre auto-attribuée, la commande
+échoue en le disant plutôt que de deviner quoi distribuer.
+
+**Elle n'a été exécutée sur aucune base durable.** Elle est livrée testée sur
+une base peuplée ; son heure viendra à l'allumage de 3A.9, avec le droit
+transitoire de 3A.8.
+
+**Vérification :** 7 tests ciblés et 33 assertions, dont le rejeu, le mode sec,
+l'exclusion du personnel et le grandfathering, puis suite complète séquentielle
+verte à **834 tests et 2 945 assertions** en 232,8 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

@@ -132,6 +132,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.9.1 | Les cinq murs : l'ordonnance et les rendez-vous mémoire quittent le rendu — champ absent, jamais compteur factice ; la carte de maîtrise se rend à la profondeur que le palier ouvre ; série ciblée, examen blanc et séance mémoire refusent par un 403 qui nomme la clé, et le rapport déjà produit reste lisible | `510b8e6` |
 | 3A.9.2 | S-19 de bout en bout : le compte épuisé garde son passé — tentatives, causes acquises, rapports déjà produits, carte au dernier niveau rendu — le recalcul de maîtrise ne s'arrête jamais, l'expiration en cours de session raccourcit la carte sans erreur, et « Mon dossier », l'historique et le catalogue restent la sortie | `10a163c` |
 | 3A.9.3 | Le refus d'éligibilité par public (Q-19, reporté de M-004) : jugé sur la version vendue et non sur l'offre courante, au point de passage commun des deux moyens de paiement, et jamais sur une catégorie devinée — un compte sans épreuve déclarée n'est pas refusé | `d5734cf` |
+| 3B | La consommation : `question_consumptions` avec son unicité en base, le reliquat dérivé et jamais stocké, le débit à la première mise à disposition d'un item, une seule enveloppe débitée — celle qui expire le plus tôt — la série composée au reliquat sous un verrou unique, le coût annoncé avant et après le geste, la borne de miroirs par couple et l'invariant de séance mémoire enfin écrits | `2e6ae28` |
 
 ## Lots frontend
 

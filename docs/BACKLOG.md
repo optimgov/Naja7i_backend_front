@@ -1704,6 +1704,54 @@ compte.
 par coupon, et les trois cas qu'il ne doit pas attraper ; suite complète
 séquentielle verte à **934 tests et 3 522 assertions**.
 
+### LOT-3B — La consommation des questions · livré · `2e6ae28`
+
+**Le dernier mur, et le seul qui compte des unités.** M-007 fermait par présence
+ou absence : une erreur y produisait une porte fermée, et cela se voyait. Ici une
+capacité est détenue **et** comptée, et une erreur produit un chiffre faux — que
+le candidat lit comme une mesure.
+
+**Le reliquat est DÉRIVÉ.** `question_consumptions` porte une ligne par item
+servi ; le reliquat est `quota_value` moins ces lignes. Aucune colonne
+`remaining`, aucun compteur à décrémenter — un second dépositaire de la vérité
+finit par diverger du premier. `CauseRevealCounter` est un compteur stocké et
+n'est **pas** le modèle suivi ici : il compte un cumul à vie, sans fenêtre ni
+droit porteur, donc sans rien à recalculer.
+
+**L'unicité est une contrainte**, pas un `if` de service. Le test qui le prouve
+appelle le débit deux fois de suite : la garde d'idempotence des clés absorbe le
+rejeu bien avant d'y arriver, et ne dit donc rien de la seconde serrure.
+
+**Le débit a lieu au service de l'item**, dans la transaction qui crée les
+`AttemptItem`. Une file hors ligne rejoue des **réponses**, et une réponse ne
+consomme rien : le piège P3 est sans objet (Q-08).
+
+**Tout sous un seul verrou.** La composition est passée **dans** la transaction,
+derrière un verrou transactionnel `(compte, capacité)`. Le même verrou entre dans
+l'honoration d'une commande, où deux validations concurrentes réservaient deux
+fois les mêmes trente jours.
+
+**Les trois règles d'AR-2**, dans l'ordre : capacité fermée → le mur de M-007 ;
+droit sans quota → consommation libre, avec une ligne de débit sans enveloppe ;
+sinon → une seule enveloppe, celle qui expire le plus tôt, « sans fin » valant
+l'infini. Les reliquats non gouvernants ne bougent pas — et un reliquat dérivé
+n'a pas besoin d'être préservé, il l'est par construction.
+
+**La série se compose au reliquat**, elle ne se refuse pas : deux au lieu de dix
+vaut mieux qu'un refus, qui ferait perdre des unités déjà payées. Le refus
+n'arrive qu'à zéro, et il se nomme (`ENVELOPPE_EPUISEE`, distinct du mur).
+
+**Le coût s'annonce**, avant et après : l'écran d'abonnement rend le reliquat
+réel, la réponse qui sert la série redit ce qu'elle a coûté, en clés FR/AR.
+
+**Ce que le pas 0 a trouvé déjà construit :** le refus de saisie libre d'un quota
+(3A.3, testé) ; trois des quatre gardes du miroir. **Ce qui manquait :** la borne
+N par couple (posée à 3, DET-93) et l'invariant de séance mémoire, vrai par
+construction et garanti par personne — un test l'écrit désormais.
+
+**Vérification :** 22 tests ciblés et 158 assertions ; six mutations éprouvées ;
+suite complète séquentielle verte à **956 tests et 3 678 assertions** en 272,6 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

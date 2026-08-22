@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\BackOffice;
 
+use App\Contracts\AccessGrant;
 use App\Filament\Resources\Plans\PlanResource;
 use App\Filament\Resources\QuotaProfiles\Pages\CreateQuotaProfile;
 use App\Filament\Resources\QuotaProfiles\Pages\EditQuotaProfile;
@@ -10,7 +11,9 @@ use App\Models\QuotaProfile;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\QuotaProfileService;
 use App\Tenancy\TenantContext;
+use Filament\Forms\Components\Select;
 use Filament\Schemas\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -63,6 +66,17 @@ class PanneauProfilsDeQuotaTest extends TestCase
         return $user->fresh();
     }
 
+    private function composantDuFormulaire(string $resource, string $nom): mixed
+    {
+        foreach ($resource::form(Schema::make())->getComponents(withHidden: true) as $composant) {
+            if (method_exists($composant, 'getName') && $composant->getName() === $nom) {
+                return $composant;
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<string> */
     private function champsDuFormulaire(string $resource): array
     {
@@ -91,16 +105,45 @@ class PanneauProfilsDeQuotaTest extends TestCase
 
     // ═══ S-16 geste 2 : le commerce ne saisit aucun nombre ═════════════════
 
-    public function test_le_formulaire_des_offres_ne_porte_aucun_champ_de_quota(): void
+    public function test_le_formulaire_des_offres_ne_porte_aucun_champ_de_saisie_de_quota(): void
     {
         $champs = $this->champsDuFormulaire(PlanResource::class);
 
-        foreach ($champs as $champ) {
-            $this->assertStringNotContainsString(
-                'quota', $champ,
-                "Le formulaire des offres porte « {$champ} » : l'admin commerciale sélectionne un "
-                .'profil, elle ne saisit jamais une valeur de quota.'
-            );
+        /*
+         * CE QUE CE TEST GARDE, ET CE QUI A CHANGÉ AU LOT 3A.6.
+         *
+         * La formulation d'origine — « aucun champ dont le nom contient quota »
+         * — tenait tant que l'écran commercial ne SÉLECTIONNAIT rien. Le lot
+         * 3A.6 livre la sélection que la spécification demande depuis le début
+         * (« elle choisit parmi une liste ; elle ne saisit aucun nombre »), et
+         * ce champ s'appelle `quota_profile_id`.
+         *
+         * L'intention, elle, n'a pas bougé d'un pouce, et le test la garde plus
+         * étroitement qu'avant : le seul champ de quota est une LISTE, ses
+         * options viennent du registre pédagogique, et aucun champ de valeur ou
+         * de borne n'existe ici. Un `TextInput::make('quota_value')` ajouté
+         * demain rougirait sur les trois assertions.
+         */
+        $champsDeQuota = array_values(array_filter(
+            $champs, fn (string $champ): bool => str_contains($champ, 'quota'),
+        ));
+
+        $this->assertSame(['quota_profile_id'], $champsDeQuota);
+
+        $selection = $this->composantDuFormulaire(PlanResource::class, 'quota_profile_id');
+        $this->assertInstanceOf(
+            Select::class, $selection,
+            'Un quota se sélectionne dans une liste ; un champ de saisie ici rendrait le nombre libre.'
+        );
+
+        $this->assertSame(
+            array_values(app(QuotaProfileService::class)->selectionnablesPour(AccessGrant::QUESTIONS_ANSWER)),
+            array_values($selection->getOptions()),
+            'Les options de l’écran commercial sont celles du registre pédagogique, pas une seconde liste.'
+        );
+
+        foreach (['value', 'min_value', 'max_value', 'min_justification', 'max_justification'] as $interdit) {
+            $this->assertNotContains($interdit, $champs);
         }
 
         /* Et le registre pédagogique, lui, porte bien la valeur et ses bornes :

@@ -45,7 +45,10 @@ class AbonnementController extends Controller
      */
     public function plans(): JsonResponse
     {
-        $plans = Plan::active()->ordered()->with('currentVersion')->get();
+        /* `enVente` et non `active` : hors calendrier, l'offre ne se voit pas.
+         * Le candidat ne lit jamais un bouton grisé — soit l'offre est là,
+         * soit elle n'y est pas (§2.5). */
+        $plans = Plan::enVente()->ordered()->with('currentVersion')->get();
 
         return response()->json(['data' => PlanResource::collection($plans)->resolve()]);
     }

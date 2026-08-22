@@ -37,6 +37,8 @@ class PlanVersion extends Model
             'quota_value' => 'integer',
             'quota_min_value' => 'integer',
             'quota_max_value' => 'integer',
+            'sale_opens_at' => 'datetime',
+            'sale_closes_at' => 'datetime',
         ];
     }
 
@@ -72,6 +74,23 @@ class PlanVersion extends Model
     public function editorialFixes(): HasMany
     {
         return $this->hasMany(PlanVersionEditorialFix::class);
+    }
+
+    /**
+     * Cette version est-elle dans son calendrier de commercialisation ?
+     *
+     * La fenêtre est CONTRACTUELLE : c'est celle qui a été affichée, pas celle
+     * que la projection porte aujourd'hui.
+     */
+    public function estCommercialisable(): bool
+    {
+        $maintenant = now();
+
+        if ($this->sale_opens_at !== null && $this->sale_opens_at->greaterThan($maintenant)) {
+            return false;
+        }
+
+        return $this->sale_closes_at === null || $this->sale_closes_at->greaterThan($maintenant);
     }
 
     /** Cette version pose-t-elle une enveloppe ? */

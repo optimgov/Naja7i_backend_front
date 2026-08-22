@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
 use App\Services\PlanVersionService;
+use App\Services\PorteeVendable;
 use App\Services\QuotaProfileService;
 use App\Support\CapabilityRegistry;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,6 +30,18 @@ use RuntimeException;
 class Plan extends Model
 {
     use HasPublicUuid;
+
+    /**
+     * Les devises que le produit sait encaisser — fermées en code.
+     *
+     * Ce n'est pas une frilosité : une devise sans canal de paiement est une
+     * promesse qu'on ne tient pas. En ajouter une est un pas de développement,
+     * pas une ligne de formulaire — et la matrice §5 demande explicitement une
+     * validation « devise dans la liste ».
+     *
+     * @var list<string>
+     */
+    public const DEVISES = ['MAD'];
 
     protected static function booted(): void
     {
@@ -67,6 +80,41 @@ class Plan extends Model
             }
         });
 
+        static::saving(function (Plan $plan): void {
+            if ($plan->isDirty('currency') && ! in_array($plan->currency, self::DEVISES, true)) {
+                throw ValidationException::withMessages([
+                    'currency' => "La devise « {$plan->currency} » n’est encaissée par aucun canal de paiement du produit.",
+                ]);
+            }
+        });
+
+        /* LA PORTÉE EST VÉRIFIÉE AVANT D'ÊTRE ÉCRITE. L'écran propose une liste,
+         * mais une requête forgée ne passe pas par l'écran — et une portée qui
+         * désigne un objet retiré ouvrirait un droit que la résolution ne sait
+         * plus lire. */
+        static::saving(function (Plan $plan): void {
+            if ($plan->isDirty(['scope_type', 'scope_uuid'])) {
+                app(PorteeVendable::class)->assertDesignable($plan->scope_type, $plan->scope_uuid);
+            }
+        });
+
+        /* Le public éligible se SÉLECTIONNE parmi les catégories proposées.
+         * Une catégorie retirée reste lisible sur les versions qui la portent —
+         * ce qui a été vendu ne s'efface pas — mais elle ne se compose plus. */
+        static::saving(function (Plan $plan): void {
+            if (! $plan->isDirty('audience_id') || $plan->audience_id === null) {
+                return;
+            }
+
+            $audience = Audience::query()->whereKey($plan->audience_id)->firstOrFail();
+
+            if (! $audience->active) {
+                throw ValidationException::withMessages([
+                    'audience_id' => "La catégorie « {$audience->code} » n’est plus proposée à la sélection.",
+                ]);
+            }
+        });
+
         static::created(function (Plan $plan): void {
             $version = app(PlanVersionService::class)->current($plan);
             $plan->setAttribute('current_version_id', $version->id);
@@ -82,8 +130,9 @@ class Plan extends Model
 
     protected $fillable = [
         'code', 'audience_id', 'name_fr', 'name_ar', 'description_fr', 'description_ar',
-        'price_cents', 'currency', 'duration_days', 'capabilities',
-        'quota_profile_id', 'active', 'position',
+        'internal_note', 'price_cents', 'currency', 'duration_days',
+        'sale_opens_at', 'sale_closes_at', 'capabilities',
+        'quota_profile_id', 'scope_type', 'scope_uuid', 'active', 'position',
     ];
 
     protected $hidden = ['id'];
@@ -95,6 +144,8 @@ class Plan extends Model
             'active' => 'boolean',
             'price_cents' => 'integer',
             'duration_days' => 'integer',
+            'sale_opens_at' => 'datetime',
+            'sale_closes_at' => 'datetime',
         ];
     }
 
@@ -130,10 +181,24 @@ class Plan extends Model
         return $this->hasOne(PlanVersion::class, 'id', 'current_version_id');
     }
 
-    /** Ce qui est proposé à la vente aujourd'hui. */
+    /** Ce qui n'a pas été retiré de la vente. */
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('active', true);
+    }
+
+    /**
+     * Ce qui est réellement en vente MAINTENANT — actif ET dans son calendrier.
+     *
+     * Le calendrier ne grise pas une offre, il la retire du rendu : hors
+     * période, elle n'apparaît pas au catalogue, et la souscription est refusée
+     * côté serveur. Un bouton grisé forcerait le candidat à deviner pourquoi.
+     */
+    public function scopeEnVente(Builder $query): Builder
+    {
+        return $query->active()
+            ->where(fn (Builder $q) => $q->whereNull('sale_opens_at')->orWhere('sale_opens_at', '<=', now()))
+            ->where(fn (Builder $q) => $q->whereNull('sale_closes_at')->orWhere('sale_closes_at', '>', now()));
     }
 
     public function scopeOrdered(Builder $query): Builder

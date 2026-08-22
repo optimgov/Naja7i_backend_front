@@ -7,6 +7,7 @@ use App\Models\Plan;
 use App\Models\PlanVersion;
 use App\Models\QuotaProfile;
 use App\Models\User;
+use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -27,7 +28,14 @@ final class PlanVersionService
         'price_cents',
         'currency',
         'duration_days',
+        /* Le calendrier dit QUAND l'offre se vend — donc s'il est possible
+         * d'obtenir quelque chose. La matrice §5 le fait versionner. */
+        'sale_opens_at',
+        'sale_closes_at',
         'capabilities',
+        /* La portée dit CE QUE le droit couvrira : elle versionne. */
+        'scope_type',
+        'scope_uuid',
         /* La SÉLECTION du profil, pas ses valeurs. Changer de profil est un
          * geste commercial : il versionne. Amender le profil sélectionné n'en
          * est pas un — sinon l'admin pédagogique recomposerait, depuis son
@@ -85,6 +93,14 @@ final class PlanVersionService
 
         if ($displayedVersionUuid !== null && $current->uuid !== $displayedVersionUuid) {
             throw new PaiementRefuse('version_indisponible');
+        }
+
+        /* HORS CALENDRIER, LA SOUSCRIPTION EST REFUSÉE — et elle l'est ici,
+         * pas à l'écran. Le catalogue ne rend déjà plus l'offre ; ce refus
+         * couvre le chemin qui ne passe pas par le catalogue (un coupon saisi
+         * après la fermeture, un client qui garde un identifiant de version). */
+        if (! $current->estCommercialisable()) {
+            throw new PaiementRefuse('hors_periode');
         }
 
         return $current;
@@ -187,13 +203,8 @@ final class PlanVersionService
     private function sameContract(PlanVersion $version, array $snapshot): bool
     {
         foreach (self::CONTRACTUAL_FIELDS as $field) {
-            $left = $version->getAttribute($field);
-            $right = $snapshot[$field] ?? null;
-
-            if ($field === 'capabilities') {
-                $left = array_values($left ?? []);
-                $right = array_values($right ?? []);
-            }
+            $left = $this->comparable($version->getAttribute($field), $field);
+            $right = $this->comparable($snapshot[$field] ?? null, $field);
 
             if ($left !== $right) {
                 return false;
@@ -201,5 +212,29 @@ final class PlanVersionService
         }
 
         return true;
+    }
+
+    /**
+     * Deux valeurs identiques doivent se comparer identiques — y compris deux
+     * dates.
+     *
+     * `!==` sur deux `Carbon` compare des IDENTITÉS D'OBJET : deux instants
+     * égaux rendraient `false`, et chaque lecture du catalogue composerait une
+     * version nouvelle — jusqu'à refuser, pour « version périmée », la commande
+     * du candidat qui a l'écran ouvert. Le calendrier de commercialisation est
+     * le premier champ contractuel porté par une date : la comparaison se règle
+     * ici, une fois.
+     */
+    private function comparable(mixed $valeur, string $champ): mixed
+    {
+        if ($champ === 'capabilities') {
+            return array_values($valeur ?? []);
+        }
+
+        if ($valeur instanceof DateTimeInterface) {
+            return $valeur->getTimestamp();
+        }
+
+        return $valeur;
     }
 }

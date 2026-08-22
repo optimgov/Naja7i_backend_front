@@ -74,6 +74,12 @@ final class PlanVersionService
             $version = $locked->versions()->create($snapshot + $this->instantaneDeQuota($locked) + [
                 'version' => ($latest?->version ?? 0) + 1,
                 'reconstructed' => false,
+                /* Qui a signé, et ce qui a bougé (§2.6). `null` se lit
+                 * « aucun humain n'a signé » — une composition par semis ou par
+                 * migration n'a pas d'auteur, et lui en fabriquer un serait la
+                 * première ligne fausse du journal. */
+                'composed_by' => auth()->id(),
+                'triggered_by' => $latest === null ? [] : $this->champsQuiOntBouge($latest, $snapshot),
             ]);
 
             $locked->forceFill(['current_version_id' => $version->id])->saveQuietly();
@@ -197,6 +203,30 @@ final class PlanVersionService
             'quota_profile_id' => "Le profil « {$profil->code} » borne {$capacite}, "
                 .'que cette offre ne vend pas : une enveloppe sans capacité ne compte rien.',
         ]);
+    }
+
+    /**
+     * Les champs contractuels qui diffèrent de la version précédente.
+     *
+     * C'est « le champ qui l'a déclenchée » de la spécification §2.6, au
+     * pluriel : un enregistrement peut en changer deux à la fois, et n'en
+     * montrer qu'un ferait mentir l'historique.
+     *
+     * @param  array<string, mixed>  $snapshot
+     * @return list<string>
+     */
+    private function champsQuiOntBouge(PlanVersion $version, array $snapshot): array
+    {
+        $bouges = [];
+
+        foreach (self::CONTRACTUAL_FIELDS as $field) {
+            if ($this->comparable($version->getAttribute($field), $field)
+                !== $this->comparable($snapshot[$field] ?? null, $field)) {
+                $bouges[] = $field;
+            }
+        }
+
+        return $bouges;
     }
 
     /** @param array<string, mixed> $snapshot */

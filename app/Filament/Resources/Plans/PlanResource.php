@@ -6,6 +6,7 @@ use App\Contracts\AccessGrant;
 use App\Filament\Resources\Plans\Pages\CreatePlan;
 use App\Filament\Resources\Plans\Pages\EditPlan;
 use App\Filament\Resources\Plans\Pages\ListPlans;
+use App\Filament\Resources\Plans\RelationManagers\VersionsRelationManager;
 use App\Models\AccessGrantRecord;
 use App\Models\Audience;
 use App\Models\Plan;
@@ -253,6 +254,12 @@ class PlanResource extends Resource
                 IconColumn::make('active')->label('En vente')->boolean(),
             ])
             ->defaultSort('position');
+    }
+
+    /** L'historique des versions se lit sur la fiche de l'offre (§2.6). */
+    public static function getRelations(): array
+    {
+        return [VersionsRelationManager::class];
     }
 
     public static function getPages(): array

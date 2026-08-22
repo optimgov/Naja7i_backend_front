@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\QuotaPeriodicity;
 use App\Enums\QuotaUnit;
 use App\Models\Concerns\HasPublicUuid;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,6 +40,7 @@ class PlanVersion extends Model
             'quota_max_value' => 'integer',
             'sale_opens_at' => 'datetime',
             'sale_closes_at' => 'datetime',
+            'triggered_by' => 'array',
         ];
     }
 
@@ -68,6 +70,29 @@ class PlanVersion extends Model
     public function quotaProfile(): BelongsTo
     {
         return $this->belongsTo(QuotaProfile::class);
+    }
+
+    /** Qui a composé cette version. Nul = aucun humain n'a signé. */
+    public function composedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'composed_by');
+    }
+
+    /**
+     * Les droits issus de cette version, par la chaîne commande → octroi.
+     *
+     * `origin_reference` porte l'uuid de la commande : c'est ce qui rend la
+     * chaîne relisible, et c'est par là qu'on répond à « combien de droits
+     * dépendent de cette version » sans dénormaliser quoi que ce soit.
+     */
+    public function droitsIssus(): Builder
+    {
+        /* `origin_reference` est une chaîne — elle accueille aussi bien l'uuid
+         * d'une commande qu'une référence de dossier support — tandis que
+         * `orders.uuid` est un `uuid` PostgreSQL. La sous-requête cast donc
+         * explicitement : sans cela, l'opérateur n'existe pas. */
+        return AccessGrantRecord::query()
+            ->whereIn('origin_reference', $this->orders()->selectRaw('uuid::text'));
     }
 
     /** Les coquilles corrigées sur cette version — en ajout seul. */

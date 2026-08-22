@@ -1408,6 +1408,40 @@ leurs libellés FR/AR par clés de traduction, et jamais le code d'origine.
 **Vérification :** 6 tests ciblés et 25 assertions, puis suite complète
 séquentielle verte à **868 tests et 3 088 assertions** en 243,6 s.
 
+#### Lot 3A.8 pas 3 · ajuster, révoquer · livré · `513eb08`
+
+« La révocation n'efface pas la ligne : elle la clôt. » Le mécanisme existe
+depuis le PAS-8 et n'est pas réinventé — une révocation pose `ends_at`, et l'on
+doit pouvoir répondre dans six mois à « de quoi disposait ce candidat le
+14 mars ». Ce qui disparaît est l'AUTORISATION, pas la trace.
+
+**Une contrainte relâchée, et c'est nécessaire.** `ends_at > starts_at`
+interdisait de clore un droit qui n'avait pas encore pris effet — le cas d'une
+pose datée qu'on annule avant sa prise d'effet. Les contournements étaient tous
+faux : reculer `starts_at` réécrit l'histoire, poser `ends_at` une seconde après
+laisse le droit s'ouvrir une seconde, une colonne `revoked_at` crée un second
+mécanisme d'invalidité en face de celui que `active()` lit déjà. La contrainte
+devient `ends_at >= starts_at` : une période VIDE est exactement ce qu'est un
+droit clos avant d'avoir commencé, et `active()` ne la satisfait jamais. Rien
+d'autre dans le produit ne crée de période vide.
+
+**Les gestes portent sur le droit ENTIER d'un compte.** Un droit transitoire est
+fait d'autant d'octrois que de capacités ; en révoquer un seul produirait un
+sevrage en escalier — l'examen blanc fermé lundi, la carte de maîtrise jeudi —
+que personne n'a décidé. L'écran liste donc des comptes, pas des lignes.
+
+**Une ligne de journal par octroi touché** (`transition_grant_changes`, en ajout
+seul) : après deux ajustements successifs les échéances peuvent différer d'une
+capacité à l'autre, et une moyenne ne se relit pas.
+
+Ces gestes ne touchent **que** l'origine `transition` : la garde est à la
+source, aucun appelant ne peut élargir le périmètre. Le gratuit sans terme et
+les droits achetés sont intacts, et la restitution retombe immédiatement au
+palier détenu par ailleurs — c'est le test d'acceptation n°11 reporté de M-004.
+
+**Vérification :** 13 tests ciblés et 88 assertions, puis suite complète
+séquentielle verte à **881 tests et 3 177 assertions** en 246,7 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

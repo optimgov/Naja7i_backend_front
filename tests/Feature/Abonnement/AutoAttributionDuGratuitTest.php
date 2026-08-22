@@ -10,6 +10,7 @@ use App\Models\Plan;
 use App\Models\QuotaProfile;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\AbonnementService;
 use App\Services\OffreGratuiteService;
 use App\Services\QuotaProfileService;
 use App\Tenancy\TenantContext;
@@ -157,6 +158,51 @@ class AutoAttributionDuGratuitTest extends TestCase
             60, QuotaProfile::where('code', 'decouverte-large')->value('value'),
             'Le registre, lui, porte bien la nouvelle valeur.',
         );
+    }
+
+    /**
+     * LE CAS QUI DISCRIMINE VRAIMENT — et que le précédent ne voit pas.
+     *
+     * Dans le test ci-dessus, l'ancien compte a reçu son droit AVANT que le
+     * registre ne bouge : un code qui relirait le profil courant lui aurait
+     * quand même donné 40, et le test resterait vert. Ce qu'il faut éprouver,
+     * c'est un octroi posé APRÈS le déplacement du registre, sur une version
+     * ANCIENNE — le geste exact qu'un rattrapage ou une réparation de support
+     * produirait. La v1 doit toujours ouvrir 40 quand le profil en vaut 100.
+     */
+    public function test_une_version_ancienne_ouvre_son_instantane_meme_apres_amendement_du_registre(): void
+    {
+        $offre = Plan::autoGranted()->sole();
+        $v1 = $offre->currentVersion()->firstOrFail();
+        $pedagogue = User::create([
+            'email' => 'pedagogue-instantane@naja7i.ma',
+            'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr', 'status' => 'active',
+        ]);
+
+        /* Le registre bouge SANS que l'offre ne recompose : amender un profil
+         * ne versionne pas (décision de reprise, M-003). */
+        app(QuotaProfileService::class)->amender(
+            QuotaProfile::where('code', 'decouverte')->sole(),
+            $pedagogue,
+            [
+                'value' => 100, 'min_value' => 90, 'max_value' => 200,
+                'min_justification' => 'La banque a doublé : sous quatre-vingt-dix questions la carte reste vide.',
+                'max_justification' => 'Deux cents questions restent un aperçu sur une banque de cette taille.',
+            ],
+        );
+
+        $tardif = User::create([
+            'email' => 'tardif@naja7i.ma', 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr',
+        ]);
+        app(AbonnementService::class)->octroyerLesDroits(
+            $tardif->id, $v1->fresh(), OffreGratuiteService::ORIGINE_RATTRAPAGE, $v1->uuid, 'Rattrapage v1',
+        );
+
+        $this->assertSame(
+            40, $this->droitsDe($tardif)->first()->quota_value,
+            'La version 1 ouvre ce qu’elle a figé, pas ce que le registre vaut aujourd’hui.',
+        );
+        $this->assertSame(100, QuotaProfile::where('code', 'decouverte')->value('value'));
     }
 
     public function test_sans_porteur_du_gratuit_l_inscription_aboutit_quand_meme(): void

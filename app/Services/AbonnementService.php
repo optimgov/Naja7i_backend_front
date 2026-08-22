@@ -228,8 +228,62 @@ final class AbonnementService
         return [
             'capabilities' => $capacites,
             'expires_at' => $echeances->all(),
+            'quotas' => $this->enveloppesDe($user),
             'pending_orders' => Order::where('user_id', $user->id)->enAttente()->count(),
         ];
+    }
+
+    /**
+     * Les enveloppes que le compte porte — une par octroi, jamais additionnées.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * POURQUOI UNE LISTE ET PAS UN TOTAL
+     *
+     * « Deux enveloppes sur des portées distinctes ne sont jamais
+     * additionnées » (ADR-0031). Un renouvellement crée une enveloppe neuve
+     * (ADR-0027) : les afficher comme un seul nombre effacerait la question qui
+     * compte pour le candidat — laquelle se vide en premier. Aujourd'hui il n'y
+     * en a qu'une, celle du palier gratuit ; la forme est juste dès maintenant.
+     *
+     * LE RELIQUAT VAUT L'ENVELOPPE, et c'est exact : rien ne consomme encore.
+     * Le débit est le lot 3B. Rendre un reliquat inventé serait pire qu'un
+     * champ absent — le candidat le lirait comme une mesure.
+     *
+     * LISTE BLANCHE STRICTE : aucun identifiant, aucune origine technique.
+     * La NATURE du droit se dit par un mot du produit et son libellé traduit,
+     * jamais par le code d'énumération qui la porte en base.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function enveloppesDe(User $user): array
+    {
+        return AccessGrantRecord::where('user_id', $user->id)
+            ->active()
+            ->whereNotNull('quota_value')
+            ->orderBy('capability')
+            ->get()
+            ->map(fn (AccessGrantRecord $droit): array => [
+                'capability' => $droit->capability,
+                'unit' => $droit->quota_unit->value,
+                'unit_label' => __('abonnement.unite_'.$droit->quota_unit->value),
+                'granted' => $droit->quota_value,
+                'remaining' => $droit->quota_value,
+                'expires_at' => $droit->ends_at?->toIso8601String(),
+                'source' => $this->natureDe($droit),
+                'source_label' => __('abonnement.source_'.$this->natureDe($droit)),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Ce que le candidat doit comprendre de l'origine d'un droit : deux mots,
+     * pas cinq. `account_level` et `rattrapage` disent la même chose de son
+     * point de vue — il ne l'a pas payé.
+     */
+    private function natureDe(AccessGrantRecord $droit): string
+    {
+        return $droit->origin === 'purchase' ? 'achetee' : 'gratuite';
     }
 
     /**

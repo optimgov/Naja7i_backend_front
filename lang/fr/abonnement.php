@@ -12,5 +12,8 @@ return [
     'coupon_plan_introuvable' => "Cette offre n'existe pas.",
     'coupon_hors_periode' => "Cette offre n'est pas proposée à la vente en ce moment.",
     'coupon_version_indisponible' => "Cette version de l'offre n'est plus disponible. Actualisez la page.",
+    'unite_questions' => 'questions',
+    'source_gratuite' => 'Offert à l’inscription',
+    'source_achetee' => 'Inclus dans votre abonnement',
     'en_attente' => 'Votre code est en cours de validation par notre équipe.',
 ];

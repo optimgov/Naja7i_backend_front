@@ -92,8 +92,12 @@ final class PlanVersionService
      * Résout sous verrou la version réellement affichée au candidat. Les
      * anciens clients sans UUID restent acceptés pendant la transition ; un
      * UUID périmé n'est jamais remplacé silencieusement.
+     *
+     * LE SEUL POINT DE PASSAGE DES DEUX MOYENS DE PAIEMENT, et c'est pourquoi
+     * les refus de souscription vivent ici plutôt que dans chaque passerelle :
+     * un contrôle recopié dans deux passerelles diverge à la troisième.
      */
-    public function purchasable(Plan $plan, ?string $displayedVersionUuid): PlanVersion
+    public function purchasable(Plan $plan, ?string $displayedVersionUuid, User $candidat): PlanVersion
     {
         $current = $this->current($plan);
 
@@ -109,7 +113,64 @@ final class PlanVersionService
             throw new PaiementRefuse('hors_periode');
         }
 
+        $this->assertEligible($current, $candidat);
+
         return $current;
+    }
+
+    /**
+     * LE PUBLIC ÉLIGIBLE EST CONTRACTUEL — Q-19, reporté de M-004 aux murs.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * IL SE LIT SUR LA VERSION, PAS SUR L'OFFRE COURANTE
+     *
+     * C'est la moitié qui compte. Une offre dont le public change compose une
+     * version neuve ; une commande ouverte sur l'ancienne garde le public sous
+     * lequel elle a été vendue. Lire `Plan::audience_id` ici referait, à
+     * l'envers, le défaut V-3 : appliquer à une demande d'hier la règle
+     * d'aujourd'hui.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * ON NE REFUSE QUE CE QU'ON SAIT — PAS CE QU'ON DEVINE
+     *
+     * La catégorie d'un candidat se DÉDUIT de l'épreuve qu'il a déclarée :
+     * épreuve → parcours → famille → catégorie. Un compte sans épreuve déclarée
+     * n'a pas de public connu, et lui en supposer un pour lui refuser un achat
+     * serait une déduction inventée opposée à quelqu'un qui paie. C'est le même
+     * raisonnement que pour le geste ciblé du droit transitoire, et il vaut ici
+     * a fortiori : là-bas on s'abstient de DONNER, ici on s'abstiendrait de
+     * VENDRE.
+     *
+     * Une version sans public ne refuse personne : « vide » y signifie « tout
+     * le monde », comme au catalogue.
+     *
+     * LE MESSAGE EST SOBRE. Il dit que l'offre vise une autre catégorie et
+     * renvoie au catalogue. Il ne nomme aucun autre compte, et n'apprend rien
+     * qui ne soit déjà public.
+     */
+    private function assertEligible(PlanVersion $version, User $candidat): void
+    {
+        if ($version->audience_id === null) {
+            return;
+        }
+
+        /* LECTURE BAS NIVEAU, ET DÉLIBÉRÉE. « Cette personne prépare telle
+         * épreuve » est un fait de la PERSONNE, pas l'activité d'un organisme :
+         * le lire sous la portée tenant ferait dépendre l'éligibilité d'un
+         * achat du centre où le compte est passé en dernier. Même raisonnement
+         * que la garde d'attribution de l'ADR-0033 (DET-24). */
+        $public = DB::table('candidate_profiles as profil')
+            ->join('exams as epreuve', 'epreuve.id', '=', 'profil.exam_id')
+            ->join('tracks as parcours', 'parcours.id', '=', 'epreuve.track_id')
+            ->join('exam_families as famille', 'famille.id', '=', 'parcours.exam_family_id')
+            ->where('profil.user_id', $candidat->getKey())
+            ->value('famille.audience_id');
+
+        if ($public === null || (int) $public === (int) $version->audience_id) {
+            return;
+        }
+
+        throw new PaiementRefuse('public_non_eligible');
     }
 
     /**

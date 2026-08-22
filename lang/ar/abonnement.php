@@ -11,6 +11,8 @@ return [
     'coupon_indisponible' => 'لا يمكن استعمال هذا الرمز.',
     'coupon_plan_introuvable' => 'هذا العرض غير موجود.',
     'coupon_hors_periode' => 'هذا العرض غير معروض للبيع في الوقت الحالي.',
+    'coupon_public_non_eligible' => 'هذا العرض موجّه إلى فئة أخرى من المترشحين. يبيّن كتالوج العروض الفئات المفتوحة لك.',
+
     'coupon_version_indisponible' => 'لم تعد هذه النسخة من العرض متاحة. يرجى تحديث الصفحة.',
     'unite_questions' => 'أسئلة',
     'source_essai' => 'تجربة',

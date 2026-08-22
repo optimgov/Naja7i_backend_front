@@ -78,6 +78,7 @@ final class SimulatedGateway implements PaymentGateway
             $version = $this->versions->purchasable(
                 $plan,
                 isset($parametres['version_uuid']) ? (string) $parametres['version_uuid'] : null,
+                $user,
             );
 
             return Order::create([

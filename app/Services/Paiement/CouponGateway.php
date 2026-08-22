@@ -71,6 +71,7 @@ final class CouponGateway implements PaymentGateway
             $version = $this->versions->purchasable(
                 $plan,
                 isset($parametres['version_uuid']) ? (string) $parametres['version_uuid'] : null,
+                $user,
             );
 
             $commande = Order::create([

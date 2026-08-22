@@ -11,6 +11,15 @@ return [
     'coupon_indisponible' => 'Ce code ne peut pas être utilisé.',
     'coupon_plan_introuvable' => "Cette offre n'existe pas.",
     'coupon_hors_periode' => "Cette offre n'est pas proposée à la vente en ce moment.",
+    /*
+     * L'ÉLIGIBILITÉ PAR PUBLIC — Q-19, reportée de M-004 aux murs.
+     *
+     * Sobre par nécessité : le refus ne nomme aucun autre compte et n'apprend
+     * rien qui ne soit déjà au catalogue. Il renvoie là où la réponse est —
+     * chaque offre y porte sa catégorie de public.
+     */
+    'coupon_public_non_eligible' => "Cette offre s'adresse à une autre catégorie de candidats. Le catalogue indique celles qui vous sont ouvertes.",
+
     'coupon_version_indisponible' => "Cette version de l'offre n'est plus disponible. Actualisez la page.",
     'unite_questions' => 'questions',
     'source_essai' => 'Essai',

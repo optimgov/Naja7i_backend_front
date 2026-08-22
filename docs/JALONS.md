@@ -29,7 +29,7 @@ l'allumage, et la recette précède la base durable. Horizon : jours.*
 | # | Lot | Contenu | État | Dépend de |
 |---|---|---|---|---|
 | 1.1 | **La conversion** (M-006bis) | ADR-0033 · amendements ADR-0025/0027/0029 · clôture transactionnelle de l'essai · garde double d'attribution · état dérivé · S-01 réécrit, S-17/S-18 ajoutés | **Livré** — `958ca52` → `79abb4a` | — |
-| 1.2 | **3A.9 — les murs** (M-007) | Fermer `series.targeted`, `simulator.full`, `mastery.detail`, `remediation.plan`, `memory.sessions` dans les 4 contrôleurs ; **trois états** de restitution ; champ absent, jamais grisé ; S-02/S-05/S-06/S-19 | À faire | 1.1 |
+| 1.2 | **3A.9 — les murs** (M-007) | Fermer `series.targeted`, `simulator.full`, `mastery.detail`, `remediation.plan`, `memory.sessions` dans les 4 contrôleurs ; **trois états** de restitution ; champ absent, jamais grisé ; S-02/S-05/S-06/S-19 · garde du catalogue et composition D-CAT en préalable · refus d'éligibilité par public (Q-19) | **Livré** — `869b630` → `d5734cf` · **dormant** : rien n'est posé sur une base durable | 1.1 |
 | 1.3 | **3B — la consommation** (M-008) | Débit idempotent `(user, tentative, item)` au premier service ; **une seule enveloppe effective** ; coût annoncé avant composition ; bornes anti-aspiration (Q-22) ; S-09/S-10 | À faire | 1.2 |
 | 1.4 | **Frontend des trois états** (M-009) | Abonnement, tableau de bord, catalogue ; appel à l'action « renouveler » ; **jamais de retour au gratuit** | À faire — après chaque contrat backend, jamais en même temps | 1.2, 1.3 |
 | 1.5 | **Recette de bout en bout** (M-010) | Essai → conversion → épuisement → renouvellement, sans retour au gratuit, en concurrence | À faire | 1.4 |

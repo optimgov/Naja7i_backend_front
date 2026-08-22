@@ -1543,6 +1543,47 @@ muet se lit comme une panne.
 le repli fait rougir les trois tests de refus, un par canal, et eux seuls ; puis
 suite complète séquentielle verte à **901 tests et 3 278 assertions** en 243,4 s.
 
+#### Lot 3A.9 pas 0bis · la composition arbitrée · livré · `7036cc2`
+
+**Ce pas n'a rien décidé.** L'arbitrage D-CAT du 22 août, délégué par le
+propriétaire, donne une table colonne par colonne ; ce pas l'exécute par le
+**canal du lot 3A.6** — le modèle `Plan`, dont chaque enregistrement contractuel
+compose la version suivante. Aucun SQL direct, rien de rétroactif : les commandes
+en attente gardent leur version, les droits déjà accordés ne bougent pas.
+
+| Capacité | Entrée 49/7 j | Préparation 199/30 j | Session complète 699/180 j |
+|---|:---:|:---:|:---:|
+| `questions.answer` (sans enveloppe) | ✔ | ✔ | ✔ |
+| `corrections.cause` | ✔ | ✔ | ✔ |
+| `series.targeted` | ✔ | ✔ | ✔ |
+| `simulator.full` | ✔ | ✔ | ✔ |
+| `annales.practice` | — (Q-21) | — (Q-21) | — (Q-21) |
+| `mastery.detail` · `remediation.plan` · `memory.sessions` | — | — | ✔ |
+
+**`questions.answer` sans profil de quota** — l'absence de profil EST l'illimité
+(ADR-0027). C'était le défaut qui rendait ce lot dangereux : depuis l'ADR-0033 la
+première commande honorée clôt l'essai, et un candidat qui payait perdait le
+droit de répondre que seul l'essai lui donnait.
+
+**`annales.practice` fermée PAR CHOIX**, et le choix est testé : Q-21 exige
+l'audit du marqueur d'annales avant ouverture, qui ne coûtera qu'une version
+d'offre. Un choix non testé se retrouve un jour comme un oubli.
+
+**Les paliers cessent d'être nommés par un prix** (D-CAT-4). « Entrée » remplace
+« Découverte — 7 jours », qui portait le nom du palier **gratuit** : deux offres
+du même nom, l'une à 0 et l'autre à 49 MAD, se confondent au premier écran. Les
+noms arabes sont posés ; leur relecture appartient à O-6.
+
+**Un écart interne à l'arbitrage est signalé, non tranché ici :** la prose de
+D-CAT-3 annonce « les HUIT capacités commercialisables » quand la table du même
+document, et D-CAT-2, ferment `annales.practice` — donc sept. La mission tranche
+explicitement en faveur de la table.
+
+**Vérification :** 9 tests ciblés et 68 assertions — la table rejouée colonne par
+colonne, les deux absences testées comme les présences, et l'avertissement du
+pas 0.a qui ne se déclenche plus sur aucune des trois offres ; puis suite
+complète séquentielle verte à **910 tests et 3 346 assertions** en 243,7 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

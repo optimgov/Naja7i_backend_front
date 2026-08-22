@@ -1633,6 +1633,43 @@ test des racines et lui seul, un champ vide plus un drapeau `locked` fait rougir
 « aucun champ à débloquer » ; suite complète séquentielle verte à **921 tests et
 3 412 assertions**.
 
+#### Lot 3A.9 pas 2 · S-19, l'état épuisé · livré · `10a163c`
+
+Le pas précédent a fermé ; celui-ci prouve ce qu'il **n'a pas** fermé. Sans cette
+moitié, « les murs sont posés » ne dit rien de la différence entre un sevrage et
+une confiscation.
+
+**Ce que le passé garde :** tentatives, corrections déjà obtenues, **causes
+acquises**, rapports d'examens blancs déjà produits, carte de maîtrise au niveau
+que le dernier droit rendait. La cause acquise est la non-régression la plus
+fragile — PAS-19 la rend structurelle par la table d'acquisition, pas par un
+drapeau sur la réponse, et c'est ce que la mutation confirme.
+
+**Le calcul ne s'arrête jamais.** `MasteryScore` est une table, pas une vue :
+arrêter `MasteryCalculator` à l'expiration laisserait des scores périmés
+présentés comme courants. Un chiffre faux est pire qu'un champ absent. Le test
+soumet un diagnostic **après** expiration et vérifie que l'évidence a grossi.
+
+**L'expiration en cours de session ne casse rien.** Le droit est relu à l'usage
+et jamais mis en cache : la requête suivante retombe au niveau racine, sans
+erreur ni page blanche. La carte ne disparaît pas, elle raccourcit.
+
+**Et il y a une sortie.** « Mon dossier », l'historique, les commandes et le
+catalogue des offres restent ouverts — le catalogue est même public. L'écran
+nomme l'état et sa sortie ; jamais un retour à l'essai (ADR-0033).
+
+**Ce qui cesse est la production de neuf** : série, examen blanc et séance
+mémoire refusés en 403 nommé ; ordonnance et rendez-vous absents du rendu ;
+aucune tentative d'entraînement, de simulation ou de révision créée.
+
+**Le service d'item — donc le diagnostic — n'est PAS gardé ici** : il appartient
+au lot 3B avec l'enveloppe, et l'anticiper aurait mêlé deux décisions.
+
+**Vérification :** 6 tests ciblés et 91 assertions ; mutations éprouvées —
+arrêter le recalcul fait rougir le test du recalcul et lui seul, reverrouiller
+une cause acquise fait rougir la non-régression et les deux gardes PAS-19 déjà
+en place ; suite complète séquentielle verte à **927 tests et 3 503 assertions**.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

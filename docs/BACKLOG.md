@@ -1111,6 +1111,28 @@ offres sans public.
 séquentielle verte à **781 tests et 2 740 assertions** en 220,6 s. Aucune
 migration sur une base durable, aucun push.
 
+#### Lot 3A.6 pas 2 · les libellés des capacités · livré · `5ec4499`
+
+Le référentiel `capability_definitions` existe depuis le lot 3A.3 : neuf codes,
+libellés et descriptions FR/AR, contrainte de code connu, et refus de
+composition quand le référentiel bilingue est incomplet. Ce pas ne le recrée
+pas — il lui donne son écran et prouve son refus.
+
+L'écran n'ouvre que la PRÉSENTATION : le code se lit, il ne se saisit pas, et
+ni la création ni la suppression n'existent — la liste est fermée dans
+`CapabilityRegistry`, une ligne créée ici produirait un droit qui n'ouvre rien
+et une ligne supprimée rendrait invendable une capacité que le code applique.
+La contrainte `capability_definitions_code_known` tient la même règle en base.
+
+**Enregistrer retire le badge « à relire »** (ADR-0032). Les neuf libellés
+viennent d'une migration : ce sont des valeurs d'architecte, et le marqueur les
+distingue d'une donnée confirmée. Il n'est pas un champ du formulaire — un badge
+qu'on coche soi-même ne prouve rien — et il ne se repose pas.
+
+**Vérification :** 5 tests ciblés et 13 assertions, dont le refus de
+composition d'une capacité privée de son libellé, puis suite complète
+séquentielle verte à **786 tests et 2 754 assertions** en 221,5 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

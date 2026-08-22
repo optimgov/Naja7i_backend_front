@@ -1752,6 +1752,48 @@ construction et garanti par personne — un test l'écrit désormais.
 **Vérification :** 22 tests ciblés et 158 assertions ; six mutations éprouvées ;
 suite complète séquentielle verte à **956 tests et 3 678 assertions** en 272,6 s.
 
+### LOT-TAXO — L'écran des taxonomies · livré · `5671c8e`
+
+**Le modèle était déjà bon.** `path` matérialisé, profondeur libre, poids et
+provenance. Ce qui manquait n'était pas la structure, c'était **la main qui la
+tient** : un arbre se créait par migration, donc par un développeur, pour chaque
+concours et à chaque fois. `taxonomy.manage` existait depuis le PAS-1, attachée
+au rôle `editeur`, et **aucun écran ne la lisait**.
+
+**Les profils** nomment les niveaux en FR et en AR, par un répéteur borné à
+`MAX_DEPTH` — la profondeur est libre (ADR-0012), et six paires de champs en dur
+auraient redit en formulaire ce que le modèle a rendu variable. Un profil sans
+nom de niveau est refusé : un arbre sans noms produit des écrans candidats qui
+disent « niveau 2 ». Un profil par **épreuve**, jamais par famille (ADR-0014).
+
+**Le déplacement (DET-88 close)** n'est pas dans le formulaire — changer un
+parent entre deux corrections de libellé ferait du geste le plus dangereux le
+plus discret. Il a son bouton, sa confirmation, ses **trois nombres annoncés
+avant**, et il réécrit tout le sous-arbre dans une transaction, chaque enfant
+calculé depuis un parent déjà réécrit. Questions et scores suivent sans être
+touchés : ils pointent vers le nœud, jamais vers le chemin.
+
+**Les poids** ne s'enregistrent plus sans justification écrite — contrainte en
+base, parce qu'un semis ou un correctif à chaud doit rencontrer le même refus.
+`official` ne se déclare plus : un déclencheur exige une source **attachée et
+vérifiée**, et la liste déroulante ne propose même pas le mot. La somme d'une
+fratrie n'est **pas** forcée à 100 (ADR-0032 : un arbre en travaux n'est pas un
+arbre faux), mais l'écart est dit en permanence.
+
+**Le semis cesse d'écrire `official`** : la migration 000530 existait pour
+défaire cela après coup. Il écrit `reported` avec la justification qui dit le
+fait — une origine nommée, datée, paginée, jamais lue. Découpe et poids
+inchangés ; seule leur étiquette cesse d'être fausse.
+
+**Un défaut trouvé en chemin :** `CompetencyNode::$hidden` masque `exam_id` et
+`parent_id`, et Filament remplit ses formulaires depuis `attributesToArray()`.
+À l'édition, l'épreuve arrivait vide et le formulaire refusait un champ
+obligatoire dont personne n'avait retiré la valeur. Il se serait vu au premier
+renommage réel.
+
+**Vérification :** 17 tests ciblés et 82 assertions ; trois mutations éprouvées ;
+suite complète séquentielle verte à **973 tests et 3 762 assertions** en 276,3 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

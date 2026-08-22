@@ -53,7 +53,7 @@ il est éditorial et juridique. Horizon : semaines.*
 
 | # | Lot | Contenu | État | Dépend de |
 |---|---|---|---|---|
-| 2.1 | **Lot TAXO — l'écran des taxonomies** | Profils (niveaux FR/AR, min_depth), nœuds (création, déplacement gardé — ferme DET-88), **poids avec justification + badge « observé/validé »**, activation des 4 nœuds SE commentés | À faire — la réponse structurelle à D-1, réutilisable pour chaque concours futur | — (parallèle au jalon 1) |
+| 2.1 | **Lot TAXO — l'écran des taxonomies** | Profils (niveaux FR/AR, min_depth), nœuds (création, déplacement gardé — ferme DET-88), **poids avec justification + badge de provenance**, un sous-arbre entier construit par le seul écran | **Livré** — `5671c8e` · les « 4 nœuds SE commentés » n'existent pas dans les semis (voir `retours/M-013-retour.md`) | — (parallèle au jalon 1) |
 | 2.2 | **D-1 — créer les arbres** | Valider la proposition du 22/08 (20 épreuves, domaines imprimés, option (c) « l'arbre pousse avec la qualification ») **dans l'écran TAXO** | **Proposition livrée — votre validation** | 2.1 |
 | 2.3 | **Q2 service — l'interface experts** | File de qualification, saisie corrigés/justifications (jamais pré-remplie), permission dédiée (Q-10), libellés de difficulté (Q-09 bis, DET-86), mécanisme de retranscription (correction C-A), invariant doublons (C-B) | À faire | Q-09/Q-10 |
 | 2.4 | **Import réel du corpus** | 1 413 lignes dans la zone (jamais dans la banque), sur base durable | À faire — sur votre ordre | 2.3 |

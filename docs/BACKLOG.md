@@ -1442,6 +1442,27 @@ palier détenu par ailleurs — c'est le test d'acceptation n°11 reporté de M-
 **Vérification :** 13 tests ciblés et 88 assertions, puis suite complète
 séquentielle verte à **881 tests et 3 177 assertions** en 246,7 s.
 
+#### Lot 3A.8 pas 4 · S-14 de bout en bout · livré · `c466166`
+
+Un compte inscrit avant l'allumage, avec sa tentative en cours, suivi d'un bout
+à l'autre : il ne porte que son palier gratuit, reçoit les huit capacités du
+palier 600 — jamais `certification.take` — sous une origine qui n'entre dans
+aucun agrégat, le voit **nommé et daté** sur son écran, garde son gratuit sans
+terme et son enveloppe intacts dessous, puis le voit disparaître à la
+révocation, sans erreur ni page blanche, en retombant au palier qu'il détenait
+par ailleurs. Son histoire n'a bougé à aucune étape. C'est le test
+d'acceptation n°11 reporté de M-004.
+
+**L'ordre Q-18 est vérifié dans le journal des pas lui-même** : le correctif V-2
+de `departDe` y précède l'attribution du gratuit et la pose du transitoire.
+L'affirmer au retour n'aurait rien prouvé — posés dans le mauvais ordre, un
+droit daté et un droit sans terme produisent le chevauchement de S-08, et le
+journal est le seul endroit où cet ordre reste vérifiable après coup.
+
+**Vérification :** 2 tests ciblés et 31 assertions, puis suite complète
+séquentielle verte à **883 tests et 3 208 assertions** en 237,0 s. Les trois
+mutations de la mission sont éprouvées — détail au retour.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

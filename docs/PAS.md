@@ -123,6 +123,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | 3A.8.1 | Le droit transitoire se pose par un geste tracé — commande et écran, prévisualisation obligatoire, durée et public en paramètres bornés, origine `transition`, idempotent, le gratuit sans terme intact dessous | `1c08918` |
 | 3A.8.2 | L'écran d'abonnement rend les droits ligne par ligne, chacune avec sa nature en toutes lettres et sa date propre — le transitoire nommé et daté, le gratuit sans terme en dernier | `a487bf2` |
 | 3A.8.3 | Ajuster la fin et révoquer le droit transitoire depuis l'écran commercial — clos jamais effacé, journal avant/après par octroi, et ces gestes ne touchent que l'origine `transition` | `513eb08` |
+| 3A.8.4 | S-14 de bout en bout : un compte ancien avec son histoire, la pose, l'écran, la révocation, la restitution — et l'ordre Q-18 vérifié dans ce journal même | `c466166` |
 
 ## Lots frontend
 

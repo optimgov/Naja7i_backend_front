@@ -1,5 +1,9 @@
 # Backlog et grille d'audit — Naja7i backend front-office
 
+> **Où l'on va** se lit dans [`docs/JALONS.md`](JALONS.md) — les quatre jalons
+> restants et les décisions réservées au propriétaire. Le présent fichier est le
+> journal de **ce qui a été livré**.
+
 **Identifiant :** `NAJA7I-BACKLOG-002` · **Version :** 1.0 — 9 août 2026
 **Objet :** référentiel unique contre lequel le code doit être audité.
 **Remplace :** toute grille d'audit antérieure non présente dans ce dépôt.

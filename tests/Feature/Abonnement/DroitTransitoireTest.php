@@ -158,7 +158,14 @@ class DroitTransitoireTest extends TestCase
 
         $droits = $this->droitsTransitoires($compte);
 
-        $this->assertSame($reference->capabilities, $droits->pluck('capability')->all());
+        /* Un ENSEMBLE, pas une liste ordonnée : ce que le droit ouvre ne dépend
+         * pas de l'ordre où les capacités ont été cochées à l'écran. */
+        $attendues = $reference->capabilities;
+        $ouvertes = $droits->pluck('capability')->all();
+        sort($attendues);
+        sort($ouvertes);
+
+        $this->assertSame($attendues, $ouvertes);
         $this->assertNotContains(AccessGrant::CERTIFICATION, $droits->pluck('capability')->all());
         $this->assertTrue($droits->every(fn ($d) => $d->ends_at !== null));
         $this->assertSame(

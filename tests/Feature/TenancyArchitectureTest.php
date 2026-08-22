@@ -78,6 +78,25 @@ class TenancyArchitectureTest extends TestCase
          * un objet de CATALOGUE GLOBAL que le scope tenant ne concerne pas.
          */
         'app/Services/PlanVersionService.php',
+
+        /*
+         * LE VERROU DE DROIT EST UNE PRIMITIVE POSTGRESQL — lot 3B.
+         *
+         * `pg_advisory_xact_lock()` n'a pas d'équivalent Eloquent, et c'est
+         * précisément pourquoi on l'emploie : verrouiller une LIGNE aurait
+         * exigé qu'une ligne existe, or le compte sans enveloppe n'en a
+         * aucune — et c'est justement le cas où deux onglets doivent quand
+         * même se sérialiser. L'appel est une fonction nommée avec un
+         * paramètre lié, sans SQL construit à l'exécution.
+         *
+         * `EnveloppeDeQuestions` emploie en outre `DB::table()` pour lire la
+         * chaîne d'ascendance d'une épreuve, exactement comme
+         * `DatabaseAccessGrant` juste au-dessus et pour la même raison : ce
+         * sont des objets de CATALOGUE GLOBAL, que le scope tenant ne concerne
+         * pas. Un droit appartient à la personne, jamais à l'organisme.
+         */
+        'app/Services/EnveloppeDeQuestions.php',
+        'app/Services/AbonnementService.php',
     ];
 
     private const FORBIDDEN_SCOPE_PATTERNS = [

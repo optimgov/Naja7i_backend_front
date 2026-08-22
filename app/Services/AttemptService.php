@@ -3,13 +3,17 @@
 namespace App\Services;
 
 use App\Exceptions\AttemptExpired;
+use App\Exceptions\CapaciteFermee;
+use App\Exceptions\EnveloppeEpuisee;
 use App\Exceptions\IdempotencyKeyReused;
 use App\Exceptions\MirrorAlreadyOpen;
 use App\Exceptions\MirrorNotApplicable;
+use App\Exceptions\MirrorQuotaReached;
 use App\Exceptions\NoMirrorAvailable;
 use App\Exceptions\NoSiblingQuestionAvailable;
 use App\Exceptions\NothingDueForReview;
 use App\Exceptions\TrainingScopeTooNarrow;
+use App\Models\AccessGrantRecord;
 use App\Models\Attempt;
 use App\Models\AttemptItem;
 use App\Models\Exam;
@@ -54,7 +58,85 @@ final class AttemptService
         private readonly MemoryScheduler $memory,
         private readonly MasteryCalculator $mastery,
         private readonly QuestionsSoeurs $soeurs,
+        private readonly EnveloppeDeQuestions $enveloppe,
     ) {}
+
+    /**
+     * LA BORNE ANTI-ASPIRATION DES MIROIRS — Q-16, condition du propriétaire.
+     *
+     * « Le miroir ne consomme pas » n'est tenable que si le chemin reste
+     * auto-borné. Trois gardes existaient déjà — il faut une erreur causée,
+     * un seul miroir ouvert, jamais le même énoncé — et elles ferment tout sauf
+     * la BOUCLE : rien n'empêchait d'obtenir indéfiniment des miroirs sur un
+     * même couple (compétence, cause) tant que la banque en fournit.
+     *
+     * TROIS, comme la valeur de départ recommandée par la matrice §3 bis.
+     * Constante en dur et non paramètre : la version 1.0 ne demande pas de
+     * rendre réglable ce que personne n'a encore eu besoin de régler, et la
+     * transformer en paramètre coûterait un registre, un écran et des bornes
+     * justifiées pour un nombre qu'aucune mesure ne conteste. La dette est
+     * inscrite (DET-93) ; le jour où elle se paie, c'est une ligne.
+     */
+    public const MIROIRS_PAR_COUPLE = 3;
+
+    /**
+     * COMBIEN D'ITEMS ON A LE DROIT DE SERVIR — à appeler SOUS TRANSACTION.
+     *
+     * Prend le verrou, lit le reliquat, et rend le nombre à composer. Les trois
+     * gestes sont indissociables : lire le reliquat hors du verrou, puis
+     * composer, laisserait deux onglets composer chacun dix items sur un
+     * reliquat de douze (S-10). Le verrou tenu, la lecture ne peut plus être
+     * périmée.
+     *
+     * LA SÉRIE SE COMPOSE AU RELIQUAT, elle ne se refuse pas. Deux questions
+     * au lieu de dix valent mieux qu'un refus : refuser ferait perdre
+     * définitivement des unités déjà payées. Le refus n'arrive qu'à zéro, où
+     * il n'y a plus rien à composer.
+     *
+     * @return array{plafond: ?int, servir: int} `plafond` nul = consommation libre
+     */
+    private function plafondDeService(User $user, Exam $exam, int $demande): array
+    {
+        $this->enveloppe->verrouiller($user);
+
+        if (! $this->enveloppe->ouverte($user, $exam)) {
+            throw new CapaciteFermee(EnveloppeDeQuestions::CAPACITE);
+        }
+
+        /* L'ENVELOPPE EST CHOISIE UNE FOIS, et c'est celle-là qu'on débitera.
+         * La rechoisir après la pose des items rouvrirait la question à
+         * laquelle le verrou vient de répondre. */
+        $gouvernante = $this->enveloppe->gouvernante($user, $exam);
+        $plafond = $gouvernante === null ? null : $this->enveloppe->reliquat($gouvernante);
+
+        if ($plafond !== null && $plafond < 1) {
+            throw new EnveloppeEpuisee(0);
+        }
+
+        return [
+            'plafond' => $plafond,
+            'servir' => $plafond === null ? $demande : min($demande, $plafond),
+            'gouvernante' => $gouvernante,
+        ];
+    }
+
+    /**
+     * Le débit, une fois les items posés — la même transaction, toujours.
+     *
+     * IL NE REND RIEN, et c'est délibéré. L'annonce du coût se DÉRIVE des
+     * lignes posées (`EnveloppeDeQuestions::annoncePour`) plutôt que de
+     * remonter par les valeurs de retour de quatre chemins d'ouverture. Un
+     * chiffre transporté de main en main finit par différer de celui qu'on
+     * pourrait relire ; celui-ci se relit toujours.
+     *
+     * @param  array{plafond: ?int, servir: int, gouvernante: ?AccessGrantRecord}  $service
+     */
+    private function debiter(User $user, Attempt $attempt, array $service): void
+    {
+        $this->enveloppe->debiter(
+            $user, $attempt, $attempt->items()->get(), $service['gouvernante'],
+        );
+    }
 
     /**
      * Empreinte de l'OPÉRATION demandée sous une clé d'idempotence.
@@ -209,16 +291,30 @@ final class AttemptService
             return $enCours;
         }
 
-        $questions = $this->composer->compose($exam, $locale, $total);
-
-        if ($questions->count() < $total) {
-            throw new RuntimeException(
-                "Série incomplète : {$questions->count()} questions disponibles sur {$total} pour l'épreuve {$exam->code}."
-            );
-        }
-
         try {
-            return DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $questions, $durationMinutes) {
+            /*
+             * TOUT SE PASSE DANS LA MÊME TRANSACTION VERROUILLÉE — lot 3B.
+             *
+             * La composition a longtemps précédé la transaction : c'était sans
+             * conséquence tant que rien ne se comptait. Depuis que le service
+             * d'un item consomme une unité, lire le reliquat puis composer
+             * dehors laisserait deux onglets composer chacun dix items sur un
+             * reliquat de douze. Le verrou est pris avant la lecture, et la
+             * composition se plafonne à ce qu'elle a lu.
+             */
+            return DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $total, $durationMinutes) {
+                $service = $this->plafondDeService($user, $exam, $total);
+                $questions = $this->composer->compose($exam, $locale, $service['servir']);
+
+                /* La série se compare à ce qu'on avait le DROIT de servir, pas
+                 * à ce qui a été demandé : un reliquat de trois ne rend pas la
+                 * banque incomplète. */
+                if ($questions->count() < $service['servir']) {
+                    throw new RuntimeException(
+                        "Série incomplète : {$questions->count()} questions disponibles sur {$service['servir']} pour l'épreuve {$exam->code}."
+                    );
+                }
+
                 $attempt = Attempt::create([
                     'user_id' => $user->id,
                     'exam_id' => $exam->id,
@@ -242,7 +338,10 @@ final class AttemptService
                     ]);
                 }
 
-                return $attempt->fresh('items');
+                $attempt = $attempt->fresh('items');
+                $this->debiter($user, $attempt, $service);
+
+                return $attempt;
             });
         } catch (QueryException $e) {
             // Deux ouvertures simultanées : l'index a tranché, on rend le gagnant.
@@ -343,16 +442,20 @@ final class AttemptService
             $this->submit($enCours);
         }
 
-        $questions = $this->composer->compose($exam, $locale, $total);
-
-        if ($questions->count() < $total) {
-            throw new RuntimeException(
-                "Série incomplète : {$questions->count()} questions disponibles sur {$total} pour l'épreuve {$exam->code}."
-            );
-        }
-
         try {
-            $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $questions) {
+            /* Même transaction verrouillée que le diagnostic : l'examen blanc
+             * est le chemin le plus coûteux en items du produit, c'est le
+             * dernier endroit où l'on voudrait compter deux fois. */
+            $ouverture = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $total) {
+                $service = $this->plafondDeService($user, $exam, $total);
+                $questions = $this->composer->compose($exam, $locale, $service['servir']);
+
+                if ($questions->count() < $service['servir']) {
+                    throw new RuntimeException(
+                        "Série incomplète : {$questions->count()} questions disponibles sur {$service['servir']} pour l'épreuve {$exam->code}."
+                    );
+                }
+
                 $attempt = Attempt::create([
                     'user_id' => $user->id,
                     'exam_id' => $exam->id,
@@ -376,10 +479,14 @@ final class AttemptService
                     ]);
                 }
 
-                return $attempt->fresh('items');
+                $attempt = $attempt->fresh('items');
+
+                $this->debiter($user, $attempt, $service);
+
+                return $attempt;
             });
 
-            return ['attempt' => $attempt, 'creee' => true];
+            return ['attempt' => $ouverture, 'creee' => true];
         } catch (QueryException $e) {
             // Deux ouvertures simultanées : l'index a tranché, on rend le gagnant.
             return [
@@ -473,17 +580,27 @@ final class AttemptService
             return $this->reprise($enCours, $total);
         }
 
-        $compose = $this->training->compose($exam, $user, $nodeIds, $locale, $total);
-        $questions = $compose['questions'];
-
-        /* En dessous du minime utile, on REFUSE. Servir deux questions sur un
-         * point faible donnerait au candidat le sentiment d'avoir travaillé. */
-        if ($questions->count() < TrainingComposer::MINIMUM_UTILE) {
-            throw new TrainingScopeTooNarrow($compose['disponibles'], $questions->count());
-        }
-
         try {
-            $attempt = DB::transaction(function () use ($user, $exam, $locale, $idempotencyKey, $empreinte, $questions) {
+            $ouverture = DB::transaction(function () use ($user, $exam, $nodeIds, $locale, $idempotencyKey, $empreinte, $total) {
+                $service = $this->plafondDeService($user, $exam, $total);
+
+                $compose = $this->training->compose($exam, $user, $nodeIds, $locale, $service['servir']);
+                $questions = $compose['questions'];
+
+                /* En dessous du minime utile, on REFUSE. Servir deux questions
+                 * sur un point faible donnerait au candidat le sentiment
+                 * d'avoir travaillé.
+                 *
+                 * CE REFUS N'EST PAS CELUI DE L'ENVELOPPE, et les deux ne se
+                 * confondent pas : ici la BANQUE ne fournit pas assez sur le
+                 * périmètre demandé ; là c'est le reliquat qui manque. Un
+                 * reliquat sous le minimum utile tombe donc ici, et c'est
+                 * correct — servir trois questions parce qu'il en reste trois
+                 * n'apprendrait rien de plus qu'un périmètre trop étroit. */
+                if ($questions->count() < TrainingComposer::MINIMUM_UTILE) {
+                    throw new TrainingScopeTooNarrow($compose['disponibles'], $questions->count());
+                }
+
                 $attempt = Attempt::create([
                     'user_id' => $user->id,
                     'exam_id' => $exam->id,
@@ -508,8 +625,15 @@ final class AttemptService
                     ]);
                 }
 
-                return $attempt->fresh('items');
+                $attempt = $attempt->fresh('items');
+
+                $this->debiter($user, $attempt, $service);
+
+                return ['attempt' => $attempt, 'compose' => $compose];
             });
+
+            $attempt = $ouverture['attempt'];
+            $compose = $ouverture['compose'];
         } catch (QueryException $e) {
             return $this->reprise(
                 $this->gagnante(
@@ -677,6 +801,27 @@ final class AttemptService
     }
 
     /**
+     * Combien de miroirs ce compte a-t-il déjà obtenus sur ce couple ?
+     *
+     * Toutes les tentatives de genre `mirror` comptent, ouvertes comme closes :
+     * la borne compte ce qui a été SERVI, et abandonner une vérification ne la
+     * rend pas.
+     */
+    private function miroirsDuCouple(User $user, int $nodeId, string $cause): int
+    {
+        return Attempt::query()
+            ->where('user_id', $user->id)
+            ->where('kind', 'mirror')
+            ->whereHas('items', fn ($item) => $item
+                ->where('competency_node_id', $nodeId)
+                ->whereHas('question.options', fn ($option) => $option
+                    ->where('is_correct', false)->where('cause', $cause)
+                )
+            )
+            ->count();
+    }
+
+    /**
      * Ouvre la QUESTION MIROIR d'un item raté, ou rend celle déjà ouverte.
      *
      * F05. Après une erreur corrigée, on propose une AUTRE question portant le
@@ -748,6 +893,27 @@ final class AttemptService
         }
 
         $exam = $source->exam;
+
+        /*
+         * LA BORNE ANTI-ASPIRATION — Q-16, condition du propriétaire.
+         *
+         * Le miroir ne consomme aucune unité. Cette décision n'est tenable que
+         * si le chemin reste auto-borné : un miroir naît d'une erreur, une
+         * erreur naît d'une question, et toute question est décomptée à son
+         * service — le chemin est PAYÉ EN AMONT, et le plafonner une seconde
+         * fois ferait payer deux fois la même unité. Le seul risque résiduel
+         * est la boucle sur un même couple (compétence, cause) : c'est ce que
+         * cette borne ferme, et rien d'autre.
+         *
+         * Le comptage passe par les DISTRACTEURS de la question servie, faute
+         * d'une colonne qui porterait la cause du miroir. Il peut donc compter
+         * une question qui tend plusieurs pièges dans deux couples à la fois —
+         * la borne s'en trouve un peu plus stricte, jamais plus lâche, et c'est
+         * le bon côté pour une garde anti-aspiration.
+         */
+        if ($this->miroirsDuCouple($user, $item->competency_node_id, $cause) >= self::MIROIRS_PAR_COUPLE) {
+            throw new MirrorQuotaReached($cause, self::MIROIRS_PAR_COUPLE);
+        }
 
         /* DET-45 — LA DÉSIGNATION D'ABORD, LE COUPLE ENSUITE. Un miroir choisi
          * par un rédacteur est plus délibéré qu'un miroir déduit ; le repli sur

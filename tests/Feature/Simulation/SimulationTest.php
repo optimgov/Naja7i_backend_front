@@ -48,10 +48,6 @@ class SimulationTest extends TestCase
         $this->epreuve = Exam::where('code', 'CRMEF-SE-2025')->firstOrFail();
         $this->candidat = $this->compte('candidat@naja7i.ma');
 
-        /* L'examen blanc se vend depuis 3A.9 : ce fichier éprouve ce qu'il
-         * compose et ce qu'il rapporte, pas le mur qui l'ouvre. */
-        $this->ouvrirLesDroits($this->candidat, AccessGrant::SIMULATOR_FULL);
-
         $this->peuplerBanque(6);
     }
 
@@ -62,6 +58,11 @@ class SimulationTest extends TestCase
         ]);
         $user->markEmailAsVerified();
         $user->grantCandidateRole();
+
+        /* Le droit de répondre et l'examen blanc, sans enveloppe — lot 3B. Posé
+         * dans la fabrique et non dans le `setUp` : trois tests comparent DEUX
+         * comptes, et un second compte sans droit n'ouvrirait rien. */
+        $this->ouvrirLesDroits($user, AccessGrant::QUESTIONS_ANSWER, AccessGrant::SIMULATOR_FULL);
 
         return $user;
     }

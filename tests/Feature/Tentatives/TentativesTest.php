@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Tentatives;
 
+use App\Contracts\AccessGrant;
 use App\Models\Attempt;
 use App\Models\AttemptItem;
 use App\Models\CompetencyNode;
@@ -22,11 +23,12 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Tests\Concerns\OuvreLesDroits;
 use Tests\TestCase;
 
 class TentativesTest extends TestCase
 {
-    use RefreshDatabase;
+    use OuvreLesDroits, RefreshDatabase;
 
     private Exam $epreuve;
 
@@ -46,6 +48,10 @@ class TentativesTest extends TestCase
             'email' => 'candidat@naja7i.ma', 'password' => 'une-phrase-de-passe-solide', 'locale' => 'fr',
         ]);
         $this->candidat->grantCandidateRole();
+
+        /* Le droit de répondre, sans enveloppe : ce fichier éprouve le cycle
+         * d'une tentative, pas le comptage des unités (lot 3B). */
+        $this->ouvrirLesDroits($this->candidat, AccessGrant::QUESTIONS_ANSWER);
 
         $this->peuplerBanque();
     }

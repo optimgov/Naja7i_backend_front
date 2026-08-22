@@ -42,5 +42,17 @@ return [
      */
     'capacite_requise' => "Cette fonction n'est pas comprise dans votre accès actuel : elle demande « :capacite ». Le catalogue des offres indique lesquelles l'ouvrent.",
 
+    /*
+     * LE COÛT ANNONCÉ — lot 3B, pas 4.
+     *
+     * « Cette série utilisera 10 de vos 12 questions restantes. » Sans cette
+     * phrase, une seconde série qui rend deux items au lieu de dix est vécue
+     * comme un défaut. L'annonce fait partie de la règle, pas de l'ornement.
+     */
+    'cout_annonce' => 'Cette série utilise :cout de vos :reliquat questions restantes.',
+    'cout_sans_enveloppe' => 'Votre forfait ne décompte pas les questions.',
+    'enveloppe_epuisee' => 'Vous avez utilisé toutes les questions de votre essai. Choisissez un forfait pour continuer.',
+    'miroir_borne_atteinte' => 'Vous avez déjà vérifié ce point autant de fois que la méthode le prévoit. Passez à un autre exercice.',
+
     'tentative_expiree' => "Le temps imparti est écoulé. Cette réponse n'a pas été enregistrée, et l'épreuve a été clôturée.",
 ];

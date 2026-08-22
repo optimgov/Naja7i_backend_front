@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\AccessGrant;
 use App\Exceptions\AttemptExpired;
+use App\Exceptions\CapaciteFermee;
+use App\Exceptions\EnveloppeEpuisee;
 use App\Exceptions\IdempotencyKeyReused;
 use App\Exceptions\MirrorAlreadyOpen;
 use App\Exceptions\MirrorNotApplicable;
+use App\Exceptions\MirrorQuotaReached;
 use App\Exceptions\NoMirrorAvailable;
 use App\Exceptions\TrainingScopeTooNarrow;
 use App\Http\Controllers\Controller;
@@ -20,6 +23,7 @@ use App\Models\QuestionOption;
 use App\Services\AttemptService;
 use App\Services\CauseRevealService;
 use App\Services\DiagnosticComposer;
+use App\Services\EnveloppeDeQuestions;
 use App\Services\QuestionsSoeurs;
 use App\Services\RemediationPlanner;
 use App\Services\TrainingComposer;
@@ -51,6 +55,7 @@ class ParcoursController extends Controller
         private readonly RemediationPlanner $planner,
         private readonly TrainingComposer $trainingComposer,
         private readonly QuestionsSoeurs $soeurs,
+        private readonly EnveloppeDeQuestions $enveloppe,
     ) {}
 
     /** Ouvre un diagnostic, ou rend celui déjà en cours. */
@@ -90,11 +95,19 @@ class ParcoursController extends Controller
              * ordre, une clé réutilisée se déguiserait en « diagnostic
              * indisponible » et le client chercherait un problème de banque. */
             return $this->cleReutilisee($e);
+        } catch (CapaciteFermee|EnveloppeEpuisee $e) {
+            /* AVANT le `RuntimeException` lui aussi, et pour la même raison :
+             * « la banque est incomplète » enverrait chercher un défaut de
+             * contenu là où il n'y a qu'une enveloppe vide. */
+            return $this->refusDEnveloppe($e);
         } catch (RuntimeException $e) {
             return ApiError::make('DIAGNOSTIC_NOT_AVAILABLE', $e->getMessage(), 409);
         }
 
         return (new AttemptResource($attempt->load(['exam', 'items.question.options', 'items.response'])))
+            ->additional(['meta' => [
+                'envelope' => $this->enveloppe->annoncePour($user, $attempt, $exam),
+            ]])
             ->response()
             ->setStatusCode(201);
     }
@@ -155,6 +168,8 @@ class ParcoursController extends Controller
             $session = $this->attempts->startTraining($user, $exam, $noeuds, $user->locale, $cle, $total);
         } catch (IdempotencyKeyReused $e) {
             return $this->cleReutilisee($e);
+        } catch (CapaciteFermee|EnveloppeEpuisee $e) {
+            return $this->refusDEnveloppe($e);
         } catch (TrainingScopeTooNarrow $e) {
             /* Code DISTINCT de celui du diagnostic : les deux situations se
              * ressemblent mais n'appellent pas la même conduite. */
@@ -182,9 +197,37 @@ class ParcoursController extends Controller
                 'available_in_scope' => $session['disponibles'],
                 // Questions déjà réussies, resservies faute de vivier neuf.
                 'already_mastered_reused' => $session['resservies'],
+                /* LE COÛT, DIT. Une série composée au reliquat — deux items au
+                 * lieu de dix — n'est pas un défaut si elle s'annonce. */
+                'envelope' => $this->enveloppe->annoncePour($user, $attempt, $exam),
             ]])
             ->response()
             ->setStatusCode($session['creee'] ? 201 : 200);
+    }
+
+    /**
+     * Les deux refus de l'enveloppe, et ils ne se confondent pas — lot 3B.
+     *
+     * `CapaciteFermee` : le compte ne porte plus le droit de répondre. C'est le
+     * mur de M-007, et sa sortie est de souscrire.
+     * `EnveloppeEpuisee` : le droit est là, les unités sont consommées. La
+     * sortie est de renouveler ou de monter d'offre.
+     *
+     * Les rendre sous un même code aurait obligé l'écran à deviner laquelle des
+     * deux phrases écrire.
+     */
+    private function refusDEnveloppe(CapaciteFermee|EnveloppeEpuisee $e): JsonResponse
+    {
+        if ($e instanceof CapaciteFermee) {
+            return MurPayant::refus($e->capacite);
+        }
+
+        return ApiError::make(
+            'ENVELOPPE_EPUISEE',
+            __('parcours.enveloppe_epuisee'),
+            409,
+            ['capability' => AccessGrant::QUESTIONS_ANSWER, 'remaining' => $e->reliquat],
+        );
     }
 
     /**
@@ -576,6 +619,18 @@ class ParcoursController extends Controller
                 __('parcours.miroir_sans_objet'),
                 409,
                 ['item_uuid' => $item->uuid]
+            );
+        } catch (MirrorQuotaReached $e) {
+            /* LA BORNE ANTI-ASPIRATION — Q-16, Q-22. Code DISTINCT des deux
+             * précédents : ici la banque a des énoncés et l'erreur est bien
+             * diagnostiquée ; c'est le candidat qui a déjà vérifié ce point
+             * autant de fois que la méthode le prévoit. La conduite est de
+             * passer à autre chose, pas d'attendre que la banque s'étoffe. */
+            return ApiError::make(
+                'MIRROR_QUOTA_REACHED',
+                __('parcours.miroir_borne_atteinte'),
+                409,
+                ['item_uuid' => $item->uuid, 'limit' => AttemptService::MIROIRS_PAR_COUPLE]
             );
         } catch (NoMirrorAvailable $e) {
             /* Code DISTINCT du précédent : ici le candidat a bien une erreur à

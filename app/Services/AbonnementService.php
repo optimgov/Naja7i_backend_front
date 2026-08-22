@@ -6,6 +6,7 @@ use App\Contracts\AccessGrant;
 use App\Models\AccessGrantRecord;
 use App\Models\Order;
 use App\Models\PlanVersion;
+use App\Models\QuestionConsumption;
 use App\Models\User;
 use App\Support\CapabilityRegistry;
 use Illuminate\Support\Carbon;
@@ -103,6 +104,26 @@ final class AbonnementService
             $plan = $verrouillee->plan()->firstOrFail();
             $version = $verrouillee->planVersion()->firstOrFail();
             $maintenant = now();
+
+            /*
+             * LE VERROU DE L'ADR-0029 — deux validations concurrentes.
+             *
+             * `departDe()` lit la fin la plus tardive des droits datés puis
+             * écrit à partir d'elle. Verrouiller la COMMANDE ne suffit pas :
+             * deux commandes différentes du même compte ne se disputent aucune
+             * ligne, lisent la même fin, et réservent deux fois les mêmes
+             * trente jours. Le candidat paie deux mois et en reçoit un.
+             *
+             * La clé est `(compte, capacité)` — la même que celle du débit,
+             * pour qu'un achat et une consommation concurrents se sérialisent
+             * eux aussi plutôt que de lire chacun un état que l'autre modifie.
+             */
+            foreach ($this->capacitesDe($version->capabilities) as $capacite) {
+                DB::statement(
+                    'SELECT pg_advisory_xact_lock(hashtextextended(?, 0))',
+                    ['droit|'.$verrouillee->user_id.'|'.$capacite],
+                );
+            }
 
             /*
              * LA CONVERSION, AVANT L'OCTROI ET DANS LA MÊME TRANSACTION.
@@ -341,9 +362,15 @@ final class AbonnementService
      * compte pour le candidat — laquelle se vide en premier. Aujourd'hui il n'y
      * en a qu'une, celle du palier gratuit ; la forme est juste dès maintenant.
      *
-     * LE RELIQUAT VAUT L'ENVELOPPE, et c'est exact : rien ne consomme encore.
-     * Le débit est le lot 3B. Rendre un reliquat inventé serait pire qu'un
-     * champ absent — le candidat le lirait comme une mesure.
+     * LE RELIQUAT EST DÉRIVÉ — lot 3B. `quota_value` moins le nombre de lignes
+     * de débit rattachées à ce droit. Aucun compteur ne se décrémente : un
+     * second dépositaire de la vérité finit par diverger du premier, et c'est
+     * alors le faux que le candidat lit.
+     *
+     * C'EST ICI QUE LE COÛT S'ANNONCE AVANT LE GESTE. Le candidat lit son
+     * reliquat sur cette ressource ; le serveur garantit ensuite qu'aucune
+     * série ne composera au-delà, et redit le coût dans la réponse qui la
+     * sert. Les deux moitiés de la règle du pas 4.
      *
      * LISTE BLANCHE STRICTE : aucun identifiant, aucune origine technique.
      * La NATURE du droit se dit par un mot du produit et son libellé traduit,
@@ -363,7 +390,8 @@ final class AbonnementService
                 'unit' => $droit->quota_unit->value,
                 'unit_label' => __('abonnement.unite_'.$droit->quota_unit->value),
                 'granted' => $droit->quota_value,
-                'remaining' => $droit->quota_value,
+                'remaining' => max(0, $droit->quota_value - QuestionConsumption::query()
+                    ->where('access_grant_id', $droit->getKey())->count()),
                 'expires_at' => $droit->ends_at?->toIso8601String(),
                 'source' => $this->natureDe($droit),
                 'source_label' => __('abonnement.source_'.$this->natureDe($droit)),

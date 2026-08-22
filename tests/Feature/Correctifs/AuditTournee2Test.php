@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Correctifs;
 
+use App\Contracts\AccessGrant;
 use App\Models\Attempt;
 use App\Models\AttemptItem;
 use App\Models\CauseAcquisition;
@@ -22,6 +23,7 @@ use App\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\Concerns\OuvreLesDroits;
 use Tests\TestCase;
 
 /**
@@ -40,7 +42,7 @@ use Tests\TestCase;
 class AuditTournee2Test extends TestCase
 {
     /** Voir `AuditRevisionTest` : une seconde connexion doit VOIR le montage. */
-    use DatabaseMigrations;
+    use DatabaseMigrations, OuvreLesDroits;
 
     private Exam $epreuve;
 
@@ -65,6 +67,10 @@ class AuditTournee2Test extends TestCase
         $this->candidat = $this->utilisateur('candidat@naja7i.ma');
         $this->candidat->grantCandidateRole();
         $this->candidat->markEmailAsVerified();
+
+        /* Le droit de répondre, sans enveloppe (lot 3B) : cet audit porte sur
+         * la cause et le miroir, pas sur le comptage. */
+        $this->ouvrirLesDroits($this->candidat, AccessGrant::QUESTIONS_ANSWER);
     }
 
     private function utilisateur(string $email): User

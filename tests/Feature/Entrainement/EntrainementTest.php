@@ -57,7 +57,9 @@ class EntrainementTest extends TestCase
 
         /* La série ciblée se vend depuis 3A.9 ; ce fichier éprouve sa
          * composition, pas son mur. */
-        $this->ouvrirLesDroits($this->candidat, AccessGrant::SERIES_TARGETED);
+        $this->ouvrirLesDroits(
+            $this->candidat, AccessGrant::QUESTIONS_ANSWER, AccessGrant::SERIES_TARGETED,
+        );
         $this->valideur = $this->utilisateur('valideur@naja7i.ma');
     }
 

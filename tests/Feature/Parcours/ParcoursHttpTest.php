@@ -60,6 +60,21 @@ class ParcoursHttpTest extends TestCase
 
         $user->grantCandidateRole();
 
+        /* LE DROIT DE RÉPONDRE, sans enveloppe — lot 3B.
+         *
+         * Depuis que le service d'un item consomme une unité, un compte sans
+         * `questions.answer` n'ouvre plus rien. Ce fichier porte sur le PARCOURS
+         * — correction, causes, cloisonnement — pas sur le comptage : il ouvre
+         * donc le droit et va à son sujet. Sans profil de quota, pour que le
+         * reliquat n'entre pas dans des tests qui ne parlent pas de lui ; le
+         * quota F03 des causes, lui, est un compteur distinct et reste intact. */
+        AccessGrantRecord::create([
+            'user_id' => $user->id,
+            'capability' => AccessGrant::QUESTIONS_ANSWER,
+            'starts_at' => now()->subDay(),
+            'origin' => 'purchase',
+        ]);
+
         return $user;
     }
 

@@ -79,7 +79,10 @@ class AuditRevisionTest extends TestCase
          * resservies, sessions concurrentes, clés rejouées. Les deux fonctions
          * se vendent depuis 3A.9 : on ouvre le droit pour rester sur le sujet. */
         $this->ouvrirLesDroits(
-            $this->candidat, AccessGrant::MEMORY_SESSIONS, AccessGrant::SERIES_TARGETED,
+            $this->candidat,
+            AccessGrant::QUESTIONS_ANSWER,
+            AccessGrant::MEMORY_SESSIONS,
+            AccessGrant::SERIES_TARGETED,
         );
     }
 

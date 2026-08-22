@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\AccessGrant;
+use App\Exceptions\CapaciteFermee;
+use App\Exceptions\EnveloppeEpuisee;
 use App\Exceptions\IdempotencyKeyReused;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AttemptResource;
@@ -11,6 +13,7 @@ use App\Models\Attempt;
 use App\Models\Exam;
 use App\Services\AttemptService;
 use App\Services\DiagnosticComposer;
+use App\Services\EnveloppeDeQuestions;
 use App\Services\SimulationReport;
 use App\Support\ApiError;
 use App\Support\MurPayant;
@@ -40,6 +43,7 @@ class SimulationController extends Controller
         private readonly DiagnosticComposer $composer,
         private readonly SimulationReport $report,
         private readonly AccessGrant $access,
+        private readonly EnveloppeDeQuestions $enveloppe,
     ) {}
 
     /**
@@ -115,6 +119,20 @@ class SimulationController extends Controller
 
         try {
             $ouverture = $this->attempts->startSimulation($user, $exam, $user->locale, $cle, $total);
+        } catch (CapaciteFermee|EnveloppeEpuisee $e) {
+            /* AVANT le `RuntimeException` : « examen blanc indisponible »
+             * enverrait le candidat chercher un défaut de banque là où il n'y a
+             * qu'une enveloppe vide ou un droit fermé. */
+            if ($e instanceof CapaciteFermee) {
+                return MurPayant::refus($e->capacite);
+            }
+
+            return ApiError::make(
+                'ENVELOPPE_EPUISEE',
+                __('parcours.enveloppe_epuisee'),
+                409,
+                ['capability' => AccessGrant::QUESTIONS_ANSWER, 'remaining' => $e->reliquat],
+            );
         } catch (IdempotencyKeyReused) {
             /* AVANT le `RuntimeException` dont il hérite — même ordre et même
              * raison qu'au diagnostic : sans lui, une clé réutilisée se
@@ -132,6 +150,9 @@ class SimulationController extends Controller
         $attempt = $ouverture['attempt'];
 
         return (new AttemptResource($attempt->load(['exam', 'items.question.options', 'items.response'])))
+            ->additional(['meta' => [
+                'envelope' => $this->enveloppe->annoncePour($user, $attempt, $exam),
+            ]])
             ->response()
             ->setStatusCode($ouverture['creee'] ? 201 : 200);
     }

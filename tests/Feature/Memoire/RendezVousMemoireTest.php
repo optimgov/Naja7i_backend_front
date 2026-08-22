@@ -64,7 +64,9 @@ class RendezVousMemoireTest extends TestCase
         /* Ce fichier porte sur la MÉCANIQUE du rendez-vous mémoire — ce qui est
          * échu, ce qu'une séance sert, ce qu'elle annonce. Le mur de 3A.9 a ses
          * propres tests ; ici on ouvre le droit et on va au sujet. */
-        $this->ouvrirLesDroits($this->candidat, AccessGrant::MEMORY_SESSIONS);
+        $this->ouvrirLesDroits(
+            $this->candidat, AccessGrant::QUESTIONS_ANSWER, AccessGrant::MEMORY_SESSIONS,
+        );
 
         /* Les routes du parcours exigent un e-mail vérifié. `email_verified_at`
          * n'est pas assignable en masse — on passe par le contrat. */

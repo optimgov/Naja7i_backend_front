@@ -1,0 +1,157 @@
+# Amorçage d'une base neuve
+
+**Objet :** ce qu'il faut exécuter, dans quel ordre, sur une préproduction ou
+une production fraîchement déployée — et surtout **ce qu'il ne faut jamais
+rejouer**.
+
+**Pourquoi ce document existe.** Déployer du code n'est pas poser des données :
+les migrations passent au déploiement, les semis non, et c'est délibéré. Une
+machine fraîchement déployée porte donc le schéma et rien d'autre — pas de
+catalogue, pas d'offres, et **aucun compte capable d'entrer au back-office**.
+Ce n'est pas un défaut : c'est l'état normal d'une base neuve, et il se
+franchit par les gestes ci-dessous.
+
+---
+
+## 0. Avant tout — une sauvegarde, et savoir où l'on est
+
+**Aucun geste de ce document ne se lance sans sauvegarde prise et vérifiée.**
+Tous écrivent en base ; deux d'entre eux ne se défont pas.
+
+**Chaque commande porte `--env` explicite.** C'est la règle du dépôt, et elle
+n'a jamais autant compté qu'ici : ces gestes créent un accès d'administration
+et posent le référentiel. Une commande qui choisit son environnement toute
+seule finit un jour par choisir le mauvais.
+
+> Les commandes ci-dessous sont les commandes **artisan**. Sur une machine
+> déployée, l'application vit dans un conteneur : le préfixe d'exécution
+> (`docker compose exec …` ou l'outil d'exploitation) appartient à la session
+> infra et n'est pas repris ici — l'inventer produirait une ligne fausse.
+
+---
+
+## 1. Compter avant d'agir
+
+**Le seul contrôle qui protège vraiment.** Les deux semis de référentiel ne
+sont pas rejouables (voir §4) ; la seule question qui compte est donc : *cette
+base est-elle vierge ?*
+
+```
+php artisan tinker --env=staging
+>>> [\App\Models\Filiere::count(), \App\Models\Exam::count(), \App\Models\Plan::count()]
+```
+
+- **`[0, 0, 0]`** → base vierge, poursuivez au §2.
+- **Tout autre résultat** → **ne lancez aucun semis.** La base porte déjà
+  quelque chose. Demandez avant de continuer : ce qui manque est peut-être
+  seulement l'administrateur (§3), qui, lui, se lance sans risque.
+
+---
+
+## 2. Le référentiel, dans cet ordre, et une seule fois
+
+```
+php artisan db:seed --class=Database\\Seeders\\CatalogueSeeder  --env=staging
+php artisan db:seed --class=Database\\Seeders\\Crmef2025Seeder  --env=staging
+php artisan db:seed --class=Database\\Seeders\\PlansSeeder      --env=staging
+```
+
+**L'ordre n'est pas indifférent.** `Crmef2025Seeder` corrige et complète ce que
+`CatalogueSeeder` a posé — parcours, épreuves séparées, matrices de domaines —
+et `PlansSeeder` rattache les offres à la catégorie de public `crmef`, que le
+premier crée. Lancé seul sur une base vierge, chacun des deux derniers échoue.
+
+**Ce que cela pose :** filières, familles de concours, spécialités, épreuves
+CRMEF 2025 avec leurs matrices et leurs poids, et les quatre offres du
+catalogue (essai gratuit + Entrée / Préparation / Session complète).
+
+---
+
+## 3. Le premier administrateur
+
+**Le cercle qu'il faut casser :** entrer au back-office exige au moins une
+permission, donc un rôle ; distribuer un rôle exige d'être entré. Les
+invitations de personnel ne résolvent rien — les émettre demande déjà un compte
+autorisé. Cette commande est le **seul** chemin d'entrée initial.
+
+```
+php artisan naja7i:creer-un-administrateur \
+    --email=vous@exemple.ma \
+    --role=super_admin \
+    --env=staging \
+    --dry-run
+```
+
+Retirez `--dry-run` quand la sortie vous convient.
+
+**Elle n'accepte aucun mot de passe.** Un secret passé en argument survit dans
+l'historique du shell, dans la table des processus, et dans tout journal qui
+capture la ligne de commande — longtemps après que le compte en a changé. La
+commande imprime donc un **lien à usage unique**, valable 24 heures par défaut
+(`STAFF_INVITATION_EXPIRE_HOURS`), qui n'est **ni envoyé par courriel ni
+journalisé**.
+
+> **Le lien n'est affiché qu'une fois.** Copiez-le avant de fermer le terminal.
+> S'il est perdu ou expiré, il n'y a pas de commande pour le réémettre : voir
+> §5.
+
+**Rôles disponibles** — `--role` est obligatoire et refusé s'il est inconnu,
+avec la liste en clair :
+
+| Code | Ce qu'il ouvre |
+|---|---|
+| `super_admin` | toutes les permissions |
+| `editeur` | banque de questions, catalogue, taxonomie, profils de quota, difficulté |
+| `reviseur` | révision des questions, file de qualification, difficulté |
+| `auteur` | rédaction des questions, lecture du catalogue |
+| `support` | assistance candidat, octroi et révocation d'accès |
+| `finance` | commandes, offres, coupons, droit transitoire |
+
+Le rôle `candidat` est **refusé** : il ne porte aucune permission de
+back-office, et le compte créé ne pourrait pas entrer.
+
+**Rejouée sur un compte qui existe déjà**, la commande n'écrase rien — ni rôle,
+ni mot de passe, ni invitation. Elle dit ce qui existe et s'arrête.
+
+---
+
+## 4. Ce qu'il ne faut pas rejouer, et ce qui se rejoue sans risque
+
+| Semis | Rejouable ? | Comportement mesuré |
+|---|---|---|
+| `CatalogueSeeder` | **Non** | Échoue sur l'unicité de `filieres.slug`, **transaction annulée, rien écrit** |
+| `Crmef2025Seeder` | **Non** | Échoue sur l'unicité de `sources.code`, **transaction annulée, rien écrit** |
+| `PlansSeeder` | **Oui** | `updateOrCreate` : compositions et prix rétablis, aucune ligne dupliquée |
+
+**Le refus est un filet, pas une permission.** Les deux premiers ne doublent
+pas le catalogue — ils s'arrêtent net et laissent la base intacte, parce que
+leurs `run()` sont enveloppés dans une transaction et que les codes du
+référentiel sont uniques. C'est plus sûr qu'on ne le croyait, **et cela ne
+change pas la consigne** : comptez au §1 avant de lancer quoi que ce soit. Un
+index protège contre le doublon ; il ne protège pas contre un semis qu'on
+lancerait sur la mauvaise machine.
+
+*Ces trois comportements sont tenus par `tests/Feature/BackOffice/SemisDAmorcageTest.php` :
+si l'un change, ce document devient faux, et le test rougit avant la machine.*
+
+**`PlansSeeder` mérite une note à part.** Le rejouer **recompose les offres
+telles que le code les décrit** — donc écrase toute modification faite à
+l'écran d'administration depuis. Sur une base où le propriétaire a ajusté un
+prix ou une composition, ce n'est pas un geste anodin : chaque modification
+crée une version, rien n'est perdu, mais l'offre courante redevient celle du
+dépôt.
+
+---
+
+## 5. Ce que ce document ne couvre pas
+
+- **Le lien d'administrateur perdu ou expiré.** Il n'existe aucune commande
+  pour le réémettre. Aujourd'hui, le contournement est de créer un second
+  compte d'amorçage avec une autre adresse, puis d'inviter normalement depuis
+  le back-office. Une commande de réémission serait un lot à part — et elle
+  devrait, comme celle-ci, refuser tout mot de passe en argument.
+- **Le rattrapage du palier gratuit** (`naja7i:rattraper-le-gratuit`) et **la
+  pose du droit transitoire** (`naja7i:poser-le-droit-transitoire`). Ce sont des
+  gestes d'**allumage**, pas d'amorçage : ils appartiennent au jalon 1.6 et ne se
+  lancent que sur ordre explicite du propriétaire, après la recette.
+- **La sauvegarde et sa vérification**, qui appartiennent à l'exploitation.

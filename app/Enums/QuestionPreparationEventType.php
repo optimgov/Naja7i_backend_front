@@ -11,4 +11,10 @@ enum QuestionPreparationEventType: string
     case MARKED_DUPLICATE = 'marked_duplicate';
     case MARKED_ILLEGIBLE = 'marked_illegible';
     case REJECTED = 'rejected';
+
+    /** Correction C-A : `ILLEGIBLE` cesse d'être un cimetière. */
+    case RETRANSCRIBED = 'retranscribed';
+
+    /** Ce que l'expert signale en travaillant — genre nommé, jamais libre seul. */
+    case EDITORIALLY_FLAGGED = 'editorially_flagged';
 }

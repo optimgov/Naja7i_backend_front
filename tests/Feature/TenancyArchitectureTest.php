@@ -97,6 +97,22 @@ class TenancyArchitectureTest extends TestCase
          */
         'app/Services/EnveloppeDeQuestions.php',
         'app/Services/AbonnementService.php',
+
+        /*
+         * LA DIFFICULTÉ OBSERVÉE COMPTE UNE AGRÉGATION, EN LECTURE SEULE.
+         *
+         * Une jointure `responses × attempt_items` avec un `count(*) filter`,
+         * exactement comme `MasteryCalculator` juste au-dessus et pour la même
+         * raison : compter par Eloquent chargerait des dizaines de milliers de
+         * lignes pour en tirer deux nombres.
+         *
+         * Elle mesure DÉLIBÉRÉMENT hors scope tenant, et c'est ce qui la rend
+         * juste : la difficulté d'une question est une propriété de la QUESTION,
+         * établie par tous ceux qui l'ont passée. La scoper ferait varier la
+         * difficulté observée selon l'organisme qui la regarde — deux vérités
+         * pour un même énoncé.
+         */
+        'app/Services/DifficulteObservee.php',
     ];
 
     private const FORBIDDEN_SCOPE_PATTERNS = [

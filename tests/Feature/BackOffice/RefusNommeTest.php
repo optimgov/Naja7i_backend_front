@@ -116,6 +116,15 @@ class RefusNommeTest extends TestCase
              * `taxonomy.manage` est attachée au rôle `editeur` depuis le PAS-1,
              * et le lot TAXO lui donne enfin une surface. */
             'taxonomy.manage' => 'editeur',
+            /* L'échelle de difficulté se CORRIGE sous l'autorité pédagogique.
+             * La POSER demande `questions.difficulty` (Q-10) : deux gestes,
+             * deux permissions — un expert signale une ancre mal formulée, il
+             * ne la réécrit pas seul. */
+            'questions.validate' => 'editeur',
+            /* La file de qualification s'ouvre au relecteur : c'est lui qui y
+             * passe ses heures. `questions.validate` en dispose aussi, mais
+             * c'est `questions.review` que la surface déclare. */
+            'questions.review' => 'reviseur',
             /* Écrire dans le catalogue commercial — composer une offre, poser
              * un droit transitoire — engage l'argent au même titre que valider
              * un coupon (`PlanPolicy`). */
@@ -129,6 +138,10 @@ class RefusNommeTest extends TestCase
             'quotas.manage' => 'finance',
             /* Ni ne redécoupe l'arbre d'une épreuve. */
             'taxonomy.manage' => 'finance',
+            /* Ni ne réécrit l'échelle sur laquelle les experts s'alignent. */
+            'questions.validate' => 'finance',
+            /* Et ne qualifie pas les questions du corpus. */
+            'questions.review' => 'finance',
             /* L'autorité éditoriale ne distribue pas de droits commerciaux. */
             'orders.validate' => 'editeur',
         ];

@@ -26,7 +26,25 @@ class QuestionOption extends Model
         'source_perimee', 'calcul', 'piege_formulation', 'indetermine',
     ];
 
-    protected $fillable = ['question_id', 'position', 'content', 'is_correct', 'rationale', 'cause'];
+    /**
+     * LE NEUVIÈME CODE — DET-16, et ce n'est pas une neuvième cause.
+     *
+     * Les huit de F03 ne sont pas validés pédagogiquement : un expert qui ne
+     * trouve pas sa case en choisit une fausse, ce qui est PIRE que de n'en
+     * choisir aucune — la carte de maîtrise se met alors à mesurer un piège
+     * que personne n'a tendu. Celui-ci dit « aucun des huit », et il exige son
+     * texte libre : c'est ce texte qui dira, dans six mois, quels codes
+     * manquaient réellement.
+     */
+    public const CAUSE_HORS_NOMENCLATURE = 'hors_nomenclature';
+
+    /** @return list<string> */
+    public static function causesSelectionnables(): array
+    {
+        return [...self::CAUSES, self::CAUSE_HORS_NOMENCLATURE];
+    }
+
+    protected $fillable = ['question_id', 'position', 'content', 'is_correct', 'rationale', 'cause', 'cause_note'];
 
     protected $hidden = ['id', 'question_id'];
 

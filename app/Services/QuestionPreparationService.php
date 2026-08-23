@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\EditorialFlagKind;
 use App\Enums\PreparedQuestionState;
 use App\Enums\QuestionPreparationBatchStatus;
 use App\Enums\QuestionPreparationEventType;
 use App\Models\CompetencyNode;
+use App\Models\EditorialFlag;
 use App\Models\PreparedQuestion;
 use App\Models\Question;
 use App\Models\QuestionPreparationBatch;
@@ -240,6 +242,12 @@ final class QuestionPreparationService
         ];
 
         if ($declaredDifficulty !== null) {
+            /* Même garde qu'à `declareDifficulty` : qualifier et noter la
+             * difficulté sont deux gestes, et le second a sa permission. Sans
+             * ce contrôle, il suffirait de passer par la qualification pour
+             * contourner Q-10 — une porte fermée à côté d'une porte ouverte. */
+            $this->assertPeutPoserLaDifficulte($actor);
+
             $values += [
                 'declared_difficulty' => $this->nullableDifficulty($declaredDifficulty),
                 'difficulty_set_by' => $actor->id,
@@ -273,8 +281,20 @@ final class QuestionPreparationService
         });
     }
 
+    /**
+     * LA DIFFICULTÉ SE POSE SOUS PERMISSION DÉDIÉE — Q-10.
+     *
+     * `questions.difficulty`, distincte de `questions.create` : poser une
+     * difficulté est un JUGEMENT PÉDAGOGIQUE, pas une saisie de rédaction. Un
+     * rédacteur connaît sa question ; il ne connaît pas la population qui la
+     * passera. La confondre avec le droit d'écrire ferait poser l'échelle par
+     * qui n'a aucun moyen de l'étalonner.
+     */
+    public const PERMISSION_DIFFICULTE = 'questions.difficulty';
+
     public function declareDifficulty(PreparedQuestion $prepared, User $actor, int $difficulty): PreparedQuestion
     {
+        $this->assertPeutPoserLaDifficulte($actor);
         $this->assertMutable($prepared, [
             PreparedQuestionState::IMPORTED,
             PreparedQuestionState::QUALIFIED,
@@ -396,6 +416,134 @@ final class QuestionPreparationService
         );
     }
 
+    /**
+     * RETRANSCRIRE une question illisible — correction C-A.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * `ILLEGIBLE` AVAIT UNE ENTRÉE ET AUCUNE SORTIE
+     *
+     * Une question dont le scan est coupé y entrait et n'en ressortait jamais.
+     * L'état devenait un cimetière — et les cinq illisibles du corpus, une
+     * perte définitive pour une raison purement matérielle : personne n'a
+     * jamais décidé qu'elles ne valaient rien, seulement que le PDF était
+     * mauvais.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * ELLE RÉÉCRIT UN FAIT DE SOURCE, DONC ELLE SE TRACE
+     *
+     * `source_facts` est gelé en base : c'est ce que le document DIT, et rien
+     * ne doit le réécrire en silence. La retranscription ne le touche donc pas.
+     * Elle pose le texte relu dans `human_fields.retranscription`, avec son
+     * auteur, sa date et la PIÈCE d'où il vient — sans quoi on ne saurait plus,
+     * dans six mois, si l'énoncé vient du sujet officiel ou de la mémoire de
+     * quelqu'un.
+     *
+     * La ligne revient à `IMPORTED` : elle reprend la file au début, et repasse
+     * par la qualification comme les autres. Lui faire sauter des étapes parce
+     * qu'un humain l'a touchée serait exactement la validation parallèle que la
+     * zone de préparation existe pour empêcher.
+     */
+    public function retranscribe(
+        PreparedQuestion $prepared,
+        User $actor,
+        string $stem,
+        string $sourceReference,
+    ): PreparedQuestion {
+        $this->assertActorInCurrentTenant($actor);
+
+        if ($prepared->state !== PreparedQuestionState::ILLEGIBLE) {
+            throw new DomainException('Seule une question illisible se retranscrit.');
+        }
+
+        $stem = trim($stem);
+        $sourceReference = trim($sourceReference);
+
+        if (mb_strlen($stem) < 10) {
+            throw new DomainException('Une retranscription sans énoncé lisible n’en est pas une.');
+        }
+
+        if ($sourceReference === '') {
+            throw new DomainException(
+                'La retranscription doit nommer sa pièce : sans elle, on ne saura plus si '
+                .'l’énoncé vient du sujet officiel ou de la mémoire de quelqu’un.'
+            );
+        }
+
+        $humanFields = $prepared->human_fields ?? [];
+        $humanFields['retranscription'] = [
+            'stem' => $stem,
+            'source_reference' => $sourceReference,
+            'actor_uuid' => $actor->uuid,
+            'at' => now()->toIso8601String(),
+        ];
+
+        return DB::transaction(function () use ($prepared, $actor, $humanFields, $sourceReference) {
+            $prepared->forceFill([
+                'human_fields' => $humanFields,
+                'state' => PreparedQuestionState::IMPORTED,
+                'active' => true,
+            ])->save();
+
+            $this->recordGesture(
+                $prepared,
+                $actor,
+                QuestionPreparationEventType::RETRANSCRIBED,
+                ['state' => PreparedQuestionState::ILLEGIBLE->value],
+                ['state' => PreparedQuestionState::IMPORTED->value, 'source_reference' => $sourceReference],
+            );
+
+            return $prepared->fresh();
+        });
+    }
+
+    /**
+     * SIGNALER un défaut éditorial — lot Q2, pas 6.
+     *
+     * Un GENRE nommé, et le texte libre en supplément. Les experts lisent 1 413
+     * questions une par une : c'est la relecture la moins chère du projet, et la
+     * recueillir en commentaire libre la rendrait inexploitable — cinquante
+     * phrases ne se dépouillent pas, quatre colonnes se comptent.
+     *
+     * Le signalement N'ARRÊTE PAS la file. Un expert qui doit choisir entre
+     * signaler et avancer ne signale pas : la ligne garde son état, et le tri
+     * des signalements est un travail éditorial à part.
+     */
+    public function flagEditorially(
+        PreparedQuestion $prepared,
+        User $actor,
+        EditorialFlagKind $kind,
+        ?string $note = null,
+    ): EditorialFlag {
+        $this->assertActorInCurrentTenant($actor);
+
+        $note = $note === null ? null : (trim($note) ?: null);
+
+        return DB::transaction(function () use ($prepared, $actor, $kind, $note): EditorialFlag {
+            $flag = new EditorialFlag;
+            $flag->forceFill([
+                'prepared_question_id' => $prepared->id,
+                'actor_id' => $actor->id,
+                'kind' => $kind,
+                'note' => $note,
+                'occurred_at' => now(),
+            ])->save();
+
+            /* `['kind' => null]` et non `[]` : la contrainte
+             * `question_preparation_events_payload_objects` exige des OBJETS
+             * des deux côtés, et un tableau PHP vide se sérialise en `[]`.
+             * « Avant, aucun genre » se dit donc avec la clé, pas sans elle. */
+            $this->recordGesture(
+                $prepared,
+                $actor,
+                QuestionPreparationEventType::EDITORIALLY_FLAGGED,
+                ['kind' => null],
+                ['kind' => $kind->value, 'has_note' => $note !== null],
+            );
+
+            return $flag->fresh();
+        });
+    }
+
     private function finishBatch(
         QuestionPreparationBatch $batch,
         User $actor,
@@ -453,6 +601,16 @@ final class QuestionPreparationService
 
             return $prepared->fresh();
         });
+    }
+
+    private function assertPeutPoserLaDifficulte(User $actor): void
+    {
+        if (! in_array(self::PERMISSION_DIFFICULTE, app(PermissionResolver::class)->forUser($actor), true)) {
+            throw new DomainException(
+                'Poser la difficulté déclarée demande la permission « '.self::PERMISSION_DIFFICULTE.' » : '
+                .'c’est un jugement pédagogique, pas une saisie de rédaction (Q-10).'
+            );
+        }
     }
 
     private function assertActorInCurrentTenant(User $actor): void

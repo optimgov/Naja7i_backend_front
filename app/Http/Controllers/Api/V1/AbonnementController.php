@@ -48,7 +48,10 @@ class AbonnementController extends Controller
         /* `enVente` et non `active` : hors calendrier, l'offre ne se voit pas.
          * Le candidat ne lit jamais un bouton grisé — soit l'offre est là,
          * soit elle n'y est pas (§2.5). */
-        $plans = Plan::enVente()->ordered()->with('currentVersion')->get();
+        /* `audience` est chargée avec le reste : la condition de public sort
+         * sur chaque ligne du catalogue (DET-91), et une relation par offre
+         * ferait une requête par offre. */
+        $plans = Plan::enVente()->ordered()->with(['currentVersion', 'audience'])->get();
 
         return response()->json(['data' => PlanResource::collection($plans)->resolve()]);
     }

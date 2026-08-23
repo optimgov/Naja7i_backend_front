@@ -33,7 +33,7 @@ seule finit un jour par choisir le mauvais.
 ## 1. Compter avant d'agir
 
 **Le seul contrôle qui protège vraiment.** Les deux semis de référentiel ne
-sont pas rejouables (voir §4) ; la seule question qui compte est donc : *cette
+sont pas rejouables (voir §5) ; la seule question qui compte est donc : *cette
 base est-elle vierge ?*
 
 ```
@@ -93,7 +93,7 @@ journalisé**.
 
 > **Le lien n'est affiché qu'une fois.** Copiez-le avant de fermer le terminal.
 > S'il est perdu ou expiré, il n'y a pas de commande pour le réémettre : voir
-> §5.
+> §6.
 
 **Rôles disponibles** — `--role` est obligatoire et refusé s'il est inconnu,
 avec la liste en clair :
@@ -115,7 +115,64 @@ ni mot de passe, ni invitation. Elle dit ce qui existe et s'arrête.
 
 ---
 
-## 4. Ce qu'il ne faut pas rejouer, et ce qui se rejoue sans risque
+## 4. Les trois étages du contenu — ce que chacun rend visible
+
+**Le point qui surprend, et qui n'est pas un défaut :** après les semis du §2,
+« Concours » et « Se préparer » montrent enfin quelque chose — mais **un
+diagnostic ne sert toujours aucune question**. Les semis posent le
+RÉFÉRENTIEL ; ils ne créent aucune question, et c'est mesuré, pas supposé.
+
+| Étage | Ce qu'on exécute | Ce qui devient visible |
+|---|---|---|
+| **1 — le référentiel** | `db:seed` × 3 (§2) | Concours, épreuves, parcours, arbres de compétences, offres · **une seule fois, base vierge** |
+| **2 — le corpus** | `crmef:importer-annales` | Des **brouillons** dans le back-office de rédaction |
+| **3 — la publication** | *la chaîne éditoriale* | Des questions réellement servies à un candidat |
+
+### Étage 2 — importer les annales
+
+Le corpus **voyage avec le dépôt** : `docs/corpus/CRMEF-extraction-20260815.md`
+et son classement `…-classement-domaines-20260815.csv` sont versionnés, donc
+présents dans l'image. Rien à transférer depuis un poste.
+
+```
+php artisan crmef:importer-annales --simulation --env=staging
+php artisan crmef:importer-annales --env=staging
+```
+
+`--simulation` compte sans rien écrire. Le bloc par défaut est
+`2025_SCED_college_qualifiant`, et c'est **le seul importable aujourd'hui**.
+
+> **`--tous` est refusé, et c'est délibéré (DET-69, DET-61).** Sur les 213
+> questions classées, **53 seulement** pendent d'une épreuve modélisée — celles
+> du bloc par défaut, rattachées à `CRMEF-SE-2025`. Les 160 autres viennent des
+> voies A (primaire) et C (secondaire 2e grade), que le dépôt ne modélise pas :
+> autre intitulé, autre autorité émettrice, autre barème, autre nombre
+> d'options. Elles ne s'inventent pas un nœud et ne s'importent pas sous une
+> épreuve qui n'est pas la leur. **N'attendez donc pas 1 413 questions : cet
+> import en pose une cinquantaine.**
+
+### Étage 3 — la publication n'est pas un geste d'exploitation
+
+Les questions importées entrent en **`status = draft`**, et un brouillon ne se
+sert jamais à un candidat. Entre l'import et un diagnostic qui rend de vraies
+questions, il y a la chaîne éditoriale — qualification du domaine, corrigé
+établi, justification de chaque option, cause de chaque distracteur, relecture
+par un tiers, publication. **C'est le travail des experts, et c'est le jalon 2.**
+
+**Il n'existe aucun raccourci de publication en masse, et il ne faut pas en
+fabriquer un.** Publier du contenu non qualifié, même en préproduction, ferait
+mesurer un produit qui ment sur la qualité de sa banque : la carte de maîtrise
+s'appuierait sur des causes que personne n'a établies, et les corrections
+citeraient des justifications inventées. C'est précisément ce que toute la
+chaîne existe pour empêcher.
+
+Si un raccourci devient nécessaire pour éprouver les écrans, ce sera **une
+décision explicite**, et les questions concernées devront porter une marque
+visible — sans quoi personne ne saura, six mois plus tard, ce qui a été relu.
+
+---
+
+## 5. Ce qu'il ne faut pas rejouer, et ce qui se rejoue sans risque
 
 | Semis | Rejouable ? | Comportement mesuré |
 |---|---|---|
@@ -143,7 +200,7 @@ dépôt.
 
 ---
 
-## 5. Ce que ce document ne couvre pas
+## 6. Ce que ce document ne couvre pas
 
 - **Le lien d'administrateur perdu ou expiré.** Il n'existe aucune commande
   pour le réémettre. Aujourd'hui, le contournement est de créer un second

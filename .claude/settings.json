@@ -11,6 +11,7 @@
       "Bash(docker compose:*)",
       "Bash(colima:*)",
       "Bash(git:*)",
+      "Bash(git push:*)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(grep:*)",

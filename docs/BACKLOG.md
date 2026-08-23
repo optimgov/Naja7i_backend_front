@@ -1868,6 +1868,43 @@ une chaîne vide au lieu d'omettre le champ fait rougir le test de l'offre sans
 public, et lui seul ; suite complète séquentielle verte à **998 tests et
 3 875 assertions** en 298,4 s.
 
+#### M-017 · la catégorie du candidat, et un libellé arabe · livré · `5ddef8c`
+
+**`audience` sur `me/profile`**, exactement la forme livrée sur les offres par
+M-015. Sans elle, l'écran pouvait **dire** la condition d'une offre mais pas la
+**comparer** à la catégorie de celui qui regarde.
+
+**Elle se déduit, elle ne se déclare pas** : épreuve → parcours → famille →
+catégorie, la même chaîne que le refus de souscription emprunte (3A.9 pas 3).
+C'est ce qui garantit que l'écran annonce exactement ce que le serveur opposera.
+La chaîne est chargée d'un coup — sinon trois requêtes de plus à chaque ouverture
+du tableau de bord. La réponse du `PUT` la porte déjà, pour éviter un second
+appel après l'écriture.
+
+**Sans épreuve déclarée, la clé n'existe pas** — jamais `null`, jamais « tous ».
+*On ne refuse que ce qu'on sait.*
+
+**Un invariant restreint, et c'est la décision du lot.** Depuis le PAS-4.1, la
+ressource rendait toujours les mêmes clés — un invariant **testé**. Il avait été
+écrit quand les quatre champs étaient tous des **déclarations** : « je n'ai pas
+encore choisi » est une information, `null` la dit bien. `audience` n'est pas de
+cette nature. L'invariant porte désormais sur les champs déclarés, et le profil
+vide est vérifié exactement égal à ces quatre-là. La contradiction a été posée au
+propriétaire **avant** d'écrire, et tranchée par lui.
+
+**`etat_essai` arabe réparé** : « تجربة en cours » → « تجربة جارية ». Il était
+servi par `me/subscription.etat_label` sur le tableau de bord d'un arabophone.
+
+**Mesure demandée :** 299 valeurs arabes examinées, 9 portant des lettres
+latines, **une seule fautive** — celle-ci. Les huit autres sont légitimes : sept
+acronymes que l'arabe ne traduit pas (IP, IPv4, IPv6, JSON, MAC, ULID, UUID) et
+« Français » dans le sélecteur de langue, où chaque langue se nomme dans la
+sienne. Aucun contrôle automatique construit, comme demandé.
+
+**Vérification :** 6 tests ciblés et 27 assertions ; mutation éprouvée — rendre
+une chaîne vide au lieu d'omettre fait rougir les deux tests d'absence, et eux
+seuls ; suite complète séquentielle verte à **1 004 tests et 3 904 assertions**.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

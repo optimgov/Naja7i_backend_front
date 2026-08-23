@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Tests\TestCase;
 
 /**
@@ -76,14 +77,32 @@ class ProfilCandidatTest extends TestCase
     }
 
     /**
-     * LA FORME NE CHANGE PAS SELON QU'IL Y A UN PROFIL OU NON.
+     * LA FORME NE CHANGE PAS SELON QU'IL Y A UN PROFIL OU NON — mais l'invariant
+     * PORTE SUR CE QUI SE DÉCLARE, PAS SUR CE QUI SE DÉDUIT.
      *
-     * Sans cette garantie, le frontend devrait écrire deux lectures pour un même
-     * écran — et c'est le chemin « pas encore de profil » qu'il testerait le
-     * moins, alors que c'est celui de tout compte neuf.
+     * Sans la garantie de forme, le frontend devrait écrire deux lectures pour
+     * un même écran — et c'est le chemin « pas encore de profil » qu'il
+     * testerait le moins, alors que c'est celui de tout compte neuf.
+     *
+     * Il a été écrit au PAS-4.1, quand les quatre champs de cette ressource
+     * étaient tous des DÉCLARATIONS : « je n'ai pas encore choisi » est une
+     * information, et `null` la dit bien.
+     *
+     * `audience` (M-017) n'est pas de cette nature : elle se DÉDUIT de
+     * l'épreuve. Sans épreuve il n'y a rien à déduire, et « ma catégorie est
+     * inconnue » n'est pas une catégorie — rendre `null` inviterait l'écran à
+     * la traiter comme telle, alors qu'elle sert à décider d'une vente. Elle
+     * disparaît donc, exactement comme sur les offres (M-015), et c'est cette
+     * symétrie qui rend la comparaison écrivable en une ligne.
+     *
+     * L'invariant est donc RESTREINT, pas supprimé : les quatre champs déclarés
+     * gardent leur forme stable, et un cinquième ajouté demain sans réfléchir à
+     * sa nature fera rougir la liste blanche juste en dessous.
      */
-    public function test_les_memes_cles_sont_rendues_avec_et_sans_profil(): void
+    public function test_les_champs_declares_gardent_la_meme_forme_avec_et_sans_profil(): void
     {
+        $declares = ['exam_code', 'objective', 'target_date', 'updated_at'];
+
         $vide = $this->actingAs($this->candidat)->getJson('/api/v1/me/profile')->json('data');
 
         $this->actingAs($this->candidat)->putJson('/api/v1/me/profile', [
@@ -92,7 +111,12 @@ class ProfilCandidatTest extends TestCase
 
         $rempli = $this->actingAs($this->candidat)->getJson('/api/v1/me/profile')->json('data');
 
-        $this->assertSame(array_keys($vide), array_keys($rempli));
+        $this->assertSame($declares, array_keys(Arr::only($vide, $declares)));
+        $this->assertSame($declares, array_keys(Arr::only($rempli, $declares)));
+
+        /* Et le profil vide ne porte QUE ces quatre-là : la catégorie déduite
+         * n'y est pas, et aucun autre champ n'a profité du passage. */
+        $this->assertSame($declares, array_keys($vide));
     }
 
     // --- La déclaration ---------------------------------------------------------
@@ -284,7 +308,7 @@ class ProfilCandidatTest extends TestCase
             ->getJson('/api/v1/me/profile')->json('data');
 
         $this->assertSame(
-            ['exam_code', 'objective', 'target_date', 'updated_at'],
+            ['exam_code', 'objective', 'target_date', 'updated_at', 'audience'],
             array_keys($data),
             'Un champ ajouté demain au modèle ne doit pas apparaître par accident.'
         );

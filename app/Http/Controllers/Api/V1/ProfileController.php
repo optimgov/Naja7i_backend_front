@@ -38,7 +38,13 @@ class ProfileController extends Controller
     {
         /* Un modèle NON ENREGISTRÉ quand rien n'existe : la ressource sérialise
          * alors ses champs nuls, et la forme de la réponse reste unique. */
-        $profil = $request->user()->candidateProfile()->first() ?? new CandidateProfile;
+        /* La chaîne de déduction de la catégorie est chargée d'un coup : sans
+         * elle, `audience` coûterait trois requêtes de plus par lecture de
+         * profil, sur une route que le tableau de bord appelle à chaque
+         * ouverture. */
+        $profil = $request->user()->candidateProfile()
+            ->with('exam.track.family.audience')->first()
+            ?? new CandidateProfile;
 
         return response()->json(['data' => CandidateProfileResource::make($profil)]);
     }
@@ -102,7 +108,9 @@ class ProfileController extends Controller
         ])->save();
 
         return response()->json([
-            'data' => CandidateProfileResource::make($profil->fresh()),
+            'data' => CandidateProfileResource::make(
+                $profil->fresh()->load('exam.track.family.audience')
+            ),
         ]);
     }
 }

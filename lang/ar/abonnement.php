@@ -18,7 +18,7 @@ return [
     'source_essai' => 'تجربة',
     'source_transitoire' => 'وصول انتقالي',
     'source_achetee' => 'مضمّن في اشتراكك',
-    'etat_essai' => 'تجربة en cours',
+    'etat_essai' => 'تجربة جارية',
     'etat_actif' => 'اشتراك نشط',
     'etat_epuise' => 'انتهى الاشتراك',
     'sortie_epuise' => 'جدّد اشتراكك أو اختر صيغة أخرى لاستعادة صلاحياتك.',

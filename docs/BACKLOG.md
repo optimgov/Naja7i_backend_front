@@ -1842,6 +1842,32 @@ est unique, quelle que soit la route empruntée.
 **Vérification :** 20 tests ciblés et 86 assertions ; quatre mutations éprouvées ;
 suite complète séquentielle verte à **993 tests et 3 850 assertions** en 284,7 s.
 
+#### DET-91 côté backend · la condition de public dite · livré · `cfd8fde`
+
+Le refus de souscription pour public non éligible existe depuis 3A.9 pas 3. Il
+est correct, sobre, et il renvoie au catalogue — **où aucun champ de public
+n'existait**. L'écran n'avait rien à afficher, quoi qu'il veuille bien faire, et
+le refus arrivait à la caisse.
+
+**On dit la condition, on ne cache pas l'offre.** `PlanResource` porte le code de
+la catégorie et ses deux libellés. La route reste **publique et complète** :
+c'est le levier d'acquisition, et la condition affichée ne le referme pas.
+Filtrer ou ordonner selon le compte connecté reste une décision d'écran (M-009).
+
+**L'absence de condition est l'absence du champ** — ni chaîne vide, ni « tous ».
+La règle des murs, appliquée au catalogue.
+
+**Le public se lit sur l'OFFRE**, pas sur sa version courante :
+`purchasable()` appelle `current($plan)`, qui projette `audience_id` depuis
+l'offre avant de juger. C'est cette projection qui sera opposée au candidat, donc
+c'est elle qu'on annonce — lire la version rendrait un instantané que le prochain
+achat recomposerait. Un test le vérifie de bout en bout.
+
+**Vérification :** 5 tests ciblés et 25 assertions ; mutation éprouvée — rendre
+une chaîne vide au lieu d'omettre le champ fait rougir le test de l'offre sans
+public, et lui seul ; suite complète séquentielle verte à **998 tests et
+3 875 assertions** en 298,4 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

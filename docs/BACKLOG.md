@@ -1794,6 +1794,54 @@ renommage réel.
 **Vérification :** 17 tests ciblés et 82 assertions ; trois mutations éprouvées ;
 suite complète séquentielle verte à **973 tests et 3 762 assertions** en 276,3 s.
 
+### LOT-Q2 — Le poste de travail des experts · livré · `7f95aac`
+
+**Ce lot ne construit pas un back-office.** Il construit le poste de travail de
+gens qui ne sont pas informaticiens et qui vont y passer des heures : chaque
+friction s'y multiplie par 1 413.
+
+**La règle centrale — aucun champ n'arrive pré-rempli.** Ni le corrigé, ni la
+cause, ni la difficulté, ni la justification. Un champ pré-rempli est accepté
+sans être lu : c'est le mécanisme exact par lequel une erreur d'import devient
+une vérité éditoriale, et il est d'autant plus dangereux que la source est
+**riche** — plus elle propose, moins on relit. Ce que la source dit s'affiche
+**à côté**, en lecture seule et signalé comme tel. Un test balaie le code de la
+page, **commentaires retirés** : sans cela, l'explication qui nomme le danger
+ferait rougir le test qui le garde.
+
+**L'échelle de difficulté devient une donnée** (Q-09) : cinq crans fermés en
+code — un déclencheur refuse d'en ajouter ou d'en retirer — mais libellés et
+**ancres comportementales** éditables sans déploiement. C'est l'ancre qui fait le
+travail : « Transfert » se lit différemment par chaque expert, « la situation n'a
+pas été vue en cours » se lit pareil par tous.
+
+**Qui la pose** (Q-10) : `questions.difficulty`, distincte de la rédaction, et
+gardée sur les **deux** portes — `declareDifficulty` et `qualify`, qui accepte
+aussi une difficulté. Une porte fermée à côté d'une porte ouverte n'est pas une
+porte fermée.
+
+**Déclarée et observée coexistent**, jamais fusionnées. Sous trente réponses,
+l'observée ne rend **ni taux ni cran** — un taux sur huit réponses est du bruit
+mis en forme. Même règle que le seuil d'évidence de `MasteryScore`.
+
+**`hors_nomenclature`** (DET-16) exige son texte libre, par contrainte de base :
+un expert qui ne trouve pas sa case en choisit une fausse, ce qui est pire que
+de n'en choisir aucune. Le texte transforme un renoncement en proposition.
+
+**La retranscription** (C-A) donne une sortie à `ILLEGIBLE`, qui n'en avait
+aucune. Le geste nomme sa **pièce** et ne réécrit pas les faits de source ; la
+ligne reprend la file au début.
+
+**Le signalement éditorial** est structuré : quatre genres nommés, texte libre en
+supplément, en ajout seul, et il **n'interrompt pas la file** — un expert qui
+doit choisir entre signaler et avancer ne signale pas.
+
+**L'invariant des doublons** (C-B) est prouvé : `prepared_questions.question_id`
+est unique, quelle que soit la route empruntée.
+
+**Vérification :** 20 tests ciblés et 86 assertions ; quatre mutations éprouvées ;
+suite complète séquentielle verte à **993 tests et 3 850 assertions** en 284,7 s.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

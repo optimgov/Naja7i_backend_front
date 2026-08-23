@@ -137,6 +137,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | Q2 | Le poste de travail des experts : la file une question à la fois, aucun champ pré-rempli et la source affichée à côté, l'échelle de difficulté en données éditables avec ses ancres, la permission dédiée de Q-10 sur ses deux portes, la difficulté observée qui ne rend aucun nombre sous son seuil, `hors_nomenclature` et son texte obligatoire, la retranscription qui sort `ILLEGIBLE` du cimetière, et le signalement éditorial structuré | `7f95aac` |
 | DET-91.b | La condition de public est dite au catalogue : code et libellés FR/AR de la catégorie sur la ressource d'offre, en lecture seule ; une offre sans public ne rend pas le champ, et la route publique reste publique et complète — filtrer reste une décision d'écran | `cfd8fde` |
 | M-017 | La catégorie du candidat sur son profil — même forme que sur les offres, clé absente quand aucune épreuve n'est déclarée, invariant de forme restreint aux champs déclarés ; et `etat_essai` arabe réparé, seul libellé fautif sur 299 mesurés | `5ddef8c` |
+| M-018 | L'amorçage d'une base neuve : `naja7i:creer-un-administrateur` qui casse l'œuf sans poule sans jamais accepter de mot de passe en argument, `invited_by` nullable pour dire « aucun humain n'a invité », et `docs/AMORCAGE.md` avec le comportement de rejeu des semis mesuré et tenu par des tests | `0d7b833` |
 
 ## Lots frontend
 

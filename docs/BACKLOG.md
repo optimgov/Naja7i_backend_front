@@ -1905,6 +1905,50 @@ sienne. Aucun contrôle automatique construit, comme demandé.
 une chaîne vide au lieu d'omettre fait rougir les deux tests d'absence, et eux
 seuls ; suite complète séquentielle verte à **1 004 tests et 3 904 assertions**.
 
+### M-018 — Amorcer une base neuve · livré · `0d7b833`
+
+**Aucun chemin n'existait pour entrer la première fois.** `canAccessPanel()`
+exige une permission, donc un rôle ; distribuer un rôle exige d'être entré ; et
+les invitations de personnel ne cassent pas le cercle, puisque les émettre
+demande déjà un compte autorisé. La préproduction déployée était donc close,
+et ce n'était pas un défaut d'écran.
+
+**`naja7i:creer-un-administrateur`**, dont la forme entière découle d'une règle :
+**aucun mot de passe en argument**. Un secret passé en ligne de commande survit
+dans l'historique du shell, dans la table des processus et dans tout journal qui
+capture la ligne. La commande crée le compte avec un mot de passe aléatoire que
+personne ne connaît, et imprime un **lien à usage unique**, daté, haché en base.
+Elle emprunte le mécanisme d'invitation du personnel plutôt que de le recopier —
+un second chemin pour poser un mot de passe finirait par être le plus faible des
+deux — et ne l'envoie **pas** par courriel : une préproduction fraîche n'a pas
+nécessairement de SMTP.
+
+**`staff_invitations.invited_by` devient nullable**, avec le raisonnement de
+`plan_versions.composed_by` : l'amorçage n'a pas d'invitant, et faire pointer
+l'invitation vers le compte qu'elle crée écrirait qu'il s'est invité lui-même.
+La nullité **porte le sens**, et c'est la trace — avec le compte et son
+adhésion. Aucune table ajoutée pour cela.
+
+**Elle ne devine rien :** rôle obligatoire, refusé s'il est inconnu avec la liste
+complète, refusé aussi s'il est `candidat`. `--env` exigé. Rejouée sur un compte
+existant, elle n'écrase ni rôle, ni mot de passe, ni invitation.
+
+**`docs/AMORCAGE.md`** donne l'ordre des semis, le comptage préalable et ce qui
+ne se rejoue pas.
+
+**Une prémisse de la mission était inexacte, et c'est une bonne nouvelle.** Elle
+annonçait qu'un rejeu de `CatalogueSeeder` « double le catalogue ». Mesuré : il
+**échoue** sur l'unicité de `filieres.slug`, sa transaction est annulée, rien
+n'est écrit — idem pour `Crmef2025Seeder` sur `sources.code`. Trois tests pinnent
+ces comportements pour que le document ne mente pas le jour où ils changeraient.
+La consigne ne bouge pas : un index protège du doublon, pas d'un semis lancé sur
+la mauvaise machine.
+
+**Vérification :** 15 tests ciblés et 69 assertions ; mutation éprouvée — ajouter
+une option de mot de passe fait rougir le test qui l'interdit, et lui seul ;
+suite complète séquentielle verte à **1 019 tests et 3 973 assertions**.
+**Aucune exécution sur la préproduction.**
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

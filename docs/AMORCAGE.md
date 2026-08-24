@@ -102,7 +102,7 @@ avec la liste en clair :
 |---|---|
 | `super_admin` | toutes les permissions |
 | `expert_pedagogue` | rédaction, qualification, révision, validation, publication et retrait logique des questions ; catalogue et taxonomie |
-| `support` | droits historiques d'assistance, d'accès et de consultation ; périmètre provisoire jusqu'au lot réclamations/messagerie |
+| `support` | lecture et réponse aux réclamations ; ses anciens droits restent provisoirement présents pendant l'étape A compatible |
 | `finance` | commandes, offres, coupons, droit transitoire |
 
 Le rôle `candidat` est **refusé** : il ne porte aucune permission de
@@ -118,6 +118,20 @@ peut l'attribuer. Le simple cumul de toutes ses permissions ne suffit pas.
 
 **Rejouée sur un compte qui existe déjà**, la commande n'écrase rien — ni rôle,
 ni mot de passe, ni invitation. Elle dit ce qui existe et s'arrête.
+
+### Messagerie v1.1 — étape A compatible
+
+La migration `000820` ajoute la messagerie interne et les permissions
+`complaints.view` / `complaints.reply` à `expert_pedagogue`, `support` et
+`super_admin`. `finance` n'y accède pas. Aucun semis, import de corpus ou geste
+d'allumage n'est requis : la migration suffit à ouvrir la surface vide.
+
+**Le support n'est pas encore au périmètre cible.** Ses anciens pouvoirs sont
+conservés intentionnellement pendant cette étape A. Ils ne seront retirés que
+par une migration ultérieure, après une recette croisée réelle des parcours
+candidat, expert, support, super-administrateur et finance. Ne corrigez pas cet
+écart à la main sur une base : cela rendrait les environnements différents et
+court-circuiterait la recette qui doit autoriser l'étape B.
 
 ---
 

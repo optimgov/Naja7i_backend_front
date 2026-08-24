@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AbonnementController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BanqueAdminController;
 use App\Http\Controllers\Api\V1\CatalogueController;
+use App\Http\Controllers\Api\V1\ComplaintController;
 use App\Http\Controllers\Api\V1\DemonstrationController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\LegalController;
@@ -113,6 +114,21 @@ Route::prefix('v1')->group(function () {
     // Toutes les routes métier des pas suivants (entraînement, simulateur,
     // achat) viendront dans ce groupe.
     Route::middleware(['auth:sanctum', 'verified.api'])->group(function () {
+
+        /* V1.1 — messagerie interne candidat. Surface personnelle, donc
+         * no-store ; les écritures ont leur propre limiteur nommé. */
+        Route::middleware('no-store')->prefix('me/complaints')->group(function () {
+            Route::get('/', [ComplaintController::class, 'index'])
+                ->middleware('throttle:complaints-read');
+            Route::post('/', [ComplaintController::class, 'store'])
+                ->middleware('throttle:complaints-write');
+            Route::get('{uuid}', [ComplaintController::class, 'show'])
+                ->middleware('throttle:complaints-read');
+            Route::get('{uuid}/messages', [ComplaintController::class, 'messages'])
+                ->middleware('throttle:complaints-read');
+            Route::post('{uuid}/messages', [ComplaintController::class, 'reply'])
+                ->middleware('throttle:complaints-write');
+        });
 
         /*
          * PAS-8 — Parcours de diagnostic, et tout ce qui rend une tentative.

@@ -169,6 +169,10 @@ return [
             'miroir' => ['production' => 20, 'recette' => 600],
             'profil' => ['production' => 30, 'recette' => 600],
 
+            // Messagerie interne : lecture confortable, écriture anti-abus.
+            'complaints-read' => ['production' => 120, 'recette' => 600],
+            'complaints-write' => ['production' => 12, 'recette' => 600],
+
             /* La saisie d'un coupon est le geste le plus sensible de la
              * surface commerciale : un code se devine par force brute. Le
              * seuil est BAS, et il est relevé en recette comme les autres

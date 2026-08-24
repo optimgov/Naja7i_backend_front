@@ -130,9 +130,26 @@ RÉFÉRENTIEL ; ils ne créent aucune question, et c'est mesuré, pas supposé.
 
 ### Étage 2 — importer les annales
 
-Le corpus **voyage avec le dépôt** : `docs/corpus/CRMEF-extraction-20260815.md`
-et son classement `…-classement-domaines-20260815.csv` sont versionnés, donc
-présents dans l'image. Rien à transférer depuis un poste.
+> ⚠️ **Correction du 24 août 2026 — la version précédente de ce paragraphe
+> était fausse.** Elle affirmait que le corpus « voyage avec le dépôt, donc
+> présent dans l'image ». L'inférence « versionné donc embarqué » ne tient pas :
+> `.dockerignore` exclut `docs` **et** `*.md`. Le corpus est bien versionné,
+> mais il **n'est pas dans l'image**, et c'est délibéré — une image de
+> production n'a pas à porter la documentation.
+
+**Sur une machine déployée, les deux fichiers doivent donc être portés jusqu'au
+conteneur avant l'import**, et la commande ne sait pas viser ailleurs que
+`base_path('docs/corpus/…')` : elle code ses chemins en dur (**DET-100**). Si
+vous ne le faites pas, elle refuse proprement, en nommant le fichier manquant :
+
+```
+Introuvable ou illisible : /app/docs/corpus/CRMEF-extraction-20260815.md
+```
+
+Le geste manuel — copier les deux fichiers dans le conteneur, importer, effacer
+la copie — a été fait une fois en M-019 et fonctionne. Notez quelque part
+**quelle version du corpus** vous avez portée : rien dans la base ne
+l'enregistre aujourd'hui, et c'est la moitié la plus coûteuse de DET-100.
 
 ```
 php artisan crmef:importer-annales --simulation --env=staging

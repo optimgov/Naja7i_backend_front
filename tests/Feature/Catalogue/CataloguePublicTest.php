@@ -49,6 +49,7 @@ class CataloguePublicTest extends TestCase
     {
         $this->getJson('/api/v1/catalogue/familles/crmef')
             ->assertOk()
+            ->assertJsonPath('data.exams.0.diagnostic_ready', false)
             ->assertJsonPath('data.slug', 'crmef')
             ->assertJsonCount(16, 'data.specialties')
             ->assertJsonPath('data.taxonomy.levels.0.name', 'Pilier')

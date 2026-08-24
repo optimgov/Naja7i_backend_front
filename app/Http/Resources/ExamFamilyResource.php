@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\DiagnosticComposer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,6 +31,12 @@ class ExamFamilyResource extends JsonResource
                 'code' => $exam->code,
                 'name' => $exam->localized('name'),
                 'coefficient' => $exam->coefficient,
+                /* Une famille ouverte ne suffit pas à promettre une série :
+                 * dix questions publiées et éligibles sont nécessaires. */
+                'diagnostic_ready' => app(DiagnosticComposer::class)->isReady(
+                    $exam,
+                    app()->getLocale(),
+                ),
             ])->values()),
             'sessions' => ExamSessionResource::collection($this->whenLoaded('sessions')),
             'taxonomy' => $this->whenLoaded('taxonomyProfile', fn () => [

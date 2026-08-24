@@ -81,7 +81,7 @@ class AutoAttributionDuGratuitTest extends TestCase
         $droit = $droits->first();
         $this->assertSame(AccessGrant::QUESTIONS_ANSWER, $droit->capability);
         $this->assertNull($droit->ends_at, 'Le droit gratuit est sans terme (Q-18).');
-        $this->assertSame(40, $droit->quota_value);
+        $this->assertSame(10, $droit->quota_value);
         $this->assertSame(QuotaUnit::QUESTIONS, $droit->quota_unit);
         $this->assertSame(OffreGratuiteService::ORIGINE_INSCRIPTION, $droit->origin);
     }
@@ -147,7 +147,7 @@ class AutoAttributionDuGratuitTest extends TestCase
 
         $this->assertSame(2, $offre->fresh()->versions()->count());
         $this->assertSame(
-            40, $this->droitsDe($ancien)->first()->quota_value,
+            10, $this->droitsDe($ancien)->first()->quota_value,
             'Le compte déjà inscrit garde l’enveloppe de SA version.',
         );
         $this->assertSame(
@@ -165,10 +165,10 @@ class AutoAttributionDuGratuitTest extends TestCase
      *
      * Dans le test ci-dessus, l'ancien compte a reçu son droit AVANT que le
      * registre ne bouge : un code qui relirait le profil courant lui aurait
-     * quand même donné 40, et le test resterait vert. Ce qu'il faut éprouver,
+     * quand même donné 10, et le test resterait vert. Ce qu'il faut éprouver,
      * c'est un octroi posé APRÈS le déplacement du registre, sur une version
      * ANCIENNE — le geste exact qu'un rattrapage ou une réparation de support
-     * produirait. La v1 doit toujours ouvrir 40 quand le profil en vaut 100.
+     * produirait. La v1 doit toujours ouvrir 10 quand le profil en vaut 100.
      */
     public function test_une_version_ancienne_ouvre_son_instantane_meme_apres_amendement_du_registre(): void
     {
@@ -182,7 +182,7 @@ class AutoAttributionDuGratuitTest extends TestCase
         /* Le registre bouge SANS que l'offre ne recompose : amender un profil
          * ne versionne pas (décision de reprise, M-003). */
         app(QuotaProfileService::class)->amender(
-            QuotaProfile::where('code', 'decouverte')->sole(),
+            QuotaProfile::where('code', 'decouverte-v11-10')->sole(),
             $pedagogue,
             [
                 'value' => 100, 'min_value' => 90, 'max_value' => 200,
@@ -199,10 +199,10 @@ class AutoAttributionDuGratuitTest extends TestCase
         );
 
         $this->assertSame(
-            40, $this->droitsDe($tardif)->first()->quota_value,
+            10, $this->droitsDe($tardif)->first()->quota_value,
             'La version 1 ouvre ce qu’elle a figé, pas ce que le registre vaut aujourd’hui.',
         );
-        $this->assertSame(100, QuotaProfile::where('code', 'decouverte')->value('value'));
+        $this->assertSame(100, QuotaProfile::where('code', 'decouverte-v11-10')->value('value'));
     }
 
     public function test_sans_porteur_du_gratuit_l_inscription_aboutit_quand_meme(): void

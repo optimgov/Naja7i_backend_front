@@ -237,6 +237,19 @@ prix ou une composition, ce n'est pas un geste anodin : chaque modification
 crée une version, rien n'est perdu, mais l'offre courante redevient celle du
 dépôt.
 
+**Pour passer le diagnostic gratuit à dix questions sur une base peuplée, ne
+rejouez donc pas ce seeder.** Utilisez la commande ciblée, d'abord en sec :
+
+```text
+php artisan naja7i:activer-diagnostic-gratuit-v1-1 --dry-run
+php artisan naja7i:activer-diagnostic-gratuit-v1-1
+```
+
+Elle ne touche qu'à `decouverte-gratuite`, compose une nouvelle version par le
+mécanisme métier et ne modifie aucun grant historique. Les comptes sans essai
+se rattrapent ensuite, toujours avec prévisualisation, par
+`naja7i:rattraper-le-gratuit` ; ceux qui possèdent déjà quarante sont ignorés.
+
 ---
 
 ## 6. Ce que ce document ne couvre pas
@@ -246,8 +259,9 @@ dépôt.
   compte d'amorçage avec une autre adresse, puis d'inviter normalement depuis
   le back-office. Une commande de réémission serait un lot à part — et elle
   devrait, comme celle-ci, refuser tout mot de passe en argument.
-- **Le rattrapage du palier gratuit** (`naja7i:rattraper-le-gratuit`) et **la
-  pose du droit transitoire** (`naja7i:poser-le-droit-transitoire`). Ce sont des
-  gestes d'**allumage**, pas d'amorçage : ils appartiennent au jalon 1.6 et ne se
-  lancent que sur ordre explicite du propriétaire, après la recette.
+- **L'exécution effective du rattrapage du palier gratuit**
+  (`naja7i:rattraper-le-gratuit`) et **la pose du droit transitoire**
+  (`naja7i:poser-le-droit-transitoire`). Ce sont des gestes d'**allumage**, pas
+  d'amorçage : ce document nomme leur chemin sûr, mais ils ne se lancent que
+  sur ordre explicite du propriétaire, après la recette.
 - **La sauvegarde et sa vérification**, qui appartiennent à l'exploitation.

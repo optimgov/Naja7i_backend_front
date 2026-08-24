@@ -214,7 +214,7 @@ class DroitTransitoireTest extends TestCase
 
         $relu = $gratuit->fresh();
         $this->assertNull($relu->ends_at, 'AR-2 : le sans-terme n’est ni bloqué ni court-circuité.');
-        $this->assertSame(40, $relu->quota_value, 'Son enveloppe est intacte.');
+        $this->assertSame(10, $relu->quota_value, 'Son enveloppe est intacte.');
     }
 
     public function test_aucun_agregat_de_vente_ne_bouge(): void

@@ -182,7 +182,7 @@ class AjusterEtRevoquerLeTransitoireTest extends TestCase
         );
         $this->assertCount(1, $apres['droits']);
         $this->assertSame('essai', $apres['droits'][0]['source']);
-        $this->assertSame(40, $apres['quotas'][0]['granted'], 'Son enveloppe n’a jamais bougé.');
+        $this->assertSame(10, $apres['quotas'][0]['granted'], 'Son enveloppe n’a jamais bougé.');
     }
 
     public function test_revoquer_un_droit_non_encore_commence_le_clot_sur_sa_propre_date(): void

@@ -141,7 +141,7 @@ class EcranDroitTransitoireTest extends TestCase
         $quotas = $this->etat()['quotas'];
 
         $this->assertCount(1, $quotas, 'Le transitoire n’a pas d’enveloppe : comme tout palier payant.');
-        $this->assertSame(40, $quotas[0]['granted']);
+        $this->assertSame(10, $quotas[0]['granted']);
         $this->assertSame('essai', $quotas[0]['source']);
     }
 

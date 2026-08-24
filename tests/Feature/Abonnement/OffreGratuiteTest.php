@@ -62,11 +62,11 @@ class OffreGratuiteTest extends TestCase
     public function test_la_version_gratuite_porte_l_instantane_du_profil_pedagogique(): void
     {
         $version = $this->gratuite()->currentVersion()->firstOrFail();
-        $profil = QuotaProfile::where('code', 'decouverte')->sole();
+        $profil = QuotaProfile::where('code', 'decouverte-v11-10')->sole();
 
-        $this->assertSame('decouverte', $version->quota_profile_code);
-        $this->assertSame(40, $version->quota_value);
-        $this->assertSame(35, $version->quota_min_value);
+        $this->assertSame('decouverte-v11-10', $version->quota_profile_code);
+        $this->assertSame(10, $version->quota_value);
+        $this->assertSame(10, $version->quota_min_value);
         $this->assertSame(120, $version->quota_max_value);
         $this->assertSame(QuotaUnit::QUESTIONS, $version->quota_unit);
         $this->assertSame(QuotaPeriodicity::CUMULATIVE_GRANT, $version->quota_periodicity);
@@ -76,7 +76,7 @@ class OffreGratuiteTest extends TestCase
     public function test_le_semis_ne_fixe_aucun_nombre_lui_meme(): void
     {
         $version = $this->gratuite()->currentVersion()->firstOrFail();
-        $profil = QuotaProfile::where('code', 'decouverte')->sole();
+        $profil = QuotaProfile::where('code', 'decouverte-v11-10')->sole();
 
         $this->assertSame(
             $profil->value, $version->quota_value,
@@ -152,7 +152,7 @@ class OffreGratuiteTest extends TestCase
         $this->assertNotSame($premiere->id, $seconde->id);
         $this->assertSame(60, $seconde->quota_value);
         $this->assertSame(
-            40, $premiere->fresh()->quota_value,
+            10, $premiere->fresh()->quota_value,
             'La version déjà distribuée garde son enveloppe : personne ne perd rien.',
         );
     }

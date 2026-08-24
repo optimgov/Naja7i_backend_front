@@ -10,9 +10,11 @@ use App\Models\Attempt;
 use App\Models\Audience;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
+use App\Models\Plan;
 use App\Models\Question;
 use App\Models\QuestionConsumption;
 use App\Models\QuestionOption;
+use App\Models\QuotaProfile;
 use App\Models\Remediation;
 use App\Models\ReviewSchedule;
 use App\Models\Source;
@@ -71,9 +73,13 @@ class ConsommationDesQuestionsTest extends TestCase
         $this->candidat->grantCandidateRole();
         $this->candidat = $this->candidat->fresh();
 
-        /* L'ESSAI, tel qu'un compte réel le reçoit : `questions.answer` avec
-         * son enveloppe de 40, sans terme. C'est le seul porteur d'enveloppe
-         * du catalogue, et donc le sujet de ce fichier. */
+        /* Ce fichier éprouve les reliquats longs et conserve donc explicitement
+         * le contrat historique à 40. La v1.1 passe le courant à 10, mais elle
+         * ne migre jamais un octroi déjà composé — précisément l'invariant que
+         * cette installation historique rend visible. */
+        Plan::autoGranted()->sole()->update([
+            'quota_profile_id' => QuotaProfile::where('code', 'decouverte')->value('id'),
+        ]);
         app(OffreGratuiteService::class)->attribuer($this->candidat);
         $this->candidat = $this->candidat->fresh();
 

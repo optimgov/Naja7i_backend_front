@@ -171,7 +171,7 @@ class PlansSeeder extends Seeder
                 'active' => true,
                 'auto_granted' => true,
                 'audience_id' => $public,
-                'quota_profile_id' => QuotaProfile::where('code', 'decouverte')->value('id'),
+                'quota_profile_id' => QuotaProfile::where('code', 'decouverte-v11-10')->firstOrFail()->id,
             ],
         );
     }

@@ -172,7 +172,7 @@ class ScenarioS14Test extends TestCase
         // Le gratuit sans terme et son enveloppe coexistent dessous, intacts.
         $gratuite = collect($pose['droits'])->firstWhere('source', 'essai');
         $this->assertNull($gratuite['expires_at']);
-        $this->assertSame(40, $pose['quotas'][0]['granted']);
+        $this->assertSame(10, $pose['quotas'][0]['granted']);
 
         // Son histoire n'a pas bougé.
         $this->assertSame('in_progress', $this->historique->fresh()->status);
@@ -198,8 +198,8 @@ class ScenarioS14Test extends TestCase
         $this->assertSame('essai', $apres['droits'][0]['source']);
 
         // La restitution retombe au palier courant : l'enveloppe est intacte.
-        $this->assertSame(40, $apres['quotas'][0]['granted']);
-        $this->assertSame(40, $apres['quotas'][0]['remaining']);
+        $this->assertSame(10, $apres['quotas'][0]['granted']);
+        $this->assertSame(10, $apres['quotas'][0]['remaining']);
 
         // Et son histoire n'a toujours pas bougé.
         $this->assertSame('in_progress', $this->historique->fresh()->status);

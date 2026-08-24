@@ -67,8 +67,8 @@ class EcranAbonnementGratuitTest extends TestCase
         $enveloppe = $etat['quotas'][0];
 
         $this->assertSame(AccessGrant::QUESTIONS_ANSWER, $enveloppe['capability']);
-        $this->assertSame(40, $enveloppe['granted']);
-        $this->assertSame(40, $enveloppe['remaining'], 'Rien ne consomme encore : le reliquat vaut l’enveloppe.');
+        $this->assertSame(10, $enveloppe['granted']);
+        $this->assertSame(10, $enveloppe['remaining'], 'Rien ne consomme encore : le reliquat vaut l’enveloppe.');
         $this->assertSame('questions', $enveloppe['unit']);
         $this->assertNull($enveloppe['expires_at']);
     }

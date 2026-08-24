@@ -80,7 +80,7 @@ class RattrapageDuGratuitTest extends TestCase
         $this->assertSame(OffreGratuiteService::ORIGINE_RATTRAPAGE, $droit->origin);
         $this->assertNotSame('purchase', $droit->origin);
         $this->assertSame(AccessGrant::QUESTIONS_ANSWER, $droit->capability);
-        $this->assertSame(40, $droit->quota_value);
+        $this->assertSame(10, $droit->quota_value);
         $this->assertNull($droit->ends_at);
     }
 

@@ -164,10 +164,10 @@ class ScenarioS19Test extends TestCase
     }
 
     /** Ouvre un diagnostic, répond FAUX partout, soumet. */
-    private function passerUnDiagnostic(): Attempt
+    private function passerUnDiagnostic(int $questions = 10): Attempt
     {
         $attempt = app(AttemptService::class)->startDiagnostic(
-            $this->candidat, $this->epreuve, 'fr', (string) Str::uuid7(), 10,
+            $this->candidat, $this->epreuve, 'fr', (string) Str::uuid7(), $questions,
         );
 
         foreach ($attempt->items()->with('question.options')->get() as $item) {
@@ -229,13 +229,13 @@ class ScenarioS19Test extends TestCase
         $this->peuplerLaBanque(6);
         $this->forfaitCourant();
 
-        $this->passerUnDiagnostic();
+        $this->passerUnDiagnostic(5);
         $avant = MasteryScore::where('user_id', $this->candidat->id)->sum('answered_count');
         $this->assertGreaterThan(0, $avant);
 
         $this->faireExpirerLeForfait();
 
-        $this->passerUnDiagnostic();
+        $this->passerUnDiagnostic(5);
         $apres = MasteryScore::where('user_id', $this->candidat->id)->sum('answered_count');
 
         $this->assertGreaterThan(

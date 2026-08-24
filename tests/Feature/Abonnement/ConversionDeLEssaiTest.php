@@ -104,7 +104,7 @@ class ConversionDeLEssaiTest extends TestCase
     {
         $depart = $this->etat();
         $this->assertSame('essai', $depart['etat']);
-        $this->assertSame(40, $depart['quotas'][0]['granted']);
+        $this->assertSame(10, $depart['quotas'][0]['granted']);
 
         $commande = $this->commandeCoupon();
         app(AbonnementService::class)->honorer($commande);

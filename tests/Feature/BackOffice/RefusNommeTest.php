@@ -105,7 +105,8 @@ class RefusNommeTest extends TestCase
         $porteurs = [
             'questions.view' => 'expert_pedagogue',
             'orders.view' => 'finance',
-            'members.view' => 'support',
+            'members.view' => 'super_admin',
+            'complaints.view' => 'support',
             /* Le profil expert est volontairement borné à l'éditorial et à la
              * taxonomie ; le paramétrage de quotas reste au super_admin. */
             'quotas.manage' => 'super_admin',
@@ -130,6 +131,7 @@ class RefusNommeTest extends TestCase
             'questions.view' => 'finance',
             'orders.view' => 'expert_pedagogue',
             'members.view' => 'expert_pedagogue',
+            'complaints.view' => 'finance',
             /* Celle qui vend ne borne pas : c'est tout l'objet du partage. */
             'quotas.manage' => 'finance',
             /* Ni ne redécoupe l'arbre d'une épreuve. */

@@ -88,10 +88,9 @@ class PanneauCommandesTest extends TestCase
          * décision structurante de ce lot. Les confondre donnerait le pouvoir
          * d'accorder à qui n'a qu'à lire.
          *
-         * Le rôle `support` porte `grants.manage` — il peut accorder un accès à
-         * la main — mais PAS `orders.validate` : valider une commande engage
-         * une contrepartie financière, ce que « dépanner un candidat » n'est
-         * pas.
+         * Le rôle `support` ne porte que les permissions de réclamation et pas
+         * `orders.validate` : valider une commande engage une contrepartie
+         * financière, ce que répondre à une réclamation n'est pas.
          */
         $support = $this->membre('support@naja7i.ma', 'support');
         $commande = $this->commandeEnAttente();

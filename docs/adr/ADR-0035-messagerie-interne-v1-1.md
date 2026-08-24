@@ -7,8 +7,8 @@
 ## Contexte
 
 Le candidat doit pouvoir adresser une réclamation à l'équipe sans exposer une
-adresse personnelle de membre du personnel. Les experts pédagogues et le
-support ont besoin du même fil dans le back-office. Réduire immédiatement les
+adresse personnelle de membre du personnel. L'étape compatible ouvre d'abord
+le même fil aux experts pédagogues et au support. Réduire immédiatement les
 anciens pouvoirs du support ferait toutefois disparaître des capacités avant
 que leur remplacement ait été éprouvé par une recette croisée réelle.
 
@@ -22,10 +22,11 @@ messages et les permissions réservées à la plateforme `complaints.view` et
 `super_admin`, jamais à `finance`. Les pouvoirs historiques de `support` ne
 sont pas retirés à cette étape : son périmètre reste explicitement provisoire.
 
-Une étape B ultérieure, dans une migration distincte et seulement après recette
-croisée candidat/expert/support/super-administrateur/finance, réduira le rôle
-support à la lecture et à la réponse des réclamations. Cette migration n'est
-pas anticipée dans le présent lot.
+L'étape B, portée par `000840` après la recette croisée, réduit le rôle support
+à la lecture et à la réponse des réclamations et retire ces deux permissions à
+l'expert pédagogique. La matrice finale est ainsi stricte : support pour les
+réclamations, expert pour l'éditorial, finance pour le commercial et
+super-administrateur pour l'ensemble.
 
 ## Frontières du domaine
 

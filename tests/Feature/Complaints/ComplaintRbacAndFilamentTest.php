@@ -35,12 +35,16 @@ final class ComplaintRbacAndFilamentTest extends TestCase
         $this->assertTrue(Permission::where('code', 'complaints.view')->firstOrFail()->platform_only);
         $this->assertTrue(Permission::where('code', 'complaints.reply')->firstOrFail()->platform_only);
 
-        foreach (['expert_pedagogue', 'support', 'super_admin'] as $role) {
+        foreach (['support', 'super_admin'] as $role) {
             $staff = $this->staff("{$role}@naja7i.test", $role);
             $permissions = app(PermissionResolver::class)->forUser($staff);
             $this->assertContains('complaints.view', $permissions, $role);
             $this->assertContains('complaints.reply', $permissions, $role);
         }
+
+        $expert = $this->staff('expert-no-complaints@naja7i.test', 'expert_pedagogue');
+        $this->assertNotContains('complaints.view', app(PermissionResolver::class)->forUser($expert));
+        $this->assertNotContains('complaints.reply', app(PermissionResolver::class)->forUser($expert));
 
         $finance = $this->staff('finance-complaints@naja7i.test', 'finance');
         $this->assertNotContains('complaints.view', app(PermissionResolver::class)->forUser($finance));

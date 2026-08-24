@@ -102,7 +102,7 @@ avec la liste en clair :
 |---|---|
 | `super_admin` | toutes les permissions |
 | `expert_pedagogue` | rédaction, qualification, révision, validation, publication et retrait logique des questions ; catalogue et taxonomie |
-| `support` | lecture et réponse aux réclamations ; ses anciens droits restent provisoirement présents pendant l'étape A compatible |
+| `support` | lecture et réponse aux réclamations internes, exclusivement |
 | `finance` | commandes, offres, coupons, droit transitoire |
 
 Le rôle `candidat` est **refusé** : il ne porte aucune permission de
@@ -126,12 +126,9 @@ La migration `000820` ajoute la messagerie interne et les permissions
 `super_admin`. `finance` n'y accède pas. Aucun semis, import de corpus ou geste
 d'allumage n'est requis : la migration suffit à ouvrir la surface vide.
 
-**Le support n'est pas encore au périmètre cible.** Ses anciens pouvoirs sont
-conservés intentionnellement pendant cette étape A. Ils ne seront retirés que
-par une migration ultérieure, après une recette croisée réelle des parcours
-candidat, expert, support, super-administrateur et finance. Ne corrigez pas cet
-écart à la main sur une base : cela rendrait les environnements différents et
-court-circuiterait la recette qui doit autoriser l'étape B.
+La migration `000840` clôt l'étape B : le rôle `support` ne conserve que ces
+deux permissions. Les permissions historiques restent dans le référentiel,
+mais ne lui sont plus attribuées. Aucun ajustement manuel de rôle n'est requis.
 
 ---
 

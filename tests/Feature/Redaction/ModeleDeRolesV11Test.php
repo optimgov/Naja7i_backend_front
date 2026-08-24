@@ -144,7 +144,7 @@ class ModeleDeRolesV11Test extends TestCase
         }
     }
 
-    public function test_la_migration_ne_resserre_pas_le_role_support(): void
+    public function test_la_migration_editoriale_ne_modifie_pas_le_role_support_deja_resserre(): void
     {
         $support = Role::whereNull('tenant_id')->where('code', 'support')->firstOrFail();
         $avant = $support->permissions()->orderBy('code')->pluck('code')->all();
@@ -153,8 +153,7 @@ class ModeleDeRolesV11Test extends TestCase
         $migration->up();
 
         $this->assertSame($avant, $support->fresh()->permissions()->orderBy('code')->pluck('code')->all());
-        $this->assertContains('users.support', $avant);
-        $this->assertContains('grants.manage', $avant);
+        $this->assertEqualsCanonicalizing(['complaints.view', 'complaints.reply'], $avant);
     }
 
     public function test_le_super_admin_conserve_toutes_les_permissions_actuelles(): void

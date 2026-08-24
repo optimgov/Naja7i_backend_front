@@ -6,8 +6,11 @@ use App\Models\CompetencyNode;
 use App\Models\ExamFamily;
 use App\Models\ExamSession;
 use App\Models\TaxonomyProfile;
+use App\Models\Track;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -54,12 +57,85 @@ class CataloguePublicTest extends TestCase
 
     public function test_une_specialite_est_accessible_par_son_slug(): void
     {
-        // `langue-francaise` du référentiel officiel, et non le « francais »
-        // provisoire du PAS-4 que le référentiel purge.
-        $this->getJson('/api/v1/catalogue/familles/crmef/specialites/langue-francaise')
+        /*
+         * Le slug PORTE SON PARCOURS depuis DET-101. Les assertions vérifient
+         * le cycle et la disponibilité, et pas seulement le slug : c'est
+         * exactement ce qui manquait à ce test le jour où il a laissé passer
+         * l'incident. « langue-francaise » matchait les DEUX lignes en
+         * collision, et `slug` comme `family.slug` étaient identiques sur les
+         * deux — l'assertion ne pouvait pas voir laquelle répondait.
+         */
+        $this->getJson('/api/v1/catalogue/familles/crmef/specialites/langue-francaise-secondaire')
             ->assertOk()
-            ->assertJsonPath('data.slug', 'langue-francaise')
-            ->assertJsonPath('data.family.slug', 'crmef');
+            ->assertJsonPath('data.slug', 'langue-francaise-secondaire')
+            ->assertJsonPath('data.family.slug', 'crmef')
+            ->assertJsonPath('data.cycle', 'Secondaire collégial et qualifiant')
+            ->assertJsonPath('data.availability', 'open');
+    }
+
+    /**
+     * LE TEST QUE DET-101 RÉCLAMAIT.
+     *
+     * « Langue française » existe sous le secondaire ET sous le primaire
+     * bilingue. Avant ce pas, les deux entrées de la liste pointaient la même
+     * adresse, et cette adresse rendait le primaire : le candidat qui cliquait
+     * « ouvert » lisait « liste d'attente », sans bouton de diagnostic. La
+     * seule spécialité ouverte du pilote n'était atteignable par aucune URL.
+     *
+     * Ce test échoue si les deux slugs se confondent à nouveau — c'est le seul
+     * qui distingue les deux lignes par autre chose que leur slug.
+     */
+    public function test_une_meme_discipline_sous_deux_parcours_donne_deux_pages(): void
+    {
+        $secondaire = $this->getJson(
+            '/api/v1/catalogue/familles/crmef/specialites/langue-francaise-secondaire'
+        )->assertOk();
+
+        $primaire = $this->getJson(
+            '/api/v1/catalogue/familles/crmef/specialites/langue-francaise-primaire-bilingue'
+        )->assertOk();
+
+        $this->assertNotSame(
+            $secondaire->json('data.uuid'),
+            $primaire->json('data.uuid'),
+            'Les deux parcours doivent rendre deux lignes distinctes.'
+        );
+
+        $this->assertSame('Secondaire collégial et qualifiant', $secondaire->json('data.cycle'));
+        $this->assertSame('Primaire bilingue', $primaire->json('data.cycle'));
+
+        // Le fait qui a coûté l'incident : l'OUVERTE est atteignable.
+        $this->assertSame('open', $secondaire->json('data.availability'));
+        $this->assertSame('waitlist', $primaire->json('data.availability'));
+    }
+
+    /**
+     * L'INVARIANT VIT DANS LE SCHÉMA, pas dans ce fichier.
+     *
+     * Un test peut être oublié au prochain ajout au référentiel ; un index
+     * unique, non. Celui-ci prouve que la contrainte existe et qu'elle mord —
+     * les deux lignes visent deux parcours différents, donc `(track_id, slug)`
+     * ne les sépare pas : seule `(exam_family_id, slug)` refuse.
+     */
+    public function test_le_schema_refuse_deux_specialites_de_meme_slug_dans_une_famille(): void
+    {
+        $crmef = ExamFamily::where('slug', 'crmef')->firstOrFail();
+        $autre = Track::where('slug', 'primaire-amazigh')->firstOrFail();
+
+        $this->expectException(QueryException::class);
+
+        /* Transaction imbriquée : une contrainte qui pète empoisonne la
+           transaction de RefreshDatabase, et les tests suivants tomberaient
+           sur « current transaction is aborted ». Le SAVEPOINT la contient. */
+        DB::transaction(fn () => DB::table('specialties')->insert([
+            'uuid' => (string) Str::uuid7(),
+            'exam_family_id' => $crmef->id,
+            'track_id' => $autre->id,
+            'slug' => 'langue-francaise-secondaire',   // déjà pris sous un AUTRE parcours
+            'name_fr' => 'Doublon', 'name_ar' => 'مكرر',
+            'status' => 'published', 'published_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]));
     }
 
     public function test_une_specialite_provisoire_du_pas_4_ne_survit_pas_au_referentiel(): void
@@ -134,7 +210,7 @@ class CataloguePublicTest extends TestCase
          * seize spécialités n'est pas ce que ce test défend, et s'y accrocher
          * le ferait tomber au prochain ajout au référentiel. */
         $langueFrancaise = collect($reponse->json('data.specialties'))
-            ->firstWhere('slug', 'langue-francaise');
+            ->firstWhere('slug', 'langue-francaise-secondaire');
 
         $this->assertSame('اللغة الفرنسية', $langueFrancaise['name']);
     }

@@ -213,6 +213,25 @@ class Crmef2025Seeder extends Seeder
     }
 
     /**
+     * LE SLUG STOCKÉ PORTE SON PARCOURS — une seule fonction le décide.
+     *
+     * La route publique adresse une spécialité par `(famille, slug)`. Or une
+     * même discipline existe sous plusieurs parcours d'une même famille : sans
+     * suffixe, ce couple ne désignait rien et la route rendait la mauvaise
+     * ligne (DET-101, mesuré sur la préproduction).
+     *
+     * Cette méthode est PUBLIQUE et statique parce que deux appelants en
+     * dépendent — `specialites()` qui écrit, et `carteDuCorpus()` qui relit
+     * pour rattacher les sources. Le jour où ils divergeraient, les sources se
+     * rattacheraient silencieusement à rien : `specialty_id` nul ne lève
+     * aucune erreur.
+     */
+    public static function slugDeSpecialite(string $discipline, Track $parcours): string
+    {
+        return $discipline.'-'.$parcours->slug;
+    }
+
+    /**
      * @param  list<array{0:string,1:string,2:string}>  $liste
      */
     private function specialites(Track $track, array $liste, ?string $ouverte): ?Specialty
@@ -223,7 +242,7 @@ class Crmef2025Seeder extends Seeder
             $estOuverte = $ouverte !== null && $slug === $ouverte;
 
             $specialite = Specialty::updateOrCreate(
-                ['track_id' => $track->id, 'slug' => $slug],
+                ['track_id' => $track->id, 'slug' => self::slugDeSpecialite($slug, $track)],
                 [
                     'exam_family_id' => $track->exam_family_id,
                     'name_fr' => $fr, 'name_ar' => $ar,
@@ -557,7 +576,7 @@ class Crmef2025Seeder extends Seeder
 
         foreach ($entrees as $i => [$track, $slugSpecialite, $composante, $label, $titre, $note]) {
             $specialite = $slugSpecialite === null ? null : Specialty::where('track_id', $track->id)
-                ->where('slug', $slugSpecialite)->first();
+                ->where('slug', self::slugDeSpecialite($slugSpecialite, $track))->first();
 
             Source::create([
                 'code' => sprintf('SRC-CRMEF-2025-%s-%s-%02d',

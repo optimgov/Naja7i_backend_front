@@ -159,7 +159,7 @@ class ReferentielCrmefTest extends TestCase
         $ouvertes = Specialty::where('track_id', $secondaire->id)
             ->where('availability', 'open')->pluck('slug');
 
-        $this->assertSame(['langue-francaise'], $ouvertes->all());
+        $this->assertSame(['langue-francaise-secondaire'], $ouvertes->all());
     }
 
     public function test_les_parcours_primaires_existent_mais_restent_fermes(): void

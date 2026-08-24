@@ -22,7 +22,14 @@ final class ComplaintThreadPolicy
 
     public function reply(User $user, ComplaintThread $thread): bool
     {
-        return $this->permissions->has($user, 'complaints.reply');
+        /*
+         * La réponse est le métier du support, pas un pouvoir administratif
+         * transverse. Le super administrateur conserve la lecture grâce à
+         * `complaints.view`, mais son jeu de permissions illimité ne doit pas
+         * le transformer en agent de support.
+         */
+        return $user->hasRole('support')
+            && $this->permissions->has($user, 'complaints.reply');
     }
 
     public function create(User $user): bool

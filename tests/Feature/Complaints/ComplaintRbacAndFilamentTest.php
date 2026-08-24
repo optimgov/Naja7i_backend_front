@@ -51,6 +51,22 @@ final class ComplaintRbacAndFilamentTest extends TestCase
         $this->assertNotContains('complaints.reply', app(PermissionResolver::class)->forUser($finance));
     }
 
+    public function test_le_super_admin_consulte_mais_seul_le_support_repond(): void
+    {
+        $candidate = $this->candidate();
+        $thread = app(ComplaintService::class)->createForCandidate(
+            $candidate, 'account', 'Accès au compte', 'Je ne retrouve pas mon accès.', (string) Str::uuid7()
+        )['thread'];
+
+        $admin = $this->staff('admin-lecture@naja7i.test', 'super_admin');
+        $support = $this->staff('support-reponse@naja7i.test', 'support');
+
+        $this->assertTrue($admin->can('view', $thread));
+        $this->assertFalse($admin->can('reply', $thread));
+        $this->assertTrue($support->can('view', $thread));
+        $this->assertTrue($support->can('reply', $thread));
+    }
+
     public function test_filament_lists_thread_and_reply_action_uses_shared_service(): void
     {
         $candidate = $this->candidate();

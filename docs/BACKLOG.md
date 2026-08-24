@@ -1949,6 +1949,51 @@ une option de mot de passe fait rougir le test qui l'interdit, et lui seul ;
 suite complète séquentielle verte à **1 019 tests et 3 973 assertions**.
 **Aucune exécution sur la préproduction.**
 
+### DET-80/DET-101 — Le slug d'une spécialité porte son parcours · livré · `689b66b`
+
+**Un candidat cliquait « ouvert » et lisait « liste d'attente ».** Depuis
+`000220`, une spécialité pend du PARCOURS et l'unicité est `(track_id, slug)` :
+« langue-francaise » existe légitimement deux fois sous CRMEF. Mais la route
+publique adresse une spécialité par `(famille, slug)` — un couple qui
+n'identifiait plus rien. Mesuré sur la préproduction : la route rendait trois
+fois de suite le primaire en liste d'attente, et **la seule spécialité OUVERTE
+du pilote n'était atteignable par aucune URL**. L'entonnoir était mort là, en
+silence.
+
+**Arbitrage du propriétaire : le slug porte son parcours**
+(`langue-francaise-secondaire`). Ni le contrat d'API ni les écrans ne changent,
+et l'entonnoir repart sans lot frontend. Les deux autres voies — un segment de
+parcours dans l'URL, ou un `->first()` qui préfère l'ouverte — coûtaient l'une
+un lot frontend coordonné, l'autre un repli silencieux du genre que DET-90
+reproche ailleurs.
+
+**Le suffixe est systématique, pas réservé aux collisions.** Ne suffixer que les
+doublons rendrait le slug d'une spécialité dépendant de l'existence d'une
+AUTRE : ajouter « philosophie » au primaire renommerait celle du secondaire et
+casserait son URL sans que personne n'y ait touché.
+
+**L'unicité `(exam_family_id, slug)` revient.** `000220` l'avait retirée pour une
+bonne raison — le référentiel officiel était inchargeable sous elle — et cette
+raison tombe dès que les slugs portent leur parcours. C'est elle, et non un
+test, qui empêche le défaut de revenir.
+
+**Ce que l'incident apprend sur les tests, et c'est le plus cher.**
+`test_une_specialite_est_accessible_par_son_slug` était vert depuis le début
+alors que le défaut existait : il n'assertait que `data.slug` et
+`data.family.slug`, **identiques sur les deux lignes en collision**. Il passait
+sur l'une ou l'autre indifféremment. Une assertion qui ne distingue pas ne garde
+rien. Le test vérifie désormais le cycle et la disponibilité, et un second monte
+les deux parcours côte à côte.
+
+**DET-80 disait déjà tout cela le 18 août**, et posait la bonne question. Elle a
+été redécouverte six jours plus tard par l'autre bout, faute d'avoir relu
+`DETTE.md` avant d'ouvrir une nouvelle entrée.
+
+**Vérification :** 49 tests de catalogue et 187 assertions ; deux mutations
+éprouvées — sans suffixe le référentiel **ne se sème plus du tout**, et sans la
+contrainte un seul test rougit, la garde de schéma ; suite complète séquentielle
+verte à **1 021 tests et 3 983 assertions**.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

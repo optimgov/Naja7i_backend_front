@@ -166,7 +166,11 @@ class PanneauCouvertureTest extends TestCase
 
     public function test_la_racine_du_panneau_sert_la_couverture(): void
     {
-        $reponse = $this->actingAs($this->redacteur)->get('/admin');
+        $this->actingAs($this->redacteur)
+            ->get('/admin')
+            ->assertRedirect('/admin/couverture');
+
+        $reponse = $this->get('/admin/couverture');
 
         $reponse->assertOk();
         $reponse->assertSee('Ce qui manque à la banque');

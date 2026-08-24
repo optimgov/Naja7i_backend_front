@@ -56,12 +56,9 @@ class AdminPanelProvider extends PanelProvider
             /*
              * LE TABLEAU DE BORD DE FILAMENT EST RETIRÉ, ET SA RACINE AVEC.
              *
-             * `Couverture` sert désormais `/admin` : l'accueil d'un back-office
-             * éditorial doit dire ce qu'il y a à écrire, pas afficher un
-             * bandeau de bienvenue et le numéro de version de Filament. Les
-             * deux ne peuvent pas coexister — `Dashboard::getRoutePath()` rend
-             * « / » lui aussi, et la seconde route enregistrée l'emporterait
-             * silencieusement selon l'ordre de découverte.
+             * `Accueil` sert désormais `/admin` et oriente chaque rôle vers sa
+             * file métier. Le tableau de bord générique ne peut pas coexister
+             * avec lui : `Dashboard::getRoutePath()` rend « / » lui aussi.
              */
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->middleware([

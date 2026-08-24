@@ -140,6 +140,22 @@ final class ComplaintApiTest extends TestCase
             ->assertJsonPath('error.code', 'VALIDATION_FAILED');
     }
 
+    public function test_pagination_has_a_stable_tie_breaker_when_messages_share_a_timestamp(): void
+    {
+        $first = app(ComplaintService::class)->createForCandidate(
+            $this->candidate, 'other', 'Première', 'Premier message.', (string) Str::uuid7()
+        )['thread'];
+        $second = app(ComplaintService::class)->createForCandidate(
+            $this->candidate, 'other', 'Seconde', 'Second message.', (string) Str::uuid7()
+        )['thread'];
+
+        $first->update(['last_message_at' => $second->last_message_at]);
+
+        $this->actingAs($this->candidate)->getJson('/api/v1/me/complaints?per_page=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.uuid', $second->uuid);
+    }
+
     public function test_post_requires_idempotency_key_and_accepts_only_contract_categories(): void
     {
         $this->actingAs($this->candidate)->postJson('/api/v1/me/complaints', [

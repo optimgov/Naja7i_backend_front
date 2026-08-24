@@ -29,6 +29,7 @@ final class ComplaintController extends Controller
             ComplaintThread::query()
                 ->where('candidate_id', $candidate->id)
                 ->orderByDesc('last_message_at')
+                ->orderByDesc('id')
                 ->paginate($perPage),
         );
     }

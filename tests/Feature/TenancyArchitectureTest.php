@@ -44,6 +44,13 @@ class TenancyArchitectureTest extends TestCase
      * Toute addition à cette liste doit être justifiée en revue.
      */
     private const ALLOWED_LOW_LEVEL = [
+        /* Comptage de refus, jamais de lecture métier. La commande interroge
+         * `attempt_items`, `prepared_questions`, `question_options` et
+         * `question_sources` pour REFUSER une suppression, pas pour en tirer
+         * des données. Aucune de ces tables ne porte de tenant_id, et charger
+         * des modèles pour n'en compter que le nombre serait du gaspillage
+         * sans gain de sûreté. */
+        'app/Console/Commands/RetirerLesQuestionsImportees.php',
         'app/Services/AttemptService.php',        // incrément conditionnel, DB::raw
         'app/Services/MasteryCalculator.php',     // jointure d'agrégation, lecture seule
         'app/Services/PermissionResolver.php',    // jointure de référentiel, hors tenant

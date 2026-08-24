@@ -8,6 +8,7 @@ use App\Enums\QuestionPreparationBatchStatus;
 use App\Enums\QuestionPreparationEventType;
 use App\Models\CompetencyNode;
 use App\Models\EditorialFlag;
+use App\Models\Exam;
 use App\Models\PreparedQuestion;
 use App\Models\Question;
 use App\Models\QuestionPreparationBatch;
@@ -88,6 +89,7 @@ final class QuestionPreparationService
         array $provisional = [],
         array $anomalies = [],
         ?PreparedQuestion $duplicateOf = null,
+        ?Exam $arbre = null,
     ): PreparedQuestion {
         if ($batch->status !== QuestionPreparationBatchStatus::IN_PROGRESS) {
             throw new DomainException('Une ligne ne peut être préparée que dans un lot en cours.');
@@ -122,6 +124,7 @@ final class QuestionPreparationService
             $provisional,
             $anomalies,
             $duplicateOf,
+            $arbre,
             $sourceStatus,
             $provisionalDifficulty,
             $proposedAnswer,
@@ -177,6 +180,13 @@ final class QuestionPreparationService
                     'active' => true,
                     'supersedes_ref' => $current?->uuid,
                     'duplicate_of_ref' => $duplicateOf?->uuid,
+                    /* L'ARBRE, ET PAS LE NŒUD. Ranger une ligne sous son
+                     * épreuve n'est pas la qualifier : le nœud reste nul
+                     * jusqu'à ce qu'un expert le pose. Un pré-classement de
+                     * script écrit dans `provisional` se relit comme une aide ;
+                     * écrit dans `competency_node_id`, il se lirait comme le
+                     * travail d'un humain qui n'a rien fait. */
+                    'exam_id' => $arbre?->getKey(),
                 ]);
 
                 try {

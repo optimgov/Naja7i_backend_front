@@ -88,7 +88,10 @@ class ImportDuCorpusQcmTest extends TestCase
             array_merge($base, [
                 'id' => 'SUJET_A#Q2', 'sujet' => 'SUJET_A', 'numero' => 'Q2', 'numero_int' => 2,
                 'enonce' => 'Deuxième question, non classée.', 'page_source' => 4,
-                'domaine_code' => null, 'domaine_confiance' => null, 'domaine_motif' => null,
+                /* Le corpus écrit une CHAÎNE VIDE, pas `null` — c'est ce qui a
+                   produit le défaut réparé par `000800`. Le jeu d'essai le dit
+                   donc comme le fichier le dit. */
+                'domaine_code' => '', 'domaine_confiance' => '', 'domaine_motif' => '',
                 'suggestion_reponse' => null,
             ]),
             array_merge($base, [
@@ -138,6 +141,16 @@ class ImportDuCorpusQcmTest extends TestCase
         $this->assertCount(3, $lignes, 'La ligne d’une autre famille ne doit pas entrer.');
         $this->assertSame(3, $lignes->where('exam_id', $this->se->id)->count());
         $this->assertSame(0, $lignes->whereNotNull('competency_node_id')->count());
+
+        /*
+         * UNE CHAÎNE VIDE N'ENTRE PAS. Sans cette assertion, la ligne non
+         * classée porterait `domaine_code: ""` et RESSEMBLERAIT à un
+         * pré-classement — c'est très exactement ce qui est parti en
+         * préproduction le 24 août avant d'être réparé.
+         */
+        $aQualifier = PreparedQuestion::where('import_ref', 'SUJET_A#Q2')->firstOrFail();
+        $this->assertArrayNotHasKey('domaine_code', $aQualifier->provisional);
+        $this->assertArrayNotHasKey('domaine_confiance', $aQualifier->provisional);
 
         $classee = PreparedQuestion::where('import_ref', 'SUJET_A#Q1')->firstOrFail();
         $this->assertSame('SE-PSY-LEARN', $classee->provisional['domaine_code']);

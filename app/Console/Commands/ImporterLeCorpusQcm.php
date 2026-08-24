@@ -289,7 +289,22 @@ class ImporterLeCorpusQcm extends Command
      */
     private function provisoires(array $ligne): array
     {
-        return array_intersect_key($ligne, array_flip(self::PROVISOIRES));
+        $garde = array_intersect_key($ligne, array_flip(self::PROVISOIRES));
+
+        /*
+         * UNE CHAÎNE VIDE N'EST PAS UNE VALEUR, et la laisser entrer est un
+         * mensonge tranquille. Les 32 questions SE non classées portent
+         * `domaine_code: ""` dans le corpus, pas `null` : recopiées telles
+         * quelles, elles RESSEMBLENT à un pré-classement. Un écran qui
+         * filtrerait « domaine_code renseigné » en compterait 245 au lieu de
+         * 213, et l'expert croirait qu'un script a déjà tranché.
+         *
+         * Mesuré sur la préproduction le 24 août, après l'import : les 245
+         * lignes portaient un `domaine_code` de type `string`. Le compte
+         * annoncé par la commande, lui, était juste — `filled()` voit bien la
+         * chaîne vide. C'est le STOCKAGE qui mentait, pas le rapport.
+         */
+        return array_filter($garde, fn ($v) => $v !== '' && $v !== null);
     }
 
     /** Même garde que `naja7i:creer-un-administrateur` : cette commande écrit. */

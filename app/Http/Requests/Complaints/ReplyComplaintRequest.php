@@ -6,6 +6,13 @@ use Illuminate\Foundation\Http\FormRequest;
 
 final class ReplyComplaintRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'body' => is_string($this->input('body')) ? trim($this->input('body')) : $this->input('body'),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;

@@ -166,6 +166,19 @@ final class ComplaintApiTest extends TestCase
             ->assertJsonValidationErrors(['category', 'idempotency_key']);
     }
 
+    public function test_subject_and_messages_containing_only_spaces_are_rejected_as_validation_errors(): void
+    {
+        $this->actingAs($this->candidate)
+            ->withHeader('Idempotency-Key', (string) Str::uuid7())
+            ->postJson('/api/v1/me/complaints', [
+                'category' => 'other',
+                'subject' => '   ',
+                'body' => " \t ",
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['subject', 'body']);
+    }
+
     private function candidate(string $email): User
     {
         $user = User::create([

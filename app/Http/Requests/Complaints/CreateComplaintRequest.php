@@ -8,6 +8,14 @@ use Illuminate\Validation\Rule;
 
 final class CreateComplaintRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'subject' => is_string($this->input('subject')) ? trim($this->input('subject')) : $this->input('subject'),
+            'body' => is_string($this->input('body')) ? trim($this->input('body')) : $this->input('body'),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;

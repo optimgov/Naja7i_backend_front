@@ -1949,6 +1949,52 @@ une option de mot de passe fait rougir le test qui l'interdit, et lui seul ;
 suite complète séquentielle verte à **1 019 tests et 3 973 assertions**.
 **Aucune exécution sur la préproduction.**
 
+### Mission v2 SE — L'arbre avant le nœud · livré · `b41094a`
+
+**L'état qui manquait au modèle.** Une question préparée pendait d'un
+`competency_node_id` nullable, et un nœud pend d'une épreuve : nœud nul voulait
+dire « on ne sait rien ». Or pour un corpus rangé par voie et discipline, on
+sait déjà beaucoup — on sait de quelle ÉPREUVE la question relève, on ignore
+seulement quel domaine elle travaille. La file de qualification ne pouvait donc
+pas être « filtrée par arbre » : elle n'avait pas de quoi filtrer.
+
+**`prepared_questions.exam_id`**, nullable, plus un **trigger** qui refuse qu'un
+nœud d'une autre épreuve coexiste avec elle. Deux champs qui se contredisent en
+ayant l'air renseignés tous les deux sont le pire genre de mensonge ; la
+contrainte croise deux tables, donc un CHECK n'y suffit pas.
+
+**Le pré-classement du 15 août ne qualifie personne.** Les 213 `domaine_code`,
+avec leur confiance et leur motif, entrent dans `provisional`. Les Instructions
+du 22 août sont explicites — « mon classement, testé par double lecture mais NON
+VALIDÉ PAR UN EXPERT ». L'écrire dans `competency_node_id` en ferait le travail
+d'un humain qui n'a rien fait.
+
+**`naja7i:importer-le-corpus-qcm` prend son fichier en argument**, et c'est
+DET-100 appliquée le jour même de son écriture : un chemin codé en dur sous
+`base_path()` rend l'import impossible en conteneur. Rejouée sur le même
+fichier, elle dit ce qui existe et s'arrête — le lot est unique par l'empreinte,
+et un lot terminé ne se reprend pas.
+
+**`naja7i:retirer-les-questions-importees` supprime, donc elle se méfie
+d'elle-même.** `--env` nommé ; rien hors `imported` + `draft` ; refus **en bloc**
+si une question a déjà servi ou si la zone de préparation la tient ; et rien
+sans `--confirmer` — le défaut est de ne rien faire, parce que le geste ne se
+défait pas. Les deux dernières gardes doublent des `restrictOnDelete` : une
+contrainte produit une exception illisible en fin de course, la garde nomme ce
+qui bloque avant d'avoir rien tenté.
+
+**Un test passait pour la mauvaise raison, et la mutation l'a révélé.** La
+garde du trigger était verte alors que le trigger était neutralisé : l'exception
+venait de `prepared_questions_qualification_trace`, une contrainte
+préexistante. Le test pose désormais toute la trace de qualification, pour que
+le seul refus possible soit celui qu'il mesure.
+
+**Vérification :** 14 tests ciblés et 44 assertions ; trois mutations éprouvées —
+trigger neutralisé → la garde de schéma seule ; `exam_id` non posé → la promesse
+centrale et la garde de schéma ; refus en bloc retiré → le refus de suppression
+seul ; suite complète séquentielle verte à **1 035 tests et 4 027 assertions**.
+**Aucune exécution sur la préproduction.**
+
 ### DET-80/DET-101 — Le slug d'une spécialité porte son parcours · livré · `689b66b`
 
 **Un candidat cliquait « ouvert » et lisait « liste d'attente ».** Depuis

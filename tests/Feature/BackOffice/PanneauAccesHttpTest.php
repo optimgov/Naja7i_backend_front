@@ -213,7 +213,7 @@ class PanneauAccesHttpTest extends TestCase
 
         $this->actingAs($this->administrateur)
             ->get('/admin')
-            ->assertOk();
+            ->assertRedirect('/admin/users');
     }
 
     /**

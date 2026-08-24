@@ -187,6 +187,27 @@ class PanneauCouvertureTest extends TestCase
         $this->assertTrue(Couverture::canAccess());
     }
 
+    public function test_la_racine_conduit_le_support_aux_reclamations(): void
+    {
+        $support = $this->membre('support-accueil@naja7i.ma', 'support');
+
+        $this->actingAs($support)->get('/admin')->assertRedirect('/admin/reclamations');
+    }
+
+    public function test_la_racine_conduit_la_finance_aux_commandes(): void
+    {
+        $finance = $this->membre('finance-accueil@naja7i.ma', 'finance');
+
+        $this->actingAs($finance)->get('/admin')->assertRedirect('/admin/orders');
+    }
+
+    public function test_la_racine_conduit_le_super_admin_aux_personnes(): void
+    {
+        $administrateur = $this->membre('admin-accueil@naja7i.ma', 'super_admin');
+
+        $this->actingAs($administrateur)->get('/admin')->assertRedirect('/admin/users');
+    }
+
     // --- L'ordre ---------------------------------------------------------------
 
     /**

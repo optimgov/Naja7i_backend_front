@@ -3,7 +3,10 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Libelles;
+use App\Filament\Resources\ComplaintThreads\ComplaintThreadResource;
+use App\Filament\Resources\Orders\OrderResource;
 use App\Filament\Resources\Questions\QuestionResource;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\Exam;
 use App\Models\Question;
 use App\Services\CouvertureBanque;
@@ -74,7 +77,35 @@ class Couverture extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can('viewAny', Question::class) ?? false;
+        return auth()->user()?->isStaff() ?? false;
+    }
+
+    /**
+     * La racine du panneau conduit chaque métier à sa file de travail.
+     *
+     * La couverture reste l'accueil de l'expert pédagogue. Les autres rôles
+     * n'ont pas à traverser une surface éditoriale qu'ils ne peuvent ni lire
+     * ni actionner pour atteindre leur propre poste.
+     */
+    public function mount(): void
+    {
+        $user = auth()->user();
+
+        if ($user?->hasRole('super_admin')) {
+            $this->redirect(UserResource::getUrl('index'));
+
+            return;
+        }
+
+        if ($user?->hasRole('finance')) {
+            $this->redirect(OrderResource::getUrl('index'));
+
+            return;
+        }
+
+        if ($user?->hasRole('support')) {
+            $this->redirect(ComplaintThreadResource::getUrl('index'));
+        }
     }
 
     public function getSubheading(): ?string

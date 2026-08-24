@@ -15,8 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  *
  * AUCUNE TRANSITION N'EST ÉCRITE ICI. Chaque bouton appelle
  * `QuestionTransitionService`, qui refuse en transaction ce qui doit l'être :
- * une transition interdite, un valideur qui est l'auteur, une publication dont
- * les contrôles éditoriaux ne passent pas. Ce que ces actions ajoutent, c'est
+ * une transition interdite ou une publication dont les contrôles éditoriaux
+ * ne passent pas. Ce que ces actions ajoutent, c'est
  * la VISIBILITÉ — un bouton absent vaut mieux qu'un bouton qui échoue.
  *
  * Les deux ne se remplacent pas. `visible()` décide de ce qu'on montre, le

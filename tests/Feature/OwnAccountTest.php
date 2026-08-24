@@ -23,7 +23,7 @@ final class OwnAccountTest extends TestCase
 
     public function test_candidat_et_personnel_mutent_le_meme_contrat_de_propre_compte(): void
     {
-        foreach (['candidat' => '1', 'auteur' => '2'] as $role => $suffix) {
+        foreach (['candidat' => '1', 'expert_pedagogue' => '2'] as $role => $suffix) {
             $this->app['session']->flush();
             $user = $this->user("{$role}@naja7i.ma", $role);
             $user->forceFill([
@@ -130,7 +130,7 @@ final class OwnAccountTest extends TestCase
 
     public function test_un_compte_suspendu_ne_peut_plus_muter_son_dossier_depuis_une_session_existante(): void
     {
-        $user = $this->user('suspendu@naja7i.ma', 'auteur');
+        $user = $this->user('suspendu@naja7i.ma', 'expert_pedagogue');
         $this->actingAs($user);
         $user->forceFill(['status' => 'suspended'])->save();
 

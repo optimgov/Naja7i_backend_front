@@ -35,7 +35,7 @@ class PanneauCategoriesDePublicTest extends TestCase
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
 
         $this->commerciale = $this->membre('commerciale-publics@naja7i.ma', 'finance');
-        $this->pedagogue = $this->membre('pedagogue-publics@naja7i.ma', 'editeur');
+        $this->pedagogue = $this->membre('pedagogue-publics@naja7i.ma', 'expert_pedagogue');
     }
 
     private function membre(string $email, string $role): User

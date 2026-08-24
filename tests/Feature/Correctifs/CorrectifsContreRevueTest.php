@@ -277,7 +277,7 @@ class CorrectifsContreRevueTest extends TestCase
 
     public function test_une_permission_reservee_reste_attachable_a_un_role_de_plateforme_pur(): void
     {
-        $editeur = Role::where('code', 'editeur')->whereNull('tenant_id')->firstOrFail();
+        $editeur = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->firstOrFail();
 
         app(TenantContext::class)->set($this->plateforme);
         $this->auteur->memberships()->create(['role_id' => $editeur->id]);

@@ -111,7 +111,7 @@ class CorrectifsRevue2Test extends TestCase
 
     public function test_un_organisme_ne_peut_pas_attribuer_un_role_de_back_office(): void
     {
-        $editeur = Role::where('code', 'editeur')->whereNull('tenant_id')->firstOrFail();
+        $editeur = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->firstOrFail();
 
         app(TenantContext::class)->set($this->organisme);
 
@@ -173,9 +173,6 @@ class CorrectifsRevue2Test extends TestCase
         $question = $this->questionValidee();
 
         app(TenantContext::class)->set($this->plateforme);
-        $this->auteur->memberships()->create([
-            'role_id' => Role::where('code', 'auteur')->whereNull('tenant_id')->value('id'),
-        ]);
 
         $this->actingAs($this->auteur)
             ->postJson("/api/v1/admin/questions/{$question->uuid}/publish", ['for_diagnostic' => true])
@@ -190,7 +187,7 @@ class CorrectifsRevue2Test extends TestCase
         app(TenantContext::class)->set($this->plateforme);
         $editeur = $this->utilisateur('editeur@naja7i.ma');
         $editeur->memberships()->create([
-            'role_id' => Role::where('code', 'editeur')->whereNull('tenant_id')->value('id'),
+            'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
         ]);
 
         $this->actingAs($editeur)
@@ -203,7 +200,7 @@ class CorrectifsRevue2Test extends TestCase
     {
         app(TenantContext::class)->set($this->plateforme);
         $editeur = $this->utilisateur('editeur2@naja7i.ma');
-        $role = Role::where('code', 'editeur')->whereNull('tenant_id')->firstOrFail();
+        $role = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->firstOrFail();
         $editeur->memberships()->create(['role_id' => $role->id]);
 
         $premiere = $this->questionValidee();

@@ -21,13 +21,13 @@ class Role extends Model
 {
     use HasPublicUuid;
 
-    protected $fillable = ['tenant_id', 'code', 'label_fr', 'label_ar', 'is_staff'];
+    protected $fillable = ['tenant_id', 'code', 'label_fr', 'label_ar', 'is_staff', 'is_active'];
 
     protected $hidden = ['id', 'tenant_id'];
 
     protected function casts(): array
     {
-        return ['is_staff' => 'boolean'];
+        return ['is_staff' => 'boolean', 'is_active' => 'boolean'];
     }
 
     public function permissions(): BelongsToMany
@@ -43,7 +43,8 @@ class Role extends Model
     /** Rôles utilisables dans un tenant : les siens et ceux de la plateforme. */
     public function scopeAvailableIn(Builder $query, int $tenantId): Builder
     {
-        return $query->where(fn (Builder $q) => $q->whereNull('tenant_id')->orWhere('tenant_id', $tenantId));
+        return $query->where('is_active', true)
+            ->where(fn (Builder $q) => $q->whereNull('tenant_id')->orWhere('tenant_id', $tenantId));
     }
 
     public function isPlatformRole(): bool

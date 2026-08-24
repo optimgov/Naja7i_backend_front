@@ -57,8 +57,8 @@ class PanneauRedactionTest extends TestCase
             ['title' => 'R', 'content' => 'x', 'estimated_minutes' => 5, 'status' => 'published'],
         );
 
-        $this->auteur = $this->membre('auteur@naja7i.ma', 'auteur');
-        $this->editeur = $this->membre('editeur@naja7i.ma', 'editeur');
+        $this->auteur = $this->membre('auteur@naja7i.ma', 'expert_pedagogue');
+        $this->editeur = $this->membre('editeur@naja7i.ma', 'expert_pedagogue');
     }
 
     private function membre(string $email, ?string $role): User
@@ -258,48 +258,16 @@ class PanneauRedactionTest extends TestCase
 
     // --- Relecture -------------------------------------------------------------
 
-    /**
-     * LE BOUTON N'EXISTE PAS POUR L'AUTEUR.
-     *
-     * La garde vit dans `QuestionTransitionService` et y reste. Ce test vérifie
-     * l'autre moitié : que l'interface ne propose pas une action conçue pour
-     * refuser celui qui la voit.
-     */
-    public function test_l_auteur_ne_voit_pas_le_bouton_de_validation_de_sa_propre_question(): void
+    /** L'interface reflète l'auto-validation permise par le service. */
+    public function test_l_expert_voit_le_bouton_de_validation_apres_sa_propre_relecture(): void
     {
-        /*
-         * C'EST UN ÉDITEUR QUI RÉDIGE, ET C'EST TOUT LE TEST.
-         *
-         * Le faire écrire par le rôle `auteur` ne prouverait rien : il n'a pas
-         * `questions.validate`, donc le bouton serait caché de toute façon — le
-         * test passerait sans que la règle « le valideur n'est pas l'auteur »
-         * soit jamais exercée. Vérifié par mutation : en retirant cette règle
-         * de la policy, la version précédente restait verte.
-         *
-         * Il faut donc quelqu'un qui PEUT valider et qui a écrit la question.
-         */
         $question = $this->rediger(qui: $this->editeur);
-
-        $second = $this->membre('editeur2@naja7i.ma', 'editeur');
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $second);
+        $transitions->markReviewed($question->fresh(), $this->editeur);
 
         Livewire::actingAs($this->editeur)
-            ->test(EditQuestion::class, ['record' => $question->fresh()->getRouteKey()])
-            ->assertActionHidden('valider');
-
-        /* $second a RELU : depuis le 17 aout il ne peut pas valider non plus.
-         * C'est un TROISIEME compte qui doit voir le bouton — et le verifier
-         * ainsi rend la nouvelle regle opposable au lieu de la contourner. */
-        Livewire::actingAs($second)
-            ->test(EditQuestion::class, ['record' => $question->fresh()->getRouteKey()])
-            ->assertActionHidden('valider');
-
-        $troisieme = $this->membre('editeur3@naja7i.ma', 'editeur');
-
-        Livewire::actingAs($troisieme)
             ->test(EditQuestion::class, ['record' => $question->fresh()->getRouteKey()])
             ->assertActionVisible('valider');
     }
@@ -310,7 +278,7 @@ class PanneauRedactionTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers@naja7i.ma', 'editeur'));
+        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers@naja7i.ma', 'expert_pedagogue'));
 
         Livewire::actingAs($this->editeur)
             ->test(EditQuestion::class, ['record' => $question->fresh()->getRouteKey()])
@@ -337,7 +305,7 @@ class PanneauRedactionTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers-'.uniqid().'@naja7i.ma', 'editeur'));
+        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers-'.uniqid().'@naja7i.ma', 'expert_pedagogue'));
         $transitions->validate($question->fresh(), $this->editeur);
 
         Livewire::actingAs($this->editeur)
@@ -356,7 +324,7 @@ class PanneauRedactionTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers-'.uniqid().'@naja7i.ma', 'editeur'));
+        $transitions->markReviewed($question->fresh(), $this->membre('relecteur-tiers-'.uniqid().'@naja7i.ma', 'expert_pedagogue'));
         $transitions->validate($question->fresh(), $this->editeur);
         $transitions->publish($question->fresh());
 

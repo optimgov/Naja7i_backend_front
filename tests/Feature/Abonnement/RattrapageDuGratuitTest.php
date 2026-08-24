@@ -117,7 +117,7 @@ class RattrapageDuGratuitTest extends TestCase
         ]);
         $personnel->markEmailAsVerified();
         $personnel->memberships()->create([
-            'role_id' => Role::where('code', 'editeur')->whereNull('tenant_id')->value('id'),
+            'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
         ]);
 
         $this->artisan('naja7i:rattraper-le-gratuit')

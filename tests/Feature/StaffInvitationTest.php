@@ -123,7 +123,7 @@ final class StaffInvitationTest extends TestCase
     private function invite(string $locale = 'fr', ?User $actor = null): User
     {
         $actor ??= $this->superAdmin();
-        $role = Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail();
+        $role = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->firstOrFail();
 
         return app(AccountAdministrationService::class)->create($actor, [
             'email' => 'invite@naja7i.ma', 'phone' => null, 'locale' => $locale,

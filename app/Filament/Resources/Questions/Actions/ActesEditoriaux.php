@@ -95,10 +95,6 @@ final class ActesEditoriaux
             ));
     }
 
-    /**
-     * LE BOUTON N'EXISTE PAS POUR L'AUTEUR NI POUR LE RELECTEUR, il n'échoue
-     * pas devant eux. La policy le reflète, le service le refuse.
-     */
     public static function valider(): Action
     {
         return Action::make('valider')
@@ -107,8 +103,7 @@ final class ActesEditoriaux
             ->requiresConfirmation()
             ->modalDescription(
                 'La validation pédagogique engage le fond : elle déclare que cette question '
-                .'mesure bien la compétence qu\'elle annonce. Elle ne peut être donnée ni par '
-                .'l\'auteur, ni par le relecteur.'
+                .'mesure bien la compétence qu\'elle annonce. L\'identité du valideur est enregistrée.'
             )
             ->visible(fn (Question $record) => auth()->user()?->can('validate', $record))
             ->action(fn (Question $record) => self::executer(

@@ -259,9 +259,8 @@ Route::prefix('v1')->group(function () {
          * ne pouvait pas mener une question du brouillon au publié.
          *
          * CHACUNE SOUS SA PROPRE PERMISSION, et ce ne sont pas les mêmes
-         * métiers : soumettre est un geste d'auteur, relire un geste de
-         * réviseur, valider un geste que le référentiel du PAS-9 distingue
-         * depuis toujours par `questions.validate`.
+         * permissions : soumettre, relire et valider restent trois actes
+         * distincts, qu'un même expert pédagogue peut désormais enchaîner.
          */
         Route::post('questions/{uuid}/submit', [QuestionAdminController::class, 'submit'])
             ->middleware('permission:questions.create');

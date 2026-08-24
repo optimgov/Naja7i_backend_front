@@ -15,8 +15,8 @@ use RuntimeException;
  * `QuestionIntegrityChecker` savait refuser une publication, mais **rien ne
  * l'appelait**. `status`, `published_at`, `validator_id` et les drapeaux
  * d'éligibilité étaient assignables en masse : une question sans source
- * vérifiée, dont l'auteur était son propre valideur, pouvait être créée
- * directement en `published` et servie à un candidat.
+ * vérifiée pouvait être créée directement en `published` et servie à un
+ * candidat.
  *
  * Pire : mes propres tests appelaient le checker directement, au lieu de
  * tenter une mutation interdite. Ils prouvaient que le contrôleur sait dire
@@ -46,72 +46,15 @@ final class QuestionTransitionService
         return $this->transition($question, 'a_verifier');
     }
 
-    /**
-     * Relecture — et JAMAIS par l'auteur.
-     *
-     * LA GARANTIE MANQUAIT ICI, et c'est le défaut le plus grave de la recette
-     * humaine du 17 août. `validate()` refusait déjà son auteur ; `markReviewed`
-     * ne refusait personne. Un compte portant `questions.create` ET
-     * `questions.review` — le rôle `editeur` livré par le semis — écrivait une
-     * question, la soumettait, et la relisait lui-même. Mesuré en base sur une
-     * instance qui tourne : `author_id = reviewer_id`.
-     *
-     * Ce n'était pas une gêne d'interface. Le principe des quatre yeux est ce
-     * qui fonde la crédibilité de la banque devant un candidat, et il était
-     * promis par écrit dans le document du parcours candidat.
-     *
-     * La garde vit ICI, pas dans Filament : l'API d'administration, la console
-     * et tout appelant futur passent par ce service et par lui seul.
-     */
+    /** Enregistre l'identité qui accomplit la relecture. */
     public function markReviewed(Question $question, User $reviewer): Question
     {
-        if ($reviewer->id === $question->author_id) {
-            throw new RuntimeException(
-                'Le relecteur ne peut pas être l\'auteur de la question : une relecture par son auteur n\'est pas une relecture.'
-            );
-        }
-
         return $this->transition($question, 'reviewed', ['reviewer_id' => $reviewer->id]);
     }
 
-    /**
-     * Validation pédagogique — TROIS ACTES, TROIS PERSONNES.
-     *
-     * Le valideur n'est ni l'auteur (règle permanente METHODE §7.2) ni le
-     * relecteur. Cette seconde condition est ajoutée le 17 août, et elle est un
-     * ARBITRAGE, pas une évidence : le voici.
-     *
-     * Les trois actes ne mesurent pas la même chose. L'auteur produit. Le
-     * relecteur vérifie la FORME — énoncé clair, options justifiées, cause
-     * plausible. Le valideur engage le FOND pédagogique : il déclare que la
-     * question mesure bien la compétence qu'elle prétend mesurer, et c'est sa
-     * signature qui répond au candidat.
-     *
-     * Laisser le relecteur valider ce qu'il vient de relire ne retire pas
-     * seulement un regard sur trois : il retire l'INDÉPENDANCE du second. On ne
-     * conteste pas volontiers ce qu'on vient d'approuver — c'est l'ancrage, un
-     * biais documenté, pas une méfiance envers les personnes.
-     *
-     * LE COÛT EST ASSUMÉ : publier exige trois comptes distincts. C'est un coût
-     * d'organisation, pas un coût technique, et c'est exactement la garantie
-     * promise par écrit à des tiers. Une promesse qui coûte moins cher que ce
-     * qu'elle annonce n'est pas une économie.
-     */
+    /** Enregistre l'identité qui accomplit la validation pédagogique. */
     public function validate(Question $question, User $validator): Question
     {
-        if ($validator->id === $question->author_id) {
-            throw new RuntimeException(
-                'Le valideur ne peut pas être l\'auteur de la question : une relecture par son auteur n\'est pas une relecture.'
-            );
-        }
-
-        if ($question->reviewer_id !== null && $validator->id === $question->reviewer_id) {
-            throw new RuntimeException(
-                'Le valideur ne peut pas être le relecteur : la validation pédagogique est un second regard, '
-                .'et un second regard sur son propre avis n\'en est pas un.'
-            );
-        }
-
         return $this->transition($question, 'pedagogically_validated', ['validator_id' => $validator->id]);
     }
 

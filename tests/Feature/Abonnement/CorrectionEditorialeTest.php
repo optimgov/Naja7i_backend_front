@@ -43,7 +43,7 @@ class CorrectionEditorialeTest extends TestCase
         parent::setUp();
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
 
-        $this->editeur = $this->membre('editeur-coquille@naja7i.ma', 'editeur');
+        $this->editeur = $this->membre('editeur-coquille@naja7i.ma', 'super_admin');
 
         $this->plan = Plan::create([
             'code' => 'coquille',

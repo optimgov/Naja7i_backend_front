@@ -40,7 +40,7 @@ class ImportDuCorpusQcmTest extends TestCase
             'locale' => 'fr',
         ]);
         $this->acteur->memberships()->create([
-            'role_id' => Role::where('code', 'editeur')->whereNull('tenant_id')->value('id'),
+            'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
         ]);
 
         $this->se = Exam::where('code', 'CRMEF-SE-2025')->firstOrFail();
@@ -280,7 +280,7 @@ class ImportDuCorpusQcmTest extends TestCase
             ]));
     }
 
-    // --- Le retrait des brouillons importés (décision A du 24 août) --------
+    // --- L'ancienne suppression des brouillons importés est supersédée ------
 
     private function poserUnBrouillonImporte(string $ref = 'SUJET_A|Q1'): Question
     {
@@ -298,76 +298,29 @@ class ImportDuCorpusQcmTest extends TestCase
         ]);
     }
 
-    private function retirer(array $options = []): int
-    {
-        return Artisan::call('naja7i:retirer-les-questions-importees', $options + ['--env' => 'testing']);
-    }
-
-    /** Le défaut est de NE RIEN FAIRE : le geste ne se défait pas. */
-    public function test_le_retrait_annonce_et_ne_supprime_rien_sans_confirmation(): void
-    {
-        $this->poserUnBrouillonImporte();
-
-        $this->assertSame(0, $this->retirer());
-        $this->assertStringContainsString('visees=1', Artisan::output());
-        $this->assertSame(1, Question::where('authoring', 'imported')->count());
-    }
-
-    public function test_le_retrait_supprime_le_brouillon_et_ses_options(): void
+    public function test_l_ancienne_commande_est_supersedee_et_ne_mute_aucune_question(): void
     {
         $question = $this->poserUnBrouillonImporte();
+        $avant = (array) DB::table('questions')->where('id', $question->id)->first();
 
-        $this->assertSame(0, $this->retirer(['--confirmer' => true]));
-        $this->assertSame(0, Question::where('id', $question->id)->count());
-    }
-
-    /**
-     * LA GARDE QUI COMPTE. Une question tenue par la zone de préparation a été
-     * transférée : c'est la chaîne éditoriale qui en répond, pas une commande.
-     *
-     * La garde des questions déjà servies (`attempt_items`) partage exactement
-     * cette branche de refus — c'est le même `if`, et le même refus en bloc.
-     */
-    public function test_le_retrait_refuse_en_bloc_une_question_tenue_par_la_preparation(): void
-    {
-        $question = $this->poserUnBrouillonImporte();
-        $this->importer();
-
-        PreparedQuestion::where('import_ref', 'SUJET_A#Q2')->firstOrFail()
-            ->forceFill([
-                'state' => PreparedQuestionState::TRANSFERRED,
-                'question_id' => $question->id,
-            ])->save();
-
-        $code = $this->retirer(['--confirmer' => true]);
+        $code = Artisan::call('naja7i:retirer-les-questions-importees');
         $sortie = Artisan::output();
 
         $this->assertSame(1, $code);
-        $this->assertStringContainsString('tenues_par_la_preparation=1', $sortie);
-        $this->assertStringContainsString('Refusé', $sortie);
-        $this->assertSame(1, Question::where('id', $question->id)->count());
+        $this->assertStringContainsString('commande_supersedee=1', $sortie);
+        $this->assertStringContainsString('Aucune question n’a été supprimée ou modifiée', $sortie);
+        $apres = (array) DB::table('questions')->where('id', $question->id)->first();
+        $this->assertSame($avant, $apres);
     }
 
-    public function test_le_retrait_ne_touche_jamais_une_question_ecrite_par_un_humain(): void
+    public function test_l_import_ref_reste_reserve_par_le_brouillon_historique(): void
     {
-        $importee = $this->poserUnBrouillonImporte();
-        $ecrite = $this->poserUnBrouillonImporte('SUJET_A|Q2');
-        $ecrite->forceFill(['authoring' => 'human', 'import_ref' => null])->save();
+        $question = $this->poserUnBrouillonImporte();
 
-        $this->retirer(['--confirmer' => true]);
+        Artisan::call('naja7i:retirer-les-questions-importees');
 
-        $this->assertSame(0, Question::where('id', $importee->id)->count());
-        $this->assertSame(1, Question::where('id', $ecrite->id)->count());
-    }
-
-    public function test_le_retrait_refuse_sans_environnement_nomme(): void
-    {
-        $this->poserUnBrouillonImporte();
-
-        $code = Artisan::call('naja7i:retirer-les-questions-importees', ['--confirmer' => true]);
-
-        $this->assertSame(1, $code);
-        $this->assertStringContainsString('env_absent=1', Artisan::output());
-        $this->assertSame(1, Question::where('authoring', 'imported')->count());
+        $this->assertSame('SUJET_A|Q1', $question->fresh()->import_ref);
+        $this->assertSame('draft', $question->fresh()->status);
+        $this->assertSame(1, Question::where('import_ref', 'SUJET_A|Q1')->count());
     }
 }

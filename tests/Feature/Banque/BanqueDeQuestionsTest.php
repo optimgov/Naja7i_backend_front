@@ -285,7 +285,7 @@ class BanqueDeQuestionsTest extends TestCase
         $this->assertStringContainsString('Sous-domaine', implode(' ', $issues));
     }
 
-    public function test_le_valideur_ne_peut_pas_etre_l_auteur(): void
+    public function test_l_identite_commune_de_l_auteur_et_du_valideur_n_est_pas_un_blocage(): void
     {
         $question = $this->etat($this->question(), [
             'status' => 'pedagogically_validated',
@@ -294,7 +294,7 @@ class BanqueDeQuestionsTest extends TestCase
 
         $issues = app(QuestionIntegrityChecker::class)->publicationIssues($question);
 
-        $this->assertStringContainsString('ne peut pas être l\'auteur', implode(' ', $issues));
+        $this->assertStringNotContainsString('ne peut pas être l\'auteur', implode(' ', $issues));
     }
 
     public function test_une_question_de_diagnostic_exige_une_source_verifiee(): void

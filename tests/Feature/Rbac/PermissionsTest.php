@@ -80,19 +80,19 @@ class PermissionsTest extends TestCase
 
     // --- La vérification passe par les permissions, plus par les rôles ------
 
-    public function test_un_auteur_peut_rediger_mais_pas_publier(): void
+    public function test_un_ancien_role_editorial_est_inactif(): void
     {
         $this->attribuer('auteur');
 
         $resolveur = $this->resolveur();
 
-        $this->assertTrue($resolveur->has($this->utilisateur, 'questions.create'));
+        $this->assertFalse($resolveur->has($this->utilisateur, 'questions.create'));
         $this->assertFalse($resolveur->has($this->utilisateur, 'questions.publish'));
     }
 
-    public function test_un_editeur_peut_publier(): void
+    public function test_un_expert_pedagogue_peut_publier(): void
     {
-        $this->attribuer('editeur');
+        $this->attribuer('expert_pedagogue');
 
         $this->assertTrue($this->resolveur()->has($this->utilisateur, 'questions.publish'));
     }
@@ -116,7 +116,7 @@ class PermissionsTest extends TestCase
 
     public function test_le_cumul_de_roles_donne_l_union_des_permissions(): void
     {
-        $this->attribuer('auteur');
+        $this->attribuer('expert_pedagogue');
         $this->attribuer('finance');
 
         $resolveur = $this->resolveur();
@@ -129,7 +129,7 @@ class PermissionsTest extends TestCase
 
     public function test_une_permission_ne_traverse_pas_les_tenants(): void
     {
-        $this->attribuer('editeur');   // sur la plateforme
+        $this->attribuer('expert_pedagogue');   // sur la plateforme
 
         app(TenantContext::class)->set($this->plateforme);
         $this->assertTrue($this->resolveur()->has($this->utilisateur, 'questions.publish'));
@@ -137,7 +137,7 @@ class PermissionsTest extends TestCase
         app(TenantContext::class)->set($this->organisme);
         $this->assertFalse(
             $this->resolveur()->has($this->utilisateur, 'questions.publish'),
-            'Éditeur sur la plateforme ne signifie pas éditeur chez un organisme.'
+            'Expert sur la plateforme ne signifie pas expert chez un organisme.'
         );
     }
 
@@ -196,7 +196,7 @@ class PermissionsTest extends TestCase
     {
         $this->expectException(QueryException::class);
 
-        Role::create(['code' => 'editeur', 'label_fr' => 'Doublon', 'label_ar' => 'مكرر']);
+        Role::create(['code' => 'expert_pedagogue', 'label_fr' => 'Doublon', 'label_ar' => 'مكرر']);
     }
 
     // --- Le garde-fou des permissions réservées -----------------------------
@@ -241,11 +241,11 @@ class PermissionsTest extends TestCase
 
     public function test_retirer_une_permission_prend_effet_immediatement(): void
     {
-        $this->attribuer('editeur');
+        $this->attribuer('expert_pedagogue');
         $this->assertTrue($this->resolveur()->has($this->utilisateur, 'questions.publish'));
 
-        $editeur = Role::where('code', 'editeur')->whereNull('tenant_id')->firstOrFail();
-        $editeur->permissions()->detach(Permission::where('code', 'questions.publish')->value('id'));
+        $expert = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->firstOrFail();
+        $expert->permissions()->detach(Permission::where('code', 'questions.publish')->value('id'));
 
         $this->assertFalse(
             $this->resolveur()->has($this->utilisateur, 'questions.publish'),
@@ -255,11 +255,16 @@ class PermissionsTest extends TestCase
 
     public function test_ajouter_une_permission_prend_effet_immediatement(): void
     {
-        $this->attribuer('auteur');
+        $role = Role::create([
+            'code' => 'lecteur-dynamique',
+            'label_fr' => 'Lecteur dynamique',
+            'label_ar' => 'قارئ ديناميكي',
+            'is_staff' => true,
+        ]);
+        $this->utilisateur->memberships()->create(['role_id' => $role->id]);
         $this->assertFalse($this->resolveur()->has($this->utilisateur, 'questions.publish'));
 
-        Role::where('code', 'auteur')->whereNull('tenant_id')->firstOrFail()
-            ->permissions()->attach(Permission::where('code', 'questions.publish')->value('id'));
+        $role->permissions()->attach(Permission::where('code', 'questions.publish')->value('id'));
 
         $this->assertTrue($this->resolveur()->has($this->utilisateur, 'questions.publish'));
     }

@@ -37,8 +37,10 @@ final class PermissionResolver
         $requete = Permission::query()
             ->join('permission_role', 'permission_role.permission_id', '=', 'permissions.id')
             ->join('memberships', 'memberships.role_id', '=', 'permission_role.role_id')
+            ->join('roles', 'roles.id', '=', 'memberships.role_id')
             ->where('memberships.user_id', $user->id)
-            ->where('memberships.tenant_id', $tenantId);
+            ->where('memberships.tenant_id', $tenantId)
+            ->where('roles.is_active', true);
 
         // Hors plateforme, une permission réservée n'est jamais accordée.
         if ($tenantId !== TenantContext::PLATFORM_TENANT_ID) {

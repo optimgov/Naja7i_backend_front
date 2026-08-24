@@ -19,7 +19,12 @@ final class EditUser extends EditRecord
     {
         /** @var User $user */
         $user = $this->record;
-        $data['role_uuids'] = $user->memberships()->with('role')->get()->pluck('role.uuid')->all();
+        $data['role_uuids'] = $user->memberships()
+            ->whereHas('role', fn ($query) => $query->where('is_active', true))
+            ->with('role')
+            ->get()
+            ->pluck('role.uuid')
+            ->all();
 
         return $data;
     }

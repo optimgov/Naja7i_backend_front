@@ -141,10 +141,11 @@ final class AccountAdministrationService
                 ->lockForUpdate()
                 ->get();
 
-            $existants = $user->memberships()->pluck('role_id');
+            $actives = $user->memberships()->whereHas('role', fn ($query) => $query->where('is_active', true));
+            $existants = (clone $actives)->pluck('role_id');
             $vises = $roles->pluck('id');
 
-            $user->memberships()->whereNotIn('role_id', $vises)->delete();
+            $actives->whereNotIn('role_id', $vises)->delete();
 
             foreach ($vises->diff($existants) as $roleId) {
                 Membership::create(['user_id' => $user->id, 'role_id' => $roleId]);
@@ -191,6 +192,8 @@ final class AccountAdministrationService
     private function ensureRolesAssignableBy(User $actor, $roles): void
     {
         foreach ($roles->loadMissing('permissions') as $role) {
+            /* Anti-délégation volontaire : posséder toutes les permissions du
+             * super_admin ne suffit pas à fabriquer un autre super_admin. */
             if ($role->code === 'super_admin' && ! $actor->hasRole('super_admin')) {
                 throw ValidationException::withMessages([
                     'role_uuids' => 'Le rôle super_admin ne peut être attribué que par un super-administrateur.',
@@ -233,6 +236,8 @@ final class AccountAdministrationService
 
     private function isRoleAssignableBy(User $actor, Role $role): bool
     {
+        /* Même règle que la validation d'écriture, appliquée aussi à la liste
+         * proposée par l'interface. */
         if ($role->code === 'super_admin' && ! $actor->hasRole('super_admin')) {
             return false;
         }

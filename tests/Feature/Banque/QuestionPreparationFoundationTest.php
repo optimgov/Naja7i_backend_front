@@ -42,7 +42,7 @@ class QuestionPreparationFoundationTest extends TestCase
             'locale' => 'fr',
         ]);
         $this->actor->memberships()->create([
-            'role_id' => Role::where('code', 'editeur')->whereNull('tenant_id')->value('id'),
+            'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
         ]);
     }
 

@@ -112,7 +112,7 @@ class TentativesTest extends TestCase
      *
      * Le fixture emprunte exactement le parcours qu'un rédacteur suivra : c'est
      * ce qui fait que les contrôles éditoriaux — quatre options, cause sur
-     * chaque distracteur, source vérifiée, valideur distinct de l'auteur — sont
+     * chaque distracteur, source vérifiée et valideur tracé — sont
      * réellement opposés à ces questions de test, et non contournés.
      */
     private function publier(Question $question, User $valideur): Question

@@ -12,14 +12,20 @@ Ce document ne réécrit pas ce schéma et n'en propose pas la migration. Il dit
 d'équivalent — parce qu'un contrôle perdu en silence est le seul vrai risque de
 cette supersession.
 
+L'ancienne commande `naja7i:retirer-les-questions-importees` est supersédée et
+refuse toute exécution. Une question conserve son `import_ref` unique même
+retirée ; supprimer le brouillon pour promettre une réimportation « de zéro »
+contredirait la conservation historique. Ce document ne propose donc aucun
+chemin de hard delete ni de fausse réimportabilité.
+
 ## Où vivent les objets du schéma remplacé
 
 | Objet du schéma remplacé | Où il vit désormais |
 |---|---|
-| Les contrôles de `controle_publication()` | Les portes de publication de la banque : `QuestionIntegrityChecker` (`structuralIssues`, `diagnosticIssues`, `publicationIssues`) et la règle des quatre yeux. Correspondance contrôle par contrôle ci-dessous. |
+| Les contrôles de `controle_publication()` | Les portes de publication de la banque : `QuestionIntegrityChecker` (`structuralIssues`, `diagnosticIssues`, `publicationIssues`) et la traçabilité des acteurs. Correspondance contrôle par contrôle ci-dessous. |
 | `v_file_saisie`, `v_avancement` | L'écran de file de la zone de préparation et l'indicateur de résorption (invariant I-5). |
 | `v_poids_observes` | Se mesurera **sur la banque publiée**, jamais sur la zone (invariant I-4). |
-| L'état `valide` de la machine `a_saisir → saisi → valide` | La chaîne éditoriale de la banque, après transfert en brouillon. Une seule validation, quatre yeux tenus par le service. |
+| L'état `valide` de la machine `a_saisir → saisi → valide` | La chaîne éditoriale de la banque, après transfert en brouillon. Les étapes restent distinctes et peuvent être accomplies par le même expert pédagogue. |
 
 ## Correspondance contrôle par contrôle
 
@@ -41,7 +47,7 @@ dans un écart de comptage.
 | 8 | `source non localisée` | `question_sources.locator` existe (page, article, chapitre) mais reste nullable | **Absent en tant que garde** — le champ existe, aucune porte ne l'exige |
 | 9 | `aucun domaine de compétence` | `structuralIssues` : rattachement à un nœud, au niveau minimal exigé par le profil de taxonomie de l'épreuve, et refus d'un nœud appartenant à une autre épreuve | **Couvert, et renforcé** |
 | 10 | `aucun niveau cognitif` | `Question.cognitive_level` existe | **Absent en tant que garde** — le champ existe, aucune porte ne l'exige à la publication |
-| 11 | `aucun valideur signé` | `publicationIssues` : valideur enregistré, statut validé pédagogiquement, **et le valideur n'est jamais l'auteur** | **Couvert, et renforcé** — les quatre yeux ne figuraient pas dans le schéma remplacé |
+| 11 | `aucun valideur signé` | `publicationIssues` : valideur enregistré et statut validé pédagogiquement | **Couvert** — l'identité du valideur reste obligatoire même lorsque l'expert est aussi l'auteur |
 
 ### Ce qui manque, consigné et non comblé
 

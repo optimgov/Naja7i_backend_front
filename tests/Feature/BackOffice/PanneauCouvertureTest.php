@@ -5,6 +5,7 @@ namespace Tests\Feature\BackOffice;
 use App\Filament\Pages\Couverture;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
+use App\Models\Permission;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Remediation;
@@ -56,8 +57,8 @@ class PanneauCouvertureTest extends TestCase
         $this->noeud = CompetencyNode::where('code', 'SE-PSY-DEV')->firstOrFail();
         $this->source = Source::where('code', 'SRC-CRMEF-2025-SE')->firstOrFail();
 
-        $this->redacteur = $this->membre('redacteur@naja7i.ma', 'auteur');
-        $this->valideur = $this->membre('valideur@naja7i.ma', 'editeur');
+        $this->redacteur = $this->membre('redacteur@naja7i.ma', 'expert_pedagogue');
+        $this->valideur = $this->membre('valideur@naja7i.ma', 'expert_pedagogue');
     }
 
     private function membre(string $email, ?string $role): User
@@ -139,8 +140,7 @@ class PanneauCouvertureTest extends TestCase
 
             $question->contentSources()->attach($this->source->id, ['verification' => 'verified']);
             $transitions->submitForReview($question);
-            /* Le relecteur et le valideur sont deux personnes : la regle des
-             * trois actes l'impose depuis le 17 aout. */
+            /* Deux comptes rendent les identités de trace faciles à distinguer. */
             $transitions->markReviewed($question, $this->relecteurTiers());
             $transitions->validate($question, $this->valideur);
             $transitions->publish($question, forDiagnostic: true);
@@ -348,7 +348,7 @@ class PanneauCouvertureTest extends TestCase
      *
      * La règle du dépôt ne tolère ni bouton grisé ni lien masqué en CSS pour
      * cause de droits : soit l'action est proposée, soit elle n'est pas dans
-     * le rendu. `reviseur` porte `questions.view` et `questions.review`, pas
+     * le rendu. Le rôle de contrôle porte `questions.view`, pas
      * `questions.create` — il voit la page, et pas l'invitation à écrire.
      */
     public function test_la_porte_de_redaction_n_existe_pas_pour_qui_ne_redige_pas(): void
@@ -357,7 +357,14 @@ class PanneauCouvertureTest extends TestCase
         $this->peupler('calcul', 2, 'fr');
         $this->peupler('calcul', 2, 'ar');
 
-        $relecteur = $this->membre('relecteur-porte@naja7i.ma', 'reviseur');
+        $role = Role::create([
+            'code' => 'lecteur-couverture',
+            'label_fr' => 'Lecteur couverture',
+            'label_ar' => 'قارئ التغطية',
+            'is_staff' => true,
+        ]);
+        $role->permissions()->attach(Permission::where('code', 'questions.view')->value('id'));
+        $relecteur = $this->membre('relecteur-porte@naja7i.ma', $role->code);
 
         Livewire::actingAs($relecteur)
             ->test(Couverture::class)
@@ -377,13 +384,7 @@ class PanneauCouvertureTest extends TestCase
             ->assertSee('Aucun trou');
     }
 
-    /**
-     * Un relecteur DISTINCT du valideur.
-     *
-     * Trois actes, trois personnes : depuis le 17 aout, le valideur n'est ni
-     * l'auteur ni le relecteur. Cette fixture faisait jouer les deux roles au
-     * meme compte ; on la migre plutot que de relacher la regle.
-     */
+    /** Compte tiers conservé pour rendre la traçabilité de la fixture lisible. */
     private function relecteurTiers(): User
     {
         /* PAS DE MÉMOÏSATION `static` ICI. La première écriture en gardait une,
@@ -398,7 +399,7 @@ class PanneauCouvertureTest extends TestCase
 
         $compte->markEmailAsVerified();
 
-        $role = Role::where('code', 'editeur')->whereNull('tenant_id')->value('id');
+        $role = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id');
 
         if (! $compte->memberships()->where('role_id', $role)->exists()) {
             $compte->memberships()->create(['role_id' => $role]);

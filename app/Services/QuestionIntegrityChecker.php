@@ -147,12 +147,6 @@ final class QuestionIntegrityChecker
             $issues[] = "Aucun valideur n'est enregistré.";
         }
 
-        // Le valideur n'est jamais le rédacteur : règle permanente §7.2 de
-        // docs/METHODE.md. Une relecture par son auteur n'est pas une relecture.
-        if ($question->validator_id !== null && $question->validator_id === $question->author_id) {
-            $issues[] = "Le valideur ne peut pas être l'auteur de la question.";
-        }
-
         $exigeSource = $question->eligible_for_diagnostic || $question->eligible_for_simulation;
 
         if ($exigeSource && ! $question->hasVerifiedContentSource()) {

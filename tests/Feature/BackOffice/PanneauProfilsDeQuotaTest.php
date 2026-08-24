@@ -48,7 +48,7 @@ class PanneauProfilsDeQuotaTest extends TestCase
         parent::setUp();
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
 
-        $this->pedagogue = $this->membre('pedagogue-bo@naja7i.ma', 'editeur');
+        $this->pedagogue = $this->membre('pedagogue-bo@naja7i.ma', 'super_admin');
         $this->commerciale = $this->membre('commerciale-bo@naja7i.ma', 'finance');
     }
 

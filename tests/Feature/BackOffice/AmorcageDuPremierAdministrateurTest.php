@@ -93,8 +93,12 @@ class AmorcageDuPremierAdministrateurTest extends TestCase
 
         /* LA LISTE ENTIÈRE, et pas seulement un exemple : un refus qui ne dit
          * pas ce qui était attendu envoie l'exploitant lire le code. */
-        foreach (Role::whereNull('tenant_id')->where('is_staff', true)->pluck('code') as $valide) {
+        foreach (Role::whereNull('tenant_id')->where('is_staff', true)->where('is_active', true)->pluck('code') as $valide) {
             $this->assertStringContainsString($valide, $sortie);
+        }
+
+        foreach (['auteur', 'reviseur', 'editeur'] as $inactif) {
+            $this->assertStringNotContainsString($inactif, $sortie);
         }
 
         $this->assertSame(0, User::where('email', 'admin@naja7i.ma')->count());
@@ -285,11 +289,11 @@ class AmorcageDuPremierAdministrateurTest extends TestCase
     public function test_le_geste_laisse_sa_trace(): void
     {
         Notification::fake();
-        $this->amorcer(['--role' => 'editeur'])->assertSuccessful();
+        $this->amorcer(['--role' => 'expert_pedagogue'])->assertSuccessful();
 
         $compte = User::where('email', 'admin@naja7i.ma')->sole();
         $invitation = StaffInvitation::query()->sole();
-        $role = Role::where('code', 'editeur')->whereNull('tenant_id')->sole();
+        $role = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->sole();
 
         /* Trois lignes durables disent les quatre faits : le compte visé et sa
          * date, le rôle, et une invitation dont `invited_by` NUL signifie

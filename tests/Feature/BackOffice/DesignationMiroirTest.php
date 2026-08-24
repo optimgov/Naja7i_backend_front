@@ -5,6 +5,7 @@ namespace Tests\Feature\BackOffice;
 use App\Filament\Resources\Questions\Pages\ListQuestions;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
+use App\Models\Permission;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\Remediation;
@@ -65,8 +66,11 @@ class DesignationMiroirTest extends TestCase
         $this->noeud = CompetencyNode::where('code', 'SE-PSY-DEV')->firstOrFail();
         $this->source = Source::where('code', 'SRC-CRMEF-2025-SE')->firstOrFail();
 
-        $this->editeur = $this->membre('editeur@naja7i.ma', 'editeur');
-        $this->auteur = $this->membre('auteur@naja7i.ma', 'auteur');
+        $this->editeur = $this->membre('editeur@naja7i.ma', 'expert_pedagogue');
+        $this->auteur = $this->membreAvecPermissions(
+            'auteur@naja7i.ma',
+            ['questions.view', 'questions.create', 'catalogue.view'],
+        );
     }
 
     private function membre(string $email, string $role): User
@@ -81,6 +85,20 @@ class DesignationMiroirTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    /** Acteur de contrôle : il rédige et consulte, sans droit de publication. */
+    private function membreAvecPermissions(string $email, array $permissions): User
+    {
+        $role = Role::create([
+            'code' => 'redacteur-controle',
+            'label_fr' => 'Rédacteur de contrôle',
+            'label_ar' => 'محرر اختبار',
+            'is_staff' => true,
+        ]);
+        $role->permissions()->attach(Permission::whereIn('code', $permissions)->pluck('id'));
+
+        return $this->membre($email, $role->code);
     }
 
     /** Une question menée jusqu'au statut demandé, distracteur A de cause `calcul`. */
@@ -123,7 +141,7 @@ class DesignationMiroirTest extends TestCase
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        /* Trois actes, trois personnes : le relecteur n'est pas le valideur. */
+        /* Deux comptes rendent ici les identités de trace faciles à distinguer. */
         $transitions->markReviewed($question, $this->relecteurTiers());
         $transitions->validate($question, $this->editeur);
         $transitions->publish($question, forDiagnostic: true);
@@ -252,7 +270,7 @@ class DesignationMiroirTest extends TestCase
     {
         $publiee = $this->question();
 
-        /* Le rôle `auteur` porte `questions.create` mais pas `questions.publish` :
+        /* Le rôle de contrôle porte `questions.create` mais pas `questions.publish` :
          * sur une question déjà servie, changer la désignation change ce que des
          * candidats recevront, et c'est la classe de décision que `publish`
          * gouverne. */
@@ -277,13 +295,7 @@ class DesignationMiroirTest extends TestCase
             ->assertActionHidden(TestAction::make('designer_miroir')->table($brouillon));
     }
 
-    /**
-     * Un relecteur DISTINCT du valideur.
-     *
-     * Trois actes, trois personnes : depuis le 17 aout, le valideur n'est ni
-     * l'auteur ni le relecteur. Cette fixture faisait jouer les deux roles au
-     * meme compte ; on la migre plutot que de relacher la regle.
-     */
+    /** Compte tiers conservé pour rendre la traçabilité de la fixture lisible. */
     private function relecteurTiers(): User
     {
         /* PAS DE MÉMOÏSATION `static` ICI. La première écriture en gardait une,
@@ -298,7 +310,7 @@ class DesignationMiroirTest extends TestCase
 
         $compte->markEmailAsVerified();
 
-        $role = Role::where('code', 'editeur')->whereNull('tenant_id')->value('id');
+        $role = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id');
 
         if (! $compte->memberships()->where('role_id', $role)->exists()) {
             $compte->memberships()->create(['role_id' => $role]);

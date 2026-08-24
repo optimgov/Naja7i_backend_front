@@ -28,11 +28,8 @@ use Tests\TestCase;
  *    permission déclarée doit entrer, et un compte qui ne la porte pas doit
  *    être refusé. Si une politique change d'avis, ce test rougit.
  *
- * DES RÔLES DU PRODUIT, PAS DES RÔLES FABRIQUÉS. Le référentiel du PAS-9 en
- * fournit déjà deux qui se complètent exactement — `auteur` porte
- * `questions.view` sans `orders.view`, `finance` l'inverse. Inventer un rôle
- * pour le test éprouverait le panneau sous une identité qui n'existe nulle
- * part, et les permissions réelles cesseraient d'être en jeu.
+ * DES RÔLES DU PRODUIT, PAS DES RÔLES FABRIQUÉS. Le test confronte les quatre
+ * profils actifs et leurs permissions réelles.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 class RefusNommeTest extends TestCase
@@ -106,25 +103,24 @@ class RefusNommeTest extends TestCase
     private function rolesAutourDe(string $permission): array
     {
         $porteurs = [
-            'questions.view' => 'auteur',
+            'questions.view' => 'expert_pedagogue',
             'orders.view' => 'finance',
             'members.view' => 'support',
-            /* L'autorité pédagogique de la plateforme, qui porte déjà
-             * `questions.validate` et `taxonomy.manage`. */
-            'quotas.manage' => 'editeur',
+            /* Le profil expert est volontairement borné à l'éditorial et à la
+             * taxonomie ; le paramétrage de quotas reste au super_admin. */
+            'quotas.manage' => 'super_admin',
             /* L'arbre de compétences appartient à la même autorité pédagogique :
-             * `taxonomy.manage` est attachée au rôle `editeur` depuis le PAS-1,
-             * et le lot TAXO lui donne enfin une surface. */
-            'taxonomy.manage' => 'editeur',
+             * `taxonomy.manage` appartient à l'allowlist éditoriale v1.1. */
+            'taxonomy.manage' => 'expert_pedagogue',
             /* L'échelle de difficulté se CORRIGE sous l'autorité pédagogique.
              * La POSER demande `questions.difficulty` (Q-10) : deux gestes,
              * deux permissions — un expert signale une ancre mal formulée, il
              * ne la réécrit pas seul. */
-            'questions.validate' => 'editeur',
+            'questions.validate' => 'expert_pedagogue',
             /* La file de qualification s'ouvre au relecteur : c'est lui qui y
              * passe ses heures. `questions.validate` en dispose aussi, mais
              * c'est `questions.review` que la surface déclare. */
-            'questions.review' => 'reviseur',
+            'questions.review' => 'expert_pedagogue',
             /* Écrire dans le catalogue commercial — composer une offre, poser
              * un droit transitoire — engage l'argent au même titre que valider
              * un coupon (`PlanPolicy`). */
@@ -132,8 +128,8 @@ class RefusNommeTest extends TestCase
         ];
         $etrangers = [
             'questions.view' => 'finance',
-            'orders.view' => 'auteur',
-            'members.view' => 'auteur',
+            'orders.view' => 'expert_pedagogue',
+            'members.view' => 'expert_pedagogue',
             /* Celle qui vend ne borne pas : c'est tout l'objet du partage. */
             'quotas.manage' => 'finance',
             /* Ni ne redécoupe l'arbre d'une épreuve. */
@@ -143,7 +139,7 @@ class RefusNommeTest extends TestCase
             /* Et ne qualifie pas les questions du corpus. */
             'questions.review' => 'finance',
             /* L'autorité éditoriale ne distribue pas de droits commerciaux. */
-            'orders.validate' => 'editeur',
+            'orders.validate' => 'expert_pedagogue',
         ];
 
         $this->assertArrayHasKey(
@@ -214,7 +210,7 @@ class RefusNommeTest extends TestCase
      */
     public function test_la_page_403_nomme_la_surface_la_permission_et_le_compte(): void
     {
-        $auteur = $this->compte('auteur');
+        $auteur = $this->compte('expert_pedagogue');
         $adresse = OrderResource::getUrl('index', panel: 'admin');
 
         $reponse = $this->actingAs($auteur)->get($adresse);
@@ -270,7 +266,7 @@ class RefusNommeTest extends TestCase
         $voisin = $this->compte('finance');
 
         $this->flushSession();
-        $auteur = $this->compte('auteur');
+        $auteur = $this->compte('expert_pedagogue');
 
         $reponse = $this->actingAs($auteur)
             ->get(OrderResource::getUrl('index', panel: 'admin'));

@@ -46,7 +46,7 @@ class HistoriqueDesVersionsTest extends TestCase
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
 
         $this->commerciale = $this->membre('commerciale-versions@naja7i.ma', 'finance');
-        $this->editrice = $this->membre('editrice-versions@naja7i.ma', 'editeur');
+        $this->editrice = $this->membre('editrice-versions@naja7i.ma', 'super_admin');
 
         $this->candidat = User::create([
             'email' => 'candidat-versions@naja7i.ma',

@@ -76,21 +76,7 @@ abstract class TestCase extends BaseTestCase
         }
     }
 
-    /**
-     * UN RELECTEUR DISTINCT, pour les fixtures qui mènent une question jusqu'à
-     * la publication.
-     *
-     * Depuis le 17 août, la chaîne éditoriale exige TROIS personnes : le
-     * valideur n'est ni l'auteur ni le relecteur (le raisonnement est dans
-     * `QuestionTransitionService::validate()`). Douze fixtures faisaient jouer
-     * les deux rôles au même compte — non par négligence, mais parce que rien
-     * ne l'interdisait alors.
-     *
-     * On migre les fixtures plutôt que de relâcher la règle. Ce compte n'a
-     * qu'un rôle : franchir l'étape de relecture pour que le test puisse
-     * observer ce qui l'intéresse vraiment, en aval. Les tests qui portent SUR
-     * la relecture, eux, nomment leurs comptes explicitement.
-     */
+    /** Compte de contrôle pour les fixtures qui isolent un acteur de relecture. */
     protected function relecteurDeControle(): User
     {
         $compte = User::firstOrCreate(
@@ -100,7 +86,7 @@ abstract class TestCase extends BaseTestCase
 
         $compte->markEmailAsVerified();
 
-        $role = Role::where('code', 'editeur')->whereNull('tenant_id')->value('id');
+        $role = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id');
 
         if (! $compte->memberships()->where('role_id', $role)->exists()) {
             $compte->memberships()->create(['role_id' => $role]);

@@ -44,6 +44,8 @@ class TransitionsHttpTest extends TestCase
 
     private User $editeur;
 
+    private User $sansPermission;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -53,9 +55,10 @@ class TransitionsHttpTest extends TestCase
         $this->noeud = CompetencyNode::where('code', 'SE-PSY-DEV')->firstOrFail();
         $this->source = Source::where('code', 'SRC-CRMEF-2025-SE')->firstOrFail();
 
-        $this->auteur = $this->membre('auteur@naja7i.ma', 'auteur');
-        $this->reviseur = $this->membre('reviseur@naja7i.ma', 'reviseur');
-        $this->editeur = $this->membre('editeur@naja7i.ma', 'editeur');
+        $this->auteur = $this->membre('auteur@naja7i.ma', 'expert_pedagogue');
+        $this->reviseur = $this->membre('reviseur@naja7i.ma', 'expert_pedagogue');
+        $this->editeur = $this->membre('editeur@naja7i.ma', 'expert_pedagogue');
+        $this->sansPermission = $this->membre('sans-permission@naja7i.ma', 'candidat');
     }
 
     private function membre(string $email, string $role): User
@@ -178,9 +181,7 @@ class TransitionsHttpTest extends TestCase
     {
         $uuid = $this->rediger();
 
-        /* Le réviseur porte `questions.review` mais pas `questions.create` :
-         * relire n'est pas écrire. */
-        $this->agirComme($this->reviseur)
+        $this->agirComme($this->sansPermission)
             ->postJson("/api/v1/admin/questions/{$uuid}/submit")
             ->assertForbidden();
 
@@ -196,7 +197,7 @@ class TransitionsHttpTest extends TestCase
         $uuid = $this->rediger();
         $this->agirComme($this->auteur)->postJson("/api/v1/admin/questions/{$uuid}/submit")->assertOk();
 
-        $this->agirComme($this->auteur)
+        $this->agirComme($this->sansPermission)
             ->postJson("/api/v1/admin/questions/{$uuid}/review")
             ->assertForbidden();
 
@@ -213,7 +214,7 @@ class TransitionsHttpTest extends TestCase
 
         /* Le réviseur a relu, mais valider pédagogiquement est un autre geste :
          * le référentiel du PAS-9 les distingue par deux permissions. */
-        $this->agirComme($this->reviseur)
+        $this->agirComme($this->sansPermission)
             ->postJson("/api/v1/admin/questions/{$uuid}/validate")
             ->assertForbidden();
 
@@ -226,36 +227,19 @@ class TransitionsHttpTest extends TestCase
 
     // --- Les refus du service, traduits sans être réécrits ----------------------
 
-    /**
-     * L'AUTEUR NE VALIDE PAS SA PROPRE QUESTION, PAR LA ROUTE NON PLUS.
-     *
-     * C'est un ÉDITEUR qui rédige ici, et c'est tout le test : le faire écrire
-     * par le rôle `auteur` ne prouverait rien, puisqu'il n'a pas
-     * `questions.validate` et recevrait 403 pour une raison sans rapport. Il
-     * faut quelqu'un qui PEUT valider et qui a écrit la question — le même
-     * piège que le test du bouton, au lot A4.
-     */
-    public function test_l_auteur_ne_valide_pas_sa_propre_question_par_la_route(): void
+    /** La route accepte l'auto-validation du profil expert unifié. */
+    public function test_un_meme_expert_valide_sa_propre_question_par_la_route(): void
     {
         $uuid = $this->menerJusquARelue(auteur: $this->editeur);
 
         $this->agirComme($this->editeur)
             ->postJson("/api/v1/admin/questions/{$uuid}/validate")
-            ->assertStatus(422)
-            ->assertJsonPath('error.code', 'QUESTION_TRANSITION_REFUSED');
-
-        $this->assertSame(
-            'reviewed', Question::where('uuid', $uuid)->value('status'),
-            'Un refus ne laisse pas la question à mi-chemin.'
-        );
-
-        /* L'autre sens : un second éditeur, qui n'est pas l'auteur, valide. */
-        $autre = $this->membre('editeur2@naja7i.ma', 'editeur');
-
-        $this->agirComme($autre)
-            ->postJson("/api/v1/admin/questions/{$uuid}/validate")
             ->assertOk()
             ->assertJsonPath('data.status', 'pedagogically_validated');
+
+        $this->assertSame(
+            'pedagogically_validated', Question::where('uuid', $uuid)->value('status'),
+        );
     }
 
     public function test_une_transition_invalide_depuis_l_etat_courant_est_refusee(): void

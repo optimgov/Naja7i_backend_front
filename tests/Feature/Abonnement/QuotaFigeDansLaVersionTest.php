@@ -71,7 +71,7 @@ class QuotaFigeDansLaVersionTest extends TestCase
         ]);
         $this->pedagogue->markEmailAsVerified();
         $this->pedagogue->memberships()->create([
-            'role_id' => Role::where('code', 'editeur')->whereNull('tenant_id')->value('id'),
+            'role_id' => Role::where('code', 'super_admin')->whereNull('tenant_id')->value('id'),
         ]);
 
         $this->plan = Plan::create([

@@ -66,8 +66,8 @@ class FiltresSansAnnuaireTest extends TestCase
         parent::setUp();
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
 
-        $this->auteur = $this->membre('auteur-filtre@naja7i.ma', 'auteur');
-        $this->relecteur = $this->membre('relecteur-filtre@naja7i.ma', 'reviseur');
+        $this->auteur = $this->membre('auteur-filtre@naja7i.ma', 'expert_pedagogue');
+        $this->relecteur = $this->membre('relecteur-filtre@naja7i.ma', 'expert_pedagogue');
 
         /* UN CANDIDAT, avec une adresse reconnaissable. C'est LUI qu'on ne doit
          * pas trouver dans le filtre — et son adresse est le fait qui fuyait. */

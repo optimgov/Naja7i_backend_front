@@ -38,9 +38,8 @@ class ChaineEditorialeTest extends TestCase
 
     private User $relecteur;
 
-    /* TROIS ACTES, TROIS PERSONNES. Le valideur n'est ni l'auteur ni le
-     * relecteur depuis le 17 aout : la fixture porte donc un troisieme compte,
-     * au lieu de faire jouer deux roles au meme. */
+    /* Des comptes séparés restent utiles aux tests de traçabilité, sans être
+     * une condition métier de la chaîne. */
     private User $valideur;
 
     protected function setUp(): void
@@ -52,9 +51,9 @@ class ChaineEditorialeTest extends TestCase
         $this->noeud = CompetencyNode::where('code', 'SE-PSY-DEV')->firstOrFail();
         $this->source = Source::where('code', 'SRC-CRMEF-2025-SE')->firstOrFail();
 
-        $this->auteur = $this->membre('auteur@naja7i.ma', 'auteur');
-        $this->relecteur = $this->membre('editeur@naja7i.ma', 'editeur');
-        $this->valideur = $this->membre('valideur@naja7i.ma', 'editeur');
+        $this->auteur = $this->membre('auteur@naja7i.ma', 'expert_pedagogue');
+        $this->relecteur = $this->membre('editeur@naja7i.ma', 'expert_pedagogue');
+        $this->valideur = $this->membre('valideur@naja7i.ma', 'expert_pedagogue');
     }
 
     private function membre(string $email, ?string $role): User
@@ -206,18 +205,19 @@ class ChaineEditorialeTest extends TestCase
         $this->assertSame('pedagogically_validated', $question->fresh()->status);
     }
 
-    public function test_l_auteur_ne_peut_pas_valider_sa_propre_question(): void
+    public function test_un_meme_expert_peut_relire_et_valider_sa_propre_question(): void
     {
         $uuid = $this->rediger()->assertCreated()->json('data.uuid');
         $question = Question::where('uuid', $uuid)->firstOrFail();
 
         $transitions = app(QuestionTransitionService::class);
         $transitions->submitForReview($question);
-        $transitions->markReviewed($question->fresh(), $this->relecteur);
+        $transitions->markReviewed($question->fresh(), $this->auteur);
+        $validee = $transitions->validate($question->fresh(), $this->auteur);
 
-        $this->expectExceptionMessage('Le valideur ne peut pas être l\'auteur');
-
-        $transitions->validate($question->fresh(), $this->auteur);
+        $this->assertSame('pedagogically_validated', $validee->status);
+        $this->assertSame($this->auteur->id, $validee->reviewer_id);
+        $this->assertSame($this->auteur->id, $validee->validator_id);
     }
 
     public function test_une_question_publiee_ne_peut_plus_changer_de_source(): void
@@ -360,7 +360,7 @@ class ChaineEditorialeTest extends TestCase
 
     public function test_verifier_une_source_exige_la_permission_de_relire(): void
     {
-        $this->agirComme($this->auteur)
+        $this->agirComme($this->membre('sans-relecture@naja7i.ma', null))
             ->postJson("/api/v1/admin/sources/{$this->source->uuid}/verify")
             ->assertStatus(403)
             ->assertJsonPath('error.code', 'PERMISSION_DENIED');
@@ -510,7 +510,7 @@ class ChaineEditorialeTest extends TestCase
 
     public function test_la_file_de_relecture_exige_la_permission_de_relire(): void
     {
-        $this->agirComme($this->membre('lecteur@naja7i.ma', 'auteur'))
+        $this->agirComme($this->membre('lecteur@naja7i.ma', null))
             ->getJson('/api/v1/admin/questions/a-relire')
             ->assertStatus(403);
 
@@ -544,7 +544,7 @@ class ChaineEditorialeTest extends TestCase
     {
         $this->rediger()->assertCreated();
 
-        $autreAuteur = $this->membre('auteur2@naja7i.ma', 'auteur');
+        $autreAuteur = $this->membre('auteur2@naja7i.ma', 'expert_pedagogue');
         $this->rediger(['stem' => 'Un autre énoncé du second auteur ?'], $autreAuteur)->assertCreated();
 
         $par = fn (string $q) => $this->agirComme($this->relecteur)
@@ -619,7 +619,7 @@ class ChaineEditorialeTest extends TestCase
         $this->assertSame(1, $total);
     }
 
-    /** Mène une question jusqu'à la validation pédagogique, valideur ≠ auteur. */
+    /** Mène une question jusqu'à la validation pédagogique. */
     /*
      * ══════════════════════════════════════════════════════════════════════
      * BLOC-3 DE L'AUDIT TOURNÉE 3 — LE PATCH RÉPONDAIT SUCCÈS SUR UN ÉTAT

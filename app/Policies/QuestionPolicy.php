@@ -10,8 +10,7 @@ use App\Services\PermissionResolver;
  * Traduction du référentiel de permissions vers l'interface — lot A4.
  *
  * CETTE CLASSE NE DÉCIDE RIEN. Elle relaie `PermissionResolver`, seul juge
- * depuis le PAS-9, et ajoute exactement une règle qui n'a pas de permission
- * associée parce qu'elle n'en est pas une : le relecteur n'est pas l'auteur.
+ * depuis le PAS-9. Les états éditoriaux bornent ensuite les actions visibles.
  *
  * POURQUOI L'INTERFACE A BESOIN DE POLICIES ALORS QUE LES ROUTES ONT DÉJÀ LEUR
  * MIDDLEWARE. Le middleware refuse une ACTION ; une interface doit décider ce
@@ -20,9 +19,8 @@ use App\Services\PermissionResolver;
  * clic, sans que rien n'ait prévenu. Les deux ne se remplacent donc pas : le
  * middleware protège, la policy explique.
  *
- * LA GARDE MÉTIER RESTE DANS LE SERVICE. `QuestionTransitionService::validate()`
- * refuse toujours l'auteur, quoi qu'affiche l'écran. Ce qui est écrit ici n'en
- * est que le reflet, et un reflet ne protège personne.
+ * Les identités des acteurs restent enregistrées à chaque étape, sans imposer
+ * qu'elles désignent des personnes différentes.
  */
 class QuestionPolicy
 {
@@ -56,33 +54,16 @@ class QuestionPolicy
             && ! in_array($question->status, ['published', 'retired'], true);
     }
 
-    /**
-     * Relire — et JAMAIS sa propre question.
-     *
-     * La paternité manquait ici comme dans le service. Reflet de la garde, pas
-     * la garde : c'est `QuestionTransitionService::markReviewed()` qui refuse.
-     */
     public function review(User $user, Question $question): bool
     {
         return $this->peut($user, 'questions.review')
-            && $question->status === 'a_verifier'
-            && $question->author_id !== $user->id;
+            && $question->status === 'a_verifier';
     }
 
-    /**
-     * Valider pédagogiquement — et JAMAIS sa propre question.
-     *
-     * Règle permanente METHODE §7.2. Elle vit dans le service, qui la refuse en
-     * transaction ; elle est répétée ici pour que le bouton n'existe pas, plutôt
-     * que d'exister et d'échouer. Une relecture par son auteur n'est pas une
-     * relecture — l'écran doit le dire avant le clic, pas après.
-     */
     public function validate(User $user, Question $question): bool
     {
         return $this->peut($user, 'questions.validate')
-            && $question->status === 'reviewed'
-            && $question->author_id !== $user->id
-            && $question->reviewer_id !== $user->id;
+            && $question->status === 'reviewed';
     }
 
     public function publish(User $user, Question $question): bool

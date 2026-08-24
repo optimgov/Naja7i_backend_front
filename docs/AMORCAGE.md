@@ -101,14 +101,20 @@ avec la liste en clair :
 | Code | Ce qu'il ouvre |
 |---|---|
 | `super_admin` | toutes les permissions |
-| `editeur` | banque de questions, catalogue, taxonomie, profils de quota, difficulté |
-| `reviseur` | révision des questions, file de qualification, difficulté |
-| `auteur` | rédaction des questions, lecture du catalogue |
-| `support` | assistance candidat, octroi et révocation d'accès |
+| `expert_pedagogue` | rédaction, qualification, révision, validation, publication et retrait logique des questions ; catalogue et taxonomie |
+| `support` | droits historiques d'assistance, d'accès et de consultation ; périmètre provisoire jusqu'au lot réclamations/messagerie |
 | `finance` | commandes, offres, coupons, droit transitoire |
 
 Le rôle `candidat` est **refusé** : il ne porte aucune permission de
 back-office, et le compte créé ne pourrait pas entrer.
+
+Les anciens codes `auteur`, `reviseur` et `editeur` restent en base uniquement
+pour préserver l'historique des appartenances. Ils sont inactifs, absents de la
+liste et ne peuvent plus être attribués.
+
+`super_admin` porte toutes les permissions, mais son attribution obéit à une
+règle d'anti-délégation supplémentaire : seul un compte qui porte déjà ce rôle
+peut l'attribuer. Le simple cumul de toutes ses permissions ne suffit pas.
 
 **Rejouée sur un compte qui existe déjà**, la commande n'écrase rien — ni rôle,
 ni mot de passe, ni invitation. Elle dit ce qui existe et s'arrête.
@@ -173,8 +179,10 @@ php artisan crmef:importer-annales --env=staging
 Les questions importées entrent en **`status = draft`**, et un brouillon ne se
 sert jamais à un candidat. Entre l'import et un diagnostic qui rend de vraies
 questions, il y a la chaîne éditoriale — qualification du domaine, corrigé
-établi, justification de chaque option, cause de chaque distracteur, relecture
-par un tiers, publication. **C'est le travail des experts, et c'est le jalon 2.**
+établi, justification de chaque option, cause de chaque distracteur, relecture,
+validation et publication. Un même expert pédagogue peut accomplir ces actes,
+qui restent tous datés et attribués. **C'est le travail des experts, et c'est le
+jalon 2.**
 
 **Il n'existe aucun raccourci de publication en masse, et il ne faut pas en
 fabriquer un.** Publier du contenu non qualifié, même en préproduction, ferait

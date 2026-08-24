@@ -434,13 +434,7 @@ class QuestionAdminController extends Controller
         return $this->transiter($uuid, fn (Question $q) => $this->transitions->markReviewed($q, $request->user()));
     }
 
-    /**
-     * Validation pédagogique — et JAMAIS par l'auteur.
-     *
-     * La règle vit dans le service (METHODE §7.2) et y reste. Elle s'oppose
-     * donc à cette route comme elle s'oppose au bouton du back-office : ni
-     * l'une ni l'autre ne la porte, toutes deux la subissent.
-     */
+    /** Validation pédagogique, avec identité de l'acteur conservée. */
     public function validatePedagogy(Request $request, string $uuid): JsonResponse
     {
         return $this->transiter($uuid, fn (Question $q) => $this->transitions->validate($q, $request->user()));
@@ -449,12 +443,8 @@ class QuestionAdminController extends Controller
     /**
      * Le squelette commun : trouver, tenter, traduire le refus.
      *
-     * UN SEUL CODE D'ERREUR POUR DEUX REFUS DIFFÉRENTS, et c'est délibéré. Le
-     * service lève un `RuntimeException` aussi bien pour « transition interdite
-     * depuis cet état » que pour « le valideur est l'auteur ». Les distinguer
-     * demanderait de lire le TEXTE du message, ce qui casserait le jour où sa
-     * formulation change — un couplage plus fragile que l'information gagnée.
-     * Le message, lui, est rendu tel quel : il dit lequel des deux s'applique.
+     * Le service rend un refus métier stable pour une transition interdite
+     * depuis l'état courant. Le message est transmis sans interpréter son texte.
      *
      * @param  callable(Question): Question  $acte
      */

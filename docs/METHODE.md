@@ -143,8 +143,9 @@ Elles ne se renégocient pas d'un pas à l'autre.
 
 1. **Le serveur est seul juge.** Aucun contrôle d'accès ne repose sur
    l'interface. Une garde de route est un confort, jamais une sécurité.
-2. **Aucune publication de contenu par IA sans validation humaine**, et le
-   valideur n'est jamais le rédacteur.
+2. **Aucune publication de contenu par IA sans validation humaine.** Un même
+   expert pédagogue peut rédiger, relire, valider et publier ; chaque acte garde
+   son état et l'identité de son acteur.
 3. **Aucun score prédictif de réussite au concours**, sous aucun nom.
 4. **Aucun résultat affiché sans explication**, et aucun score de maîtrise sans
    son volume d'évidence.
@@ -206,6 +207,15 @@ Elles ne se renégocient pas d'un pas à l'autre.
     s'ajouterait à ceux qu'on attend et ferait croire à une discrimination plus
     large qu'elle n'est. Ce sont ces verdicts-là qu'il faut rejouer, pas les
     verts.
+13. **Une question ne se supprime jamais définitivement.** Elle peut être
+    retirée ou désactivée logiquement ; son identité, ses sources et sa trace
+    restent en base. L'ancienne commande
+    `naja7i:retirer-les-questions-importees` est supersédée, car l'unicité de
+    `import_ref` rend une réimportation « de zéro » incompatible avec cette
+    conservation.
+14. **Le périmètre support actuel est provisoire.** Ses droits historiques ne
+    sont pas resserrés avant que les permissions et surfaces de réclamations
+    existent ; ce resserrement sera atomique avec le lot messagerie.
 
 ---
 

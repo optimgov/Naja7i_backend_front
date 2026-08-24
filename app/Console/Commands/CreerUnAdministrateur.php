@@ -201,7 +201,7 @@ class CreerUnAdministrateur extends Command
     private function roleDePersonnel(): ?Role
     {
         $code = trim((string) $this->option('role'));
-        $disponibles = Role::query()->whereNull('tenant_id')->where('is_staff', true)
+        $disponibles = Role::query()->whereNull('tenant_id')->where('is_staff', true)->where('is_active', true)
             ->orderBy('code')->pluck('code');
 
         if ($code === '') {
@@ -211,7 +211,7 @@ class CreerUnAdministrateur extends Command
             return null;
         }
 
-        $role = Role::query()->whereNull('tenant_id')->where('code', $code)->first();
+        $role = Role::query()->whereNull('tenant_id')->where('code', $code)->where('is_active', true)->first();
 
         if ($role === null || ! $role->is_staff) {
             $this->error('role_inconnu='.$code);

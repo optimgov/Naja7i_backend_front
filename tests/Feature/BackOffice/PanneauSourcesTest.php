@@ -6,6 +6,7 @@ use App\Filament\Resources\Sources\Pages\EditSource;
 use App\Filament\Resources\Sources\Pages\ListSources;
 use App\Models\CompetencyNode;
 use App\Models\Exam;
+use App\Models\Permission;
 use App\Models\Question;
 use App\Models\Role;
 use App\Models\Source;
@@ -48,8 +49,11 @@ class PanneauSourcesTest extends TestCase
 
         Filament::setCurrentPanel('admin');
 
-        $this->relecteur = $this->membre('relecteur@naja7i.ma', 'editeur');
-        $this->auteur = $this->membre('redacteur@naja7i.ma', 'auteur');
+        $this->relecteur = $this->membre('relecteur@naja7i.ma', 'expert_pedagogue');
+        $this->auteur = $this->membreAvecPermissions(
+            'redacteur@naja7i.ma',
+            ['questions.view', 'questions.create', 'catalogue.view'],
+        );
     }
 
     private function membre(string $email, string $role): User
@@ -64,6 +68,20 @@ class PanneauSourcesTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    /** Acteur de contrôle : il rédige et consulte, sans droit de relecture. */
+    private function membreAvecPermissions(string $email, array $permissions): User
+    {
+        $role = Role::create([
+            'code' => 'redacteur-sans-relecture',
+            'label_fr' => 'Rédacteur sans relecture',
+            'label_ar' => 'محرر دون مراجعة',
+            'is_staff' => true,
+        ]);
+        $role->permissions()->attach(Permission::whereIn('code', $permissions)->pluck('id'));
+
+        return $this->membre($email, $role->code);
     }
 
     private function source(array $remplace = []): Source

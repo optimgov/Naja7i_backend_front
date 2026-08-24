@@ -222,22 +222,20 @@ class CorrectifsRevueTest extends TestCase
         app(QuestionTransitionService::class)->publish($question->fresh(), forDiagnostic: true);
     }
 
-    public function test_publier_avec_auteur_egal_valideur_est_refuse(): void
+    public function test_un_meme_expert_peut_relire_et_valider_sa_question(): void
     {
         $question = $this->questionBrouillon();
         $service = app(QuestionTransitionService::class);
 
         $service->submitForReview($question);
 
-        /* LA RELECTURE EST FAITE PAR UN TIERS, et il faut le dire : depuis le
-         * 17 août, `markReviewed` refuse aussi l'auteur. Faire relire le
-         * candidat ici trébuchait une étape trop tôt, et le test n'atteignait
-         * plus la règle qu'il défend. Un tiers relit, puis l'AUTEUR tente de
-         * valider — c'est bien la règle du valideur qui est éprouvée. */
-        $service->markReviewed($question->fresh(), $this->relecteurDeControle());
+        $service->markReviewed($question->fresh(), $this->candidat);
+        $validee = $service->validate($question->fresh(), $this->candidat);
 
-        $this->expectException(RuntimeException::class);
-        $service->validate($question->fresh(), $this->candidat);   // auteur = valideur
+        $this->assertSame('pedagogically_validated', $validee->status);
+        $this->assertSame($this->candidat->id, $validee->author_id);
+        $this->assertSame($this->candidat->id, $validee->reviewer_id);
+        $this->assertSame($this->candidat->id, $validee->validator_id);
     }
 
     public function test_une_transition_hors_sequence_est_refusee(): void

@@ -157,7 +157,7 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
     public function hasRole(string $roleCode): bool
     {
         return $this->memberships()
-            ->whereHas('role', fn ($q) => $q->where('code', $roleCode))
+            ->whereHas('role', fn ($q) => $q->where('code', $roleCode)->where('is_active', true))
             ->exists();
     }
 

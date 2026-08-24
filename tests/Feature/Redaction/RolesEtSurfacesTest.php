@@ -18,73 +18,12 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
-use RuntimeException;
 use Tests\TestCase;
 
 /**
- * L'ÉCART ENTRE LES RÔLES ET LES SURFACES — la cause unique de quatre défauts.
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * LA RÈGLE, EN TROIS LIGNES
- *
- *   1. Une action est offerte SI ET SEULEMENT SI la permission qui la gouverne
- *      est portée par le compte, ET la transition est valide dans l'état
- *      courant du dossier.
- *   2. Une action n'est jamais hébergée sur une surface dont l'accès est
- *      gouverné par une AUTRE permission que la sienne.
- *   3. Ce que l'écran refuse, le service le refuse aussi. L'écran explique ;
- *      le service protège. Jamais l'inverse, jamais l'un sans l'autre.
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * CE QUE LA RECETTE HUMAINE A MESURÉ, ET QUE CES TESTS FIXENT
- *
- * La règle 2 est celle que nous avions perdue, et elle explique à elle seule
- * trois défauts sur quatre. Les actions `relire`, `valider`, `publier` et
- * `retirer` vivent toutes sur `EditQuestion`. Or l'accès à cette page est
- * gouverné par `QuestionPolicy::update()`, qui exige `questions.create` et
- * refuse tout statut gelé. Conséquences observées sur une instance qui tourne :
- *
- *   · le RELECTEUR, qui porte `questions.review` mais pas `questions.create`,
- *     reçoit 403 sur la page qui héberge le bouton « Marquer relue ». Le rôle
- *     dont c'est le seul métier ne peut relire aucune question ;
- *   · une question PUBLIÉE ne peut plus être retirée : `update()` refuse le
- *     statut `published` — à juste titre, le contenu est gelé — et emporte avec
- *     lui l'action `retirer`, qui est pourtant la seule transition que la table
- *     autorise depuis cet état.
- *
- * La règle 1 est celle qui manquait à `review`. `validate()` refuse déjà son
- * auteur, dans le service comme dans la policy. `review` ne le faisait ni ici
- * ni là : un compte portant `questions.create` ET `questions.review` — c'est le
- * rôle `editeur` livré par le semis — écrivait une question, la soumettait, et
- * la relisait lui-même. Mesuré en base : `author_id = reviewer_id`.
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * L'ARBITRAGE SUR LES TROIS RÔLES, ET SON RAISONNEMENT
- *
- * Question posée : `validator_id` peut-il valoir `reviewer_id` ?
- *
- * TRANCHÉ : NON. Trois actes, trois personnes distinctes.
- *
- * Le raisonnement. La chaîne comporte trois actes qui ne mesurent pas la même
- * chose. L'auteur produit. Le relecteur vérifie la FORME — l'énoncé est-il
- * clair, les options sont-elles justifiées, la cause est-elle plausible. Le
- * valideur engage le FOND pédagogique : il déclare que cette question mesure
- * bien la compétence qu'elle prétend mesurer, et c'est cette signature qui
- * fonde la crédibilité de la banque devant un candidat.
- *
- * Si le relecteur valide ce qu'il vient de relire, il ne reste que deux regards
- * là où le dispositif en promet trois — et surtout, le second regard perd son
- * indépendance : on ne conteste pas volontiers ce qu'on vient d'approuver.
- * L'ancrage est un biais documenté, pas une méfiance envers les personnes.
- *
- * LE COÛT EST RÉEL ET ASSUMÉ : une équipe éditoriale ne peut pas publier à
- * moins de trois comptes distincts. C'est un coût d'organisation, pas un coût
- * technique, et c'est exactement la garantie que le document du parcours
- * candidat promet à des tiers. Une promesse publiée qui coûte moins cher que
- * ce qu'elle annonce n'est pas une économie, c'est une fausse déclaration.
- *
- * La règle est donc : `reviewer_id != author_id`, et
- * `validator_id != author_id` ET `validator_id != reviewer_id`.
+ * Les actes éditoriaux restent gouvernés par leurs permissions et leur état.
+ * Le profil expert unifié peut tous les exercer, y compris sur une question
+ * qu'il a lui-même rédigée, tandis que chaque identité d'acteur reste tracée.
  */
 class RolesEtSurfacesTest extends TestCase
 {
@@ -106,25 +45,18 @@ class RolesEtSurfacesTest extends TestCase
         $this->transitions = app(QuestionTransitionService::class);
     }
 
-    /**
-     * D-17 — LE DÉFAUT LE PLUS GRAVE DE LA RECETTE.
-     *
-     * Un compte qui porte l'écriture ET la relecture relit son propre travail.
-     * Le test le tente PAR LE SERVICE, parce que c'est là que la garantie doit
-     * vivre : une garde qui n'existerait que dans Filament laisserait passer
-     * l'API d'administration, la console et tout appelant futur.
-     */
-    public function test_un_auteur_ne_peut_pas_relire_sa_propre_question(): void
+    /** Le service conserve l'acteur sans imposer une seconde personne. */
+    public function test_un_expert_peut_relire_sa_propre_question(): void
     {
-        $editeur = $this->membre('editeur-solitaire@naja7i.ma', 'editeur');
+        $editeur = $this->membre('editeur-solitaire@naja7i.ma', 'expert_pedagogue');
         $question = $this->questionDe($editeur);
 
         $this->transitions->submitForReview($question);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageMatches('/auteur/i');
+        $relue = $this->transitions->markReviewed($question->fresh(), $editeur);
 
-        $this->transitions->markReviewed($question->fresh(), $editeur);
+        $this->assertSame('reviewed', $relue->status);
+        $this->assertSame($editeur->id, $relue->reviewer_id);
     }
 
     /**
@@ -133,8 +65,8 @@ class RolesEtSurfacesTest extends TestCase
      */
     public function test_un_autre_compte_relit_sans_obstacle(): void
     {
-        $auteur = $this->membre('auteur-a@naja7i.ma', 'auteur');
-        $relecteur = $this->membre('relecteur-a@naja7i.ma', 'reviseur');
+        $auteur = $this->membre('auteur-a@naja7i.ma', 'expert_pedagogue');
+        $relecteur = $this->membre('relecteur-a@naja7i.ma', 'expert_pedagogue');
 
         $question = $this->questionDe($auteur);
         $this->transitions->submitForReview($question);
@@ -145,24 +77,21 @@ class RolesEtSurfacesTest extends TestCase
         $this->assertSame($relecteur->id, $relue->reviewer_id);
     }
 
-    /**
-     * TROIS ACTES, TROIS PERSONNES — le valideur n'est pas non plus le
-     * relecteur. L'arbitrage et son raisonnement sont dans le docblock de
-     * classe ; ce test le rend opposable.
-     */
-    public function test_le_valideur_n_est_ni_l_auteur_ni_le_relecteur(): void
+    /** Relecture et validation peuvent être accomplies par le même expert. */
+    public function test_un_expert_peut_valider_apres_avoir_relu(): void
     {
-        $auteur = $this->membre('auteur-b@naja7i.ma', 'auteur');
-        $relecteur = $this->membre('relecteur-b@naja7i.ma', 'editeur');
+        $auteur = $this->membre('auteur-b@naja7i.ma', 'expert_pedagogue');
+        $relecteur = $this->membre('relecteur-b@naja7i.ma', 'expert_pedagogue');
 
         $question = $this->questionDe($auteur);
         $this->transitions->submitForReview($question);
         $this->transitions->markReviewed($question->fresh(), $relecteur);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageMatches('/relecteur/i');
+        $validee = $this->transitions->validate($question->fresh(), $relecteur);
 
-        $this->transitions->validate($question->fresh(), $relecteur);
+        $this->assertSame('pedagogically_validated', $validee->status);
+        $this->assertSame($relecteur->id, $validee->reviewer_id);
+        $this->assertSame($relecteur->id, $validee->validator_id);
     }
 
     /**
@@ -179,17 +108,16 @@ class RolesEtSurfacesTest extends TestCase
      */
     public function test_le_relecteur_trouve_son_acte_sur_la_liste(): void
     {
-        $auteur = $this->membre('auteur-c@naja7i.ma', 'auteur');
-        $relecteur = $this->membre('relecteur-c@naja7i.ma', 'reviseur');
+        $auteur = $this->membre('auteur-c@naja7i.ma', 'expert_pedagogue');
+        $relecteur = $this->membre('relecteur-c@naja7i.ma', 'expert_pedagogue');
 
         $question = $this->questionDe($auteur);
         $this->transitions->submitForReview($question);
         $question = $question->fresh();
 
-        $this->assertFalse(
+        $this->assertTrue(
             $relecteur->can('update', $question),
-            'Le relecteur ne doit PAS pouvoir amender le contenu : ce n’est pas son métier. '
-            .'Si cette assertion tombe, la correction a ouvert une porte de trop.'
+            'Le profil expert unifié porte aussi la rédaction tant que le contenu n’est pas gelé.'
         );
 
         $this->assertActeOffertSurLaListe(
@@ -368,9 +296,9 @@ class RolesEtSurfacesTest extends TestCase
 
     private function questionPubliee(): Question
     {
-        $auteur = $this->membre('auteur-d@naja7i.ma', 'auteur');
-        $relecteur = $this->membre('relecteur-d@naja7i.ma', 'reviseur');
-        $valideur = $this->membre('valideur-d@naja7i.ma', 'editeur');
+        $auteur = $this->membre('auteur-d@naja7i.ma', 'expert_pedagogue');
+        $relecteur = $this->membre('relecteur-d@naja7i.ma', 'expert_pedagogue');
+        $valideur = $this->membre('valideur-d@naja7i.ma', 'expert_pedagogue');
 
         $question = $this->questionDe($auteur);
         $this->transitions->submitForReview($question);

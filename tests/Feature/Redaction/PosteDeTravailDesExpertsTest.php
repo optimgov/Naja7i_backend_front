@@ -68,10 +68,10 @@ class PosteDeTravailDesExpertsTest extends TestCase
         $this->epreuve = Exam::where('code', 'CRMEF-SE-2025')->firstOrFail();
         $this->noeud = CompetencyNode::where('code', 'SE-PSY-DEV')->firstOrFail();
 
-        /* `reviseur` porte `questions.review` ET `questions.difficulty` ;
-         * `auteur` porte la rédaction, jamais le jugement pédagogique (Q-10). */
-        $this->expert = $this->membre('expert-q2@naja7i.ma', 'reviseur');
-        $this->redacteur = $this->membre('redacteur-q2@naja7i.ma', 'auteur');
+        /* L'expert porte la qualification. Le candidat sert ici de compte
+         * témoin sans permission dédiée. */
+        $this->expert = $this->membre('expert-q2@naja7i.ma', 'expert_pedagogue');
+        $this->redacteur = $this->membre('sans-difficulte-q2@naja7i.ma', 'candidat');
 
         $this->lot = app(QuestionPreparationService::class)->startBatch(
             $this->expert, 'corpus/naja7i_qcm_a_valider.json', str_repeat('a', 64),

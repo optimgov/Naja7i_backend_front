@@ -36,7 +36,7 @@ class PanneauDroitTransitoireTest extends TestCase
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
 
         $this->commerciale = $this->membre('commerciale-ecran-transition@naja7i.ma', 'finance');
-        $this->editrice = $this->membre('editrice-ecran-transition@naja7i.ma', 'editeur');
+        $this->editrice = $this->membre('editrice-ecran-transition@naja7i.ma', 'expert_pedagogue');
 
         $candidat = User::create([
             'email' => 'candidat-ecran-transition@naja7i.ma',

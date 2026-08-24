@@ -60,7 +60,7 @@ class EcranDesTaxonomiesTest extends TestCase
         ]);
         $this->pedagogue->markEmailAsVerified();
         $this->pedagogue->memberships()->create([
-            'role_id' => Role::where('code', 'editeur')->whereNull('tenant_id')->value('id'),
+            'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
         ]);
         $this->pedagogue = $this->pedagogue->fresh();
 

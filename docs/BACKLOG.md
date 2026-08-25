@@ -2059,7 +2059,9 @@ uniquement — ni annale ni corrigé officiel ».
 **La commande est idempotente et refuse la production.** Elle ne tourne que sur
 `local`, `testing` ou `staging`, traverse les services de rédaction et de
 transition, et sa transaction ne laisse aucun lot partiel. Une seconde
-exécution crée zéro question.
+exécution crée zéro question. Depuis `6c61cf4`, le déploiement staging
+l'exécute après le remplacement du backend ; le job production ne la référence
+pas et la garde d'environnement resterait opposable s'il le faisait.
 
 **Finance est informée sans être bloquée.** Après sélection d'une offre, le
 formulaire de coupon affiche le nombre d'épreuves configurées, d'épreuves

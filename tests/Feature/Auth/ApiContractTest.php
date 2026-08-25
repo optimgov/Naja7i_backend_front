@@ -38,6 +38,10 @@ class ApiContractTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
+            'first_name' => 'Amal',
+            'last_name' => 'El Mansouri',
+            'academic_level' => 'Licence',
+            'address' => 'Rabat',
             'email' => 'candidat@naja7i.ma',
             'password' => 'une-phrase-de-passe-solide',
             'password_confirmation' => 'une-phrase-de-passe-solide',

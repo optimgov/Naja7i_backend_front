@@ -52,6 +52,10 @@ class AutoAttributionDuGratuitTest extends TestCase
         $this->flushSession();
 
         $this->postJson('/api/v1/auth/register', [
+            'first_name' => 'Amal',
+            'last_name' => 'El Mansouri',
+            'academic_level' => 'Licence',
+            'address' => 'Rabat',
             'email' => $email,
             'password' => 'une-phrase-de-passe-solide',
             'password_confirmation' => 'une-phrase-de-passe-solide',

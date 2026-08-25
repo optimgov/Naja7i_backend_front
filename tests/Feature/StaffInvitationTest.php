@@ -126,6 +126,7 @@ final class StaffInvitationTest extends TestCase
         $role = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->firstOrFail();
 
         return app(AccountAdministrationService::class)->create($actor, [
+            'first_name' => 'Samira', 'last_name' => 'Alaoui',
             'email' => 'invite@naja7i.ma', 'phone' => null, 'locale' => $locale,
             'status' => 'active', 'role_uuids' => [$role->uuid],
         ]);

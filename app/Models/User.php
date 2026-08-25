@@ -30,7 +30,10 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
 {
     use HasPublicUuid, Notifiable;
 
-    protected $fillable = ['email', 'phone', 'password', 'locale', 'status'];
+    protected $fillable = [
+        'first_name', 'last_name', 'academic_level', 'address',
+        'email', 'phone', 'password', 'locale', 'status',
+    ];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -237,7 +240,9 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
      */
     public function getFilamentName(): string
     {
-        return $this->email;
+        $name = trim("{$this->first_name} {$this->last_name}");
+
+        return $name !== '' ? $name : (string) $this->email;
     }
 
     public function grantCandidateRole(): Membership

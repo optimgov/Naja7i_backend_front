@@ -56,6 +56,8 @@ final class PanneauPersonnesTest extends TestCase
         $role = Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->firstOrFail();
 
         $cree = app(AccountAdministrationService::class)->create($gestionnaire, [
+            'first_name' => 'Samira',
+            'last_name' => 'Alaoui',
             'email' => 'nouveau@naja7i.ma',
             'phone' => null,
             'locale' => 'fr',
@@ -92,6 +94,7 @@ final class PanneauPersonnesTest extends TestCase
 
         try {
             app(AccountAdministrationService::class)->create($inviteur, [
+                'first_name' => 'Samira', 'last_name' => 'Alaoui',
                 'email' => 'orphelin@naja7i.ma', 'phone' => null,
                 'locale' => 'fr', 'status' => 'active',
                 'role_uuids' => [$role->uuid],
@@ -168,6 +171,7 @@ final class PanneauPersonnesTest extends TestCase
 
         $this->expectException(ValidationException::class);
         app(AccountAdministrationService::class)->create($gestionnaire, [
+            'first_name' => 'Samira', 'last_name' => 'Alaoui',
             'email' => 'candidat-admin@naja7i.ma', 'phone' => null,
             'locale' => 'fr', 'status' => 'active',
             'role_uuids' => [$candidat->uuid],
@@ -181,6 +185,7 @@ final class PanneauPersonnesTest extends TestCase
 
         try {
             app(AccountAdministrationService::class)->create($gestionnaire, [
+                'first_name' => 'Samira', 'last_name' => 'Alaoui',
                 'email' => 'escalade-create@naja7i.ma', 'phone' => null,
                 'locale' => 'fr', 'status' => 'active',
                 'role_uuids' => [$auteur->uuid],

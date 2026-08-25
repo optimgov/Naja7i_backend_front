@@ -26,6 +26,10 @@ class AuthenticationTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
+            'first_name' => 'Amal',
+            'last_name' => 'El Mansouri',
+            'academic_level' => 'Licence',
+            'address' => 'Rabat',
             'email' => 'candidat@naja7i.ma',
             'password' => 'une-phrase-de-passe-solide',
             'password_confirmation' => 'une-phrase-de-passe-solide',
@@ -45,7 +49,10 @@ class AuthenticationTest extends TestCase
 
     public function test_inscription_cree_compte_identite_role_et_trois_actes_juridiques(): void
     {
-        $this->register()->assertCreated()->assertJsonPath('data.email', 'candidat@naja7i.ma');
+        $this->register()->assertCreated()
+            ->assertJsonPath('data.email', 'candidat@naja7i.ma')
+            ->assertJsonPath('data.first_name', 'Amal')
+            ->assertJsonPath('data.academic_level', 'Licence');
 
         $user = User::where('email', 'candidat@naja7i.ma')->firstOrFail();
 

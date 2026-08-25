@@ -28,13 +28,15 @@ final class AccountAdministrationService
         private readonly StaffInvitationService $invitations,
     ) {}
 
-    /** @param array{email: string, phone?: string|null, locale: string, status: string, role_uuids?: list<string>} $data */
+    /** @param array{first_name: string, last_name: string, email: string, phone?: string|null, locale: string, status: string, role_uuids?: list<string>} $data */
     public function create(User $actor, array $data): User
     {
         $this->authorize($actor, 'members.invite');
         $this->authorize($actor, 'roles.assign');
 
         $data = Validator::make($data, [
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', Rule::unique('users', 'email')],
             'phone' => ['nullable', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')],
             'locale' => ['required', Rule::in(['fr', 'ar'])],
@@ -60,7 +62,7 @@ final class AccountAdministrationService
                 ]);
             }
 
-            $user = User::create(Arr::only($data, ['email', 'phone', 'locale', 'status']));
+            $user = User::create(Arr::only($data, ['first_name', 'last_name', 'email', 'phone', 'locale', 'status']));
 
             foreach ($roles as $role) {
                 Membership::create(['user_id' => $user->id, 'role_id' => $role->id]);
@@ -94,6 +96,8 @@ final class AccountAdministrationService
         $this->ensureMember($user);
 
         $data = Validator::make($data, [
+            'first_name' => ['sometimes', 'required', 'string', 'max:100'],
+            'last_name' => ['sometimes', 'required', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'required_without:phone', Rule::unique('users', 'email')->ignore($user)],
             'phone' => ['nullable', 'required_without:email', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')->ignore($user)],
             'locale' => ['required', Rule::in(['fr', 'ar'])],
@@ -108,7 +112,7 @@ final class AccountAdministrationService
             $user->phone_verified_at = null;
         }
 
-        $user->fill(Arr::only($data, ['email', 'phone', 'locale', 'status']))->save();
+        $user->fill(Arr::only($data, ['first_name', 'last_name', 'email', 'phone', 'locale', 'status']))->save();
 
         return $user->refresh();
     }

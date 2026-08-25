@@ -48,6 +48,10 @@ final class UserResource extends Resource
     {
         return $schema->components([
             Section::make('Compte')->schema([
+                TextInput::make('first_name')->label('Prénom')->required()->maxLength(100)
+                    ->disabled(fn (): bool => ! self::canAdministerAccount()),
+                TextInput::make('last_name')->label('Nom')->required()->maxLength(100)
+                    ->disabled(fn (): bool => ! self::canAdministerAccount()),
                 TextInput::make('email')->label('E-mail')->email()->maxLength(255)
                     ->unique(ignoreRecord: true)
                     ->rules(['nullable', 'required_without:phone'])
@@ -85,6 +89,8 @@ final class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
+            TextColumn::make('first_name')->label('Prénom')->searchable(),
+            TextColumn::make('last_name')->label('Nom')->searchable(),
             TextColumn::make('email')->label('E-mail')->searchable()->placeholder('—'),
             TextColumn::make('phone')->label('Téléphone')->searchable()->placeholder('—'),
             TextColumn::make('memberships.role.label_fr')->label('Rôles')->badge(),

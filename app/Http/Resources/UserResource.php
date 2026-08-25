@@ -19,6 +19,10 @@ class UserResource extends JsonResource
     {
         return [
             'uuid' => $this->uuid,
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'academic_level' => $this->academic_level,
+            'address' => $this->address,
             'email' => $this->email,
             'phone' => $this->phone,
             'locale' => $this->locale,
@@ -28,6 +32,14 @@ class UserResource extends JsonResource
             'roles' => $this->whenLoaded(
                 'memberships',
                 fn () => $this->memberships->pluck('role.code')->unique()->values()
+            ),
+            'role_labels' => $this->whenLoaded(
+                'memberships',
+                fn () => $this->memberships
+                    ->pluck('role')
+                    ->unique('code')
+                    ->map(fn ($role) => $this->locale === 'ar' ? $role->label_ar : $role->label_fr)
+                    ->values()
             ),
             'created_at' => $this->created_at?->toIso8601String(),
         ];

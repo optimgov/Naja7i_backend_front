@@ -22,14 +22,22 @@ final class RegistrationService
     ) {}
 
     public function register(
+        string $firstName,
+        string $lastName,
+        string $academicLevel,
+        string $address,
         string $email,
         string $password,
         string $locale,
         bool $marketingGranted,
         Request $request,
     ): User {
-        return DB::transaction(function () use ($email, $password, $locale, $marketingGranted, $request) {
+        return DB::transaction(function () use ($firstName, $lastName, $academicLevel, $address, $email, $password, $locale, $marketingGranted, $request) {
             $user = User::create([
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'academic_level' => $academicLevel,
+                'address' => $address,
                 'email' => $email,
                 'password' => $password,      // hashé par le cast du modèle
                 'locale' => $locale,

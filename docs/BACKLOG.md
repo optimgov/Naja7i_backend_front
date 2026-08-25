@@ -2040,6 +2040,37 @@ les deux parcours côte à côte.
 contrainte un seul test rougit, la garde de schéma ; suite complète séquentielle
 verte à **1 021 tests et 3 983 assertions**.
 
+### CRMEF-TEST-V1 — Banque fonctionnelle de préproduction · livré · `11090de`
+
+**Périmètre fermé : les trois épreuves déjà modélisées, et aucune invention de
+concours.** Le lot couvre Sciences de l'éducation, Didactique du français et
+Spécialité français. Il ne crée ni spécialité CRMEF sans matrice, ni Médecine :
+un catalogue sans référentiel officiel ne devient pas vrai parce qu'une banque
+de test existe.
+
+**Quarante questions de test rendent quatre diagnostics composables :** dix en
+français et dix en arabe pour Sciences de l'éducation, dix en français pour
+chacune des deux épreuves de français. Les 25 nœuds des trois matrices sont
+couverts en français et les six nœuds de Sciences de l'éducation le sont aussi
+en arabe. Le lot porte partout `authoring = ai_assisted`, un `import_ref`
+préfixé `TEST-CRMEF-V1` et une source qui dit explicitement « préproduction
+uniquement — ni annale ni corrigé officiel ».
+
+**La commande est idempotente et refuse la production.** Elle ne tourne que sur
+`local`, `testing` ou `staging`, traverse les services de rédaction et de
+transition, et sa transaction ne laisse aucun lot partiel. Une seconde
+exécution crée zéro question.
+
+**Finance est informée sans être bloquée.** Après sélection d'une offre, le
+formulaire de coupon affiche le nombre d'épreuves configurées, d'épreuves
+réellement jouables et de questions publiées dans sa portée. Le texte confirme
+que le coupon reste générable lorsque la couverture vaut zéro, conformément à
+la phase de test.
+
+**Vérification :** 3 tests ciblés et 14 assertions ; suite complète séquentielle
+verte à **1 072 tests et 4 203 assertions**. L'exécution durable reste réservée
+à la préproduction et ne fait pas partie du commit.
+
 ### LOT-Q0/Q1 — Contrôle du corpus QCM avant import · livré · `0f01fa6`
 
 Le corpus externe reste hors base et inchangé. La commande

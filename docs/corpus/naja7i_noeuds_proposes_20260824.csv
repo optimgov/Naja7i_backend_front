@@ -1,0 +1,118 @@
+arbre_code,arbre_libelle_fr,questions_arbre,noeud_code,parent_code,profondeur,libelle_fr,libelle_ar,provenance
+SE,Sciences de l'education,245,SE-SOC-EDU,,1,Ecole et societe,المدرسة والمجتمع,existant
+SE,Sciences de l'education,245,SE-SOC-GROUP,,1,Groupe-classe et communication,جماعة القسم والتواصل,existant
+SE,Sciences de l'education,245,SE-PSY-LEARN,,1,Mecanismes de l'apprentissage,آليات التعلم,existant
+SE,Sciences de l'education,245,SE-PSY-DEV,,1,Developpement cognitif de l'enfant,النمو المعرفي للطفل,existant
+SE,Sciences de l'education,245,SE-PED-METHODS,,1,Methodes d'enseignement,طرائق التدريس,existant
+SE,Sciences de l'education,245,SE-PED-PPO-APC,,1,Pedagogie par objectifs et par competences,بيداغوجيا الأهداف والكفايات,existant
+SE,Sciences de l'education,245,SE-SYS,,1,Systeme educatif et organisation scolaire,نظام التربية والتكوين والتنظيم المدرسي,propose
+SE,Sciences de l'education,245,SE-INC,,1,Education inclusive,التربية الدامجة,propose
+SE,Sciences de l'education,245,SE-PSY-DIFF,,1,Differences individuelles et styles d'apprentissage,الفروق الفردية وأنماط التعلم,propose
+SE,Sciences de l'education,245,SE-PED-EVAL,,1,Evaluation des apprentissages,التقويم التربوي,propose
+SE,Sciences de l'education,245,SE-HIST,,1,Histoire de la pensee educative et philosophie de l'education,تاريخ الفكر التربوي وفلسفة التربية,propose
+DID-SEC-AR,Didactique - Secondaire 2g - Arabe,60,DID-SEC-AR-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-SEC-AR,Didactique - Secondaire 2g - Arabe,60,DID-SEC-AR-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-SEC-AR,Didactique - Secondaire 2g - Arabe,60,DID-SEC-AR-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-SEC-AR,Didactique - Secondaire 2g - Arabe,60,DID-SEC-AR-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-SEC-AR,Didactique - Secondaire 2g - Arabe,60,DID-SEC-AR-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-SEC-EI,Didactique - Secondaire 2g - Education islamique,60,DID-SEC-EI-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-SEC-EI,Didactique - Secondaire 2g - Education islamique,60,DID-SEC-EI-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-SEC-EI,Didactique - Secondaire 2g - Education islamique,60,DID-SEC-EI-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-SEC-EI,Didactique - Secondaire 2g - Education islamique,60,DID-SEC-EI-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-SEC-EI,Didactique - Secondaire 2g - Education islamique,60,DID-SEC-EI-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-SEC-FR,Didactique - Secondaire 2g - Francais,60,DID-SEC-FR-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-SEC-FR,Didactique - Secondaire 2g - Francais,60,DID-SEC-FR-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-SEC-FR,Didactique - Secondaire 2g - Francais,60,DID-SEC-FR-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-SEC-FR,Didactique - Secondaire 2g - Francais,60,DID-SEC-FR-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-SEC-FR,Didactique - Secondaire 2g - Francais,60,DID-SEC-FR-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-SEC-PC,Didactique - Secondaire 2g - Physique-chimie,60,DID-SEC-PC-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-SEC-PC,Didactique - Secondaire 2g - Physique-chimie,60,DID-SEC-PC-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-SEC-PC,Didactique - Secondaire 2g - Physique-chimie,60,DID-SEC-PC-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-SEC-PC,Didactique - Secondaire 2g - Physique-chimie,60,DID-SEC-PC-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-SEC-PC,Didactique - Secondaire 2g - Physique-chimie,60,DID-SEC-PC-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-SEC-SOC,Didactique - Secondaire 2g - Sociales,60,DID-SEC-SOC-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-SEC-SOC,Didactique - Secondaire 2g - Sociales,60,DID-SEC-SOC-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-SEC-SOC,Didactique - Secondaire 2g - Sociales,60,DID-SEC-SOC-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-SEC-SOC,Didactique - Secondaire 2g - Sociales,60,DID-SEC-SOC-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-SEC-SOC,Didactique - Secondaire 2g - Sociales,60,DID-SEC-SOC-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-SEC-EN,Didactique - Secondaire 2g - Anglais,57,DID-SEC-EN-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-SEC-EN,Didactique - Secondaire 2g - Anglais,57,DID-SEC-EN-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-SEC-EN,Didactique - Secondaire 2g - Anglais,57,DID-SEC-EN-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-SEC-EN,Didactique - Secondaire 2g - Anglais,57,DID-SEC-EN-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-SEC-EN,Didactique - Secondaire 2g - Anglais,57,DID-SEC-EN-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-PRI-AR,Didactique - Primaire - Arabe,50,DID-PRI-AR-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-PRI-AR,Didactique - Primaire - Arabe,50,DID-PRI-AR-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-PRI-AR,Didactique - Primaire - Arabe,50,DID-PRI-AR-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-PRI-AR,Didactique - Primaire - Arabe,50,DID-PRI-AR-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-PRI-AR,Didactique - Primaire - Arabe,50,DID-PRI-AR-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-PRI-MATH,Didactique - Primaire - Mathematiques,50,DID-PRI-MATH-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-PRI-MATH,Didactique - Primaire - Mathematiques,50,DID-PRI-MATH-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-PRI-MATH,Didactique - Primaire - Mathematiques,50,DID-PRI-MATH-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-PRI-MATH,Didactique - Primaire - Mathematiques,50,DID-PRI-MATH-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-PRI-MATH,Didactique - Primaire - Mathematiques,50,DID-PRI-MATH-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-PRI-SCI,Didactique - Primaire - Activite scientifique,50,DID-PRI-SCI-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,imprime
+DID-PRI-SCI,Didactique - Primaire - Activite scientifique,50,DID-PRI-SCI-PROG,,1,Concepts et programmes,مفاهيم وبرامج,imprime
+DID-PRI-SCI,Didactique - Primaire - Activite scientifique,50,DID-PRI-SCI-DEM,,1,Principes didactiques,مبادئ ديدكتيكية,imprime
+DID-PRI-SCI,Didactique - Primaire - Activite scientifique,50,DID-PRI-SCI-RES,,1,Ressources didactiques,موارد ديدكتيكية,imprime
+DID-PRI-SCI,Didactique - Primaire - Activite scientifique,50,DID-PRI-SCI-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+DID-PRI-FR,Didactique - Primaire - Francais,25,DID-PRI-FR-FOND,,1,Fondements et concepts de base,المرتكزات والمفاهيم الأساس,propose
+DID-PRI-FR,Didactique - Primaire - Francais,25,DID-PRI-FR-PROG,,1,Programmes et curriculum officiels,المفاهيم والبرامج,propose
+DID-PRI-FR,Didactique - Primaire - Francais,25,DID-PRI-FR-DEM,,1,Principes et demarches didactiques,المبادئ الديدكتيكية,propose
+DID-PRI-FR,Didactique - Primaire - Francais,25,DID-PRI-FR-RES,,1,Ressources et supports didactiques,الموارد الديدكتيكية,propose
+DID-PRI-FR,Didactique - Primaire - Francais,25,DID-PRI-FR-EVAL,,1,Evaluation et remediation,التقويم والدعم,propose
+SAV-SEC-EI,Savoirs - Secondaire 2g - Education islamique,100,SAV-SEC-EI-AQIDA,,1,Croyance,العقيدة,propose
+SAV-SEC-EI,Savoirs - Secondaire 2g - Education islamique,100,SAV-SEC-EI-QURAN,,1,Coran et hadith,القرآن والحديث,propose
+SAV-SEC-EI,Savoirs - Secondaire 2g - Education islamique,100,SAV-SEC-EI-FIQH,,1,Fiqh et pratiques cultuelles,الفقه والعبادات,propose
+SAV-SEC-EI,Savoirs - Secondaire 2g - Education islamique,100,SAV-SEC-EI-SIRA,,1,Sira et histoire islamique,السيرة والتاريخ الإسلامي,propose
+SAV-SEC-EI,Savoirs - Secondaire 2g - Education islamique,100,SAV-SEC-EI-QIYAM,,1,Valeurs et ethique,القيم والأخلاق,propose
+SAV-SEC-EN,Savoirs - Secondaire 2g - Anglais,96,SAV-SEC-EN-GRAM,,1,Grammar and structure,النحو والتركيب,propose
+SAV-SEC-EN,Savoirs - Secondaire 2g - Anglais,96,SAV-SEC-EN-VOCAB,,1,Vocabulary and word formation,المعجم وبناء الكلمات,propose
+SAV-SEC-EN,Savoirs - Secondaire 2g - Anglais,96,SAV-SEC-EN-READ,,1,Reading comprehension,فهم المقروء,propose
+SAV-SEC-EN,Savoirs - Secondaire 2g - Anglais,96,SAV-SEC-EN-PHON,,1,Phonology and pronunciation,الصوتيات والنطق,propose
+SAV-SEC-EN,Savoirs - Secondaire 2g - Anglais,96,SAV-SEC-EN-LIT,,1,Literature and culture,الأدب والثقافة,propose
+SAV-SEC-AR,Savoirs - Secondaire 2g - Arabe,80,SAV-SEC-AR-NAHW,,1,Grammaire et morphologie,النحو والصرف,propose
+SAV-SEC-AR,Savoirs - Secondaire 2g - Arabe,80,SAV-SEC-AR-BALAGHA,,1,Rhetorique et metrique,البلاغة والعروض,propose
+SAV-SEC-AR,Savoirs - Secondaire 2g - Arabe,80,SAV-SEC-AR-ADAB,,1,Litterature et textes,الأدب والنصوص,propose
+SAV-SEC-AR,Savoirs - Secondaire 2g - Arabe,80,SAV-SEC-AR-MUJAM,,1,Lexique et semantique,المعجم والدلالة,propose
+SAV-SEC-AR,Savoirs - Secondaire 2g - Arabe,80,SAV-SEC-AR-FAHM,,1,Comprehension et analyse de texte,فهم المقروء وتحليل النص,propose
+SAV-SEC-PHILO,Savoirs - Secondaire 2g - Philosophie,60,SAV-SEC-PHILO-NOTIONS,,1,Notions philosophiques,المفاهيم الفلسفية,propose
+SAV-SEC-PHILO,Savoirs - Secondaire 2g - Philosophie,60,SAV-SEC-PHILO-HIST,,1,Histoire de la philosophie,تاريخ الفلسفة,propose
+SAV-SEC-PHILO,Savoirs - Secondaire 2g - Philosophie,60,SAV-SEC-PHILO-EPIST,,1,Epistemologie et philosophie des sciences,الإبستمولوجيا وفلسفة العلوم,propose
+SAV-SEC-PHILO,Savoirs - Secondaire 2g - Philosophie,60,SAV-SEC-PHILO-MORAL,,1,Philosophie morale et politique,الفلسفة الأخلاقية والسياسية,propose
+SAV-SEC-PHILO,Savoirs - Secondaire 2g - Philosophie,60,SAV-SEC-PHILO-LOG,,1,Logique et argumentation,المنطق والحجاج,propose
+SAV-SEC-PC,Savoirs - Secondaire 2g - Physique-chimie,60,SAV-SEC-PC-MECA,,1,Mecanique,الميكانيك,propose
+SAV-SEC-PC,Savoirs - Secondaire 2g - Physique-chimie,60,SAV-SEC-PC-ELEC,,1,Electricite et magnetisme,الكهرباء والمغناطيسية,propose
+SAV-SEC-PC,Savoirs - Secondaire 2g - Physique-chimie,60,SAV-SEC-PC-OPT,,1,Optique et ondes,البصريات والموجات,propose
+SAV-SEC-PC,Savoirs - Secondaire 2g - Physique-chimie,60,SAV-SEC-PC-CHIM,,1,Matiere et transformations chimiques,المادة وتحولاتها,propose
+SAV-SEC-PC,Savoirs - Secondaire 2g - Physique-chimie,60,SAV-SEC-PC-ENER,,1,Energie et thermodynamique,الطاقة والحرارة,propose
+SAV-SEC-SOC,Savoirs - Secondaire 2g - Sociales,60,SAV-SEC-SOC-HMAR,,1,Histoire du Maroc,تاريخ المغرب,propose
+SAV-SEC-SOC,Savoirs - Secondaire 2g - Sociales,60,SAV-SEC-SOC-HGEN,,1,Histoire generale,التاريخ العام,propose
+SAV-SEC-SOC,Savoirs - Secondaire 2g - Sociales,60,SAV-SEC-SOC-GEOPHY,,1,Geographie physique,الجغرافيا الطبيعية,propose
+SAV-SEC-SOC,Savoirs - Secondaire 2g - Sociales,60,SAV-SEC-SOC-GEOHUM,,1,Geographie humaine et economique,الجغرافيا البشرية والاقتصادية,propose
+SAV-SEC-SOC,Savoirs - Secondaire 2g - Sociales,60,SAV-SEC-SOC-CIT,,1,Education a la citoyennete,التربية على المواطنة,propose
+SAV-PRI-AR,Savoirs - Primaire - Arabe,60,SAV-PRI-AR-NAHW,,1,Grammaire et morphologie,النحو والصرف,propose
+SAV-PRI-AR,Savoirs - Primaire - Arabe,60,SAV-PRI-AR-MUJAM,,1,Lexique et semantique,المعجم والدلالة,propose
+SAV-PRI-AR,Savoirs - Primaire - Arabe,60,SAV-PRI-AR-ADAB,,1,Litterature et textes,الأدب والنصوص,propose
+SAV-PRI-AR,Savoirs - Primaire - Arabe,60,SAV-PRI-AR-FAHM,,1,Comprehension de l'ecrit,فهم المقروء,propose
+SAV-PRI-AR,Savoirs - Primaire - Arabe,60,SAV-PRI-AR-IMLA,,1,Orthographe et ecriture,الإملاء والكتابة,propose
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-SVT,,1,SVT et Univers,علوم الحياة والأرض والكون,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-SVT-BIO,SAV-PRI-SCI-SVT,2,Biologie,علم الأحياء,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-SVT-GEO,SAV-PRI-SCI-SVT,2,Geologie,الجيولوجيا,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-SVT-ASTRO,SAV-PRI-SCI-SVT,2,Astronomie descriptive,الفلك الوصفي,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-SVT-ECO,SAV-PRI-SCI-SVT,2,Ecologie generale,علم البيئة العام,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-PHY,,1,Sciences physiques et technologie,الفيزياء والتكنولوجيا,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-PHY-ELEC,SAV-PRI-SCI-PHY,2,Electricite et magnetisme,الكهرباء والمغناطيسية,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-PHY-MAT,SAV-PRI-SCI-PHY,2,Organisation de la matiere,تنظيم المادة,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-PHY-OPT,SAV-PRI-SCI-PHY,2,Optique et vision,البصريات والرؤية,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-PHY-ACOU,SAV-PRI-SCI-PHY,2,Notions d'acoustique,مبادئ الصوتيات,imprime
+SAV-PRI-SCI,Savoirs - Primaire - Sciences,58,SAV-PRI-SCI-PHY-THERM,SAV-PRI-SCI-PHY,2,Transfert thermique,انتقال الحرارة,imprime
+SAV-PRI-FR,Savoirs - Primaire - Francais,32,SAV-PRI-FR-GRAM,,1,Grammaire et syntaxe,النحو والتركيب,propose
+SAV-PRI-FR,Savoirs - Primaire - Francais,32,SAV-PRI-FR-CONJ,,1,Conjugaison et morphologie,التصريف والصرف,propose
+SAV-PRI-FR,Savoirs - Primaire - Francais,32,SAV-PRI-FR-LEX,,1,Lexique et semantique,المعجم والدلالة,propose
+SAV-PRI-FR,Savoirs - Primaire - Francais,32,SAV-PRI-FR-COMP,,1,Comprehension et analyse de texte,فهم النص وتحليله,propose
+SAV-PRI-FR,Savoirs - Primaire - Francais,32,SAV-PRI-FR-ORTH,,1,Orthographe,الإملاء,propose
+SAV-PRI-MATH,Savoirs - Primaire - Mathematiques,30,SAV-PRI-MATH-NUM,,1,Nombres et calcul,الأعداد والحساب,propose
+SAV-PRI-MATH,Savoirs - Primaire - Mathematiques,30,SAV-PRI-MATH-GEOM,,1,Geometrie,الهندسة,propose
+SAV-PRI-MATH,Savoirs - Primaire - Mathematiques,30,SAV-PRI-MATH-MES,,1,Grandeurs et mesures,المقادير والقياس,propose
+SAV-PRI-MATH,Savoirs - Primaire - Mathematiques,30,SAV-PRI-MATH-DATA,,1,Organisation et traitement de donnees,تنظيم ومعالجة المعطيات,propose
+SAV-PRI-MATH,Savoirs - Primaire - Mathematiques,30,SAV-PRI-MATH-RAIS,,1,Raisonnement et logique,الاستدلال والمنطق,propose

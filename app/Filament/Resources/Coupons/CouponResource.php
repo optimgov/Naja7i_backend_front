@@ -6,13 +6,16 @@ use App\Filament\Resources\Coupons\Pages\CreateCoupon;
 use App\Filament\Resources\Coupons\Pages\ListCoupons;
 use App\Models\Coupon;
 use App\Models\Plan;
+use App\Services\CouvertureOffre;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 /* `Filament\Actions\Action` ET NON `Filament\Tables\Actions\Action` : ce
  * second espace de noms N'EXISTE PAS en Filament 4 — le paquet `tables` n'a
@@ -72,7 +75,18 @@ class CouponResource extends Resource
             Select::make('plan_id')
                 ->label('Offre ouverte')
                 ->options(fn () => Plan::active()->ordered()->pluck('name_fr', 'id'))
+                ->live()
                 ->required(),
+
+            Placeholder::make('couverture_offre')
+                ->label('Contenu couvert par cette offre')
+                ->content(function (Get $get): string {
+                    $plan = Plan::find($get('plan_id'));
+
+                    return $plan === null
+                        ? 'Sélectionnez une offre pour mesurer son contenu jouable.'
+                        : app(CouvertureOffre::class)->message($plan);
+                }),
 
             TextInput::make('max_uses')
                 ->label('Nombre d’utilisations')

@@ -20,7 +20,7 @@ use RuntimeException;
 /**
  * Installe le contenu de validation fonctionnelle CRMEF en préproduction.
  *
- * Le préfixe TEST-CRMEF-V1, la provenance ai_assisted et la source dédiée
+ * Le préfixe TEST-CRMEF-V2, la provenance ai_assisted et la source dédiée
  * rendent ce lot impossible à confondre avec une annale ou un corrigé expert.
  * La commande est rejouable et refuse explicitement l'environnement production.
  */
@@ -37,12 +37,12 @@ class PeuplerBanqueTestCrmef extends Command
         DiagnosticComposer $composer,
     ): int {
         if (! app()->environment(['local', 'testing', 'staging'])) {
-            $this->error('Refus : la banque TEST-CRMEF-V1 est réservée aux environnements local, testing et staging.');
+            $this->error('Refus : la banque TEST-CRMEF-V2 est réservée aux environnements local, testing et staging.');
 
             return self::FAILURE;
         }
 
-        /** @var list<array{ref:string,exam:string,node:string,locale:string,stem:string,correct:string,distractors:list<string>,explanation:string}> $questions */
+        /** @var list<array{ref:string,exam:string,node:string,locale:string,stem:string,correct:string,distractors:list<string>,explanation:string,correct_position:int}> $questions */
         $questions = require database_path('data/banque_test_crmef.php');
         $this->verifierLot($questions);
 
@@ -60,11 +60,11 @@ class PeuplerBanqueTestCrmef extends Command
             $acteur->forceFill(['email_verified_at' => $acteur->email_verified_at ?? now()])->save();
 
             $source = Source::firstOrCreate(
-                ['code' => 'TEST-CRMEF-V1'],
+                ['code' => 'TEST-CRMEF-V2'],
                 [
                     'kind' => 'autre',
-                    'title_fr' => 'Banque assistée par IA — validation fonctionnelle CRMEF V1',
-                    'title_ar' => 'بنك بمساعدة الذكاء الاصطناعي — اختبار وظيفي CRMEF V1',
+                    'title_fr' => 'Banque assistée par IA — validation fonctionnelle CRMEF V2',
+                    'title_ar' => 'بنك بمساعدة الذكاء الاصطناعي — اختبار وظيفي CRMEF V2',
                     'authority_fr' => 'Naja7i — préproduction uniquement',
                     'authority_ar' => 'نجاحي — بيئة الاختبار فقط',
                     'session_label' => 'Préproduction 2026-08',
@@ -105,11 +105,12 @@ class PeuplerBanqueTestCrmef extends Command
                     ],
                 );
 
-                $options = [[
+                $bonneOption = [
                     'content' => $donnees['correct'],
                     'is_correct' => true,
                     'rationale' => $donnees['explanation'],
-                ]];
+                ];
+                $options = [];
                 foreach ($donnees['distractors'] as $distracteur) {
                     $options[] = [
                         'content' => $distracteur,
@@ -120,6 +121,7 @@ class PeuplerBanqueTestCrmef extends Command
                         'cause' => 'confusion_notions',
                     ];
                 }
+                array_splice($options, $donnees['correct_position'] - 1, 0, [$bonneOption]);
 
                 $question = $authoring->rediger($acteur, [
                     'exam_id' => $exam->id,
@@ -140,6 +142,16 @@ class PeuplerBanqueTestCrmef extends Command
                 $transitions->publish($question, forDiagnostic: true);
                 $creees++;
             }
+
+            /* V1 plaçait involontairement toutes les bonnes réponses en A.
+             * Elle reste dans l'historique et dans les tentatives existantes,
+             * mais ne doit plus être composée dans une nouvelle série. */
+            Question::where('import_ref', 'like', 'TEST-CRMEF-V1-%')
+                ->where('status', 'published')
+                ->each(fn (Question $question) => $transitions->retire(
+                    $question,
+                    'Remplacée par TEST-CRMEF-V2 : alternance des positions de réponse.',
+                ));
 
             return $creees;
         });
@@ -162,7 +174,7 @@ class PeuplerBanqueTestCrmef extends Command
     }
 
     /**
-     * @param  list<array{ref:string,exam:string,node:string,locale:string,stem:string,correct:string,distractors:list<string>,explanation:string}>  $questions
+     * @param  list<array{ref:string,exam:string,node:string,locale:string,stem:string,correct:string,distractors:list<string>,explanation:string,correct_position:int}>  $questions
      */
     private function verifierLot(array $questions): void
     {
@@ -184,6 +196,9 @@ class PeuplerBanqueTestCrmef extends Command
             $attendu = $question['exam'] === 'CRMEF-SE-2025' ? 5 : 4;
             if ($nombreOptions !== $attendu) {
                 throw new RuntimeException("{$question['ref']} porte {$nombreOptions} options, {$attendu} attendues.");
+            }
+            if ($question['correct_position'] < 1 || $question['correct_position'] > $nombreOptions) {
+                throw new RuntimeException("{$question['ref']} porte une position de réponse invalide.");
             }
         }
 

@@ -2069,6 +2069,12 @@ réellement jouables et de questions publiées dans sa portée. Le texte confirm
 que le coupon reste générable lorsque la couverture vaut zéro, conformément à
 la phase de test.
 
+**V2 — positions de réponse.** La V1 plaçait involontairement toutes les bonnes
+réponses en première position. Les 40 questions `TEST-CRMEF-V2` répartissent la
+bonne réponse de manière déterministe entre les positions. Le peuplement retire
+logiquement la V1 après création de la V2 ; aucune question historique n'est
+supprimée et les tentatives existantes restent lisibles.
+
 **Vérification :** 3 tests ciblés et 14 assertions ; suite complète séquentielle
 verte à **1 072 tests et 4 203 assertions**. L'exécution durable reste réservée
 à la préproduction et ne fait pas partie du commit.

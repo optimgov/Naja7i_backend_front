@@ -19,7 +19,7 @@ class BanqueTestCrmefTest extends TestCase
         $this->artisan('naja7i:peupler-banque-test-crmef')->assertSuccessful();
         $this->artisan('naja7i:peupler-banque-test-crmef')->assertSuccessful();
 
-        $questions = Question::where('import_ref', 'like', 'TEST-CRMEF-V1-%')->get();
+        $questions = Question::where('import_ref', 'like', 'TEST-CRMEF-V2-%')->with('options')->get();
 
         $this->assertCount(40, $questions);
         $this->assertSame(25, $questions->where('locale', 'fr')->pluck('competency_node_id')->unique()->count());
@@ -27,6 +27,12 @@ class BanqueTestCrmefTest extends TestCase
         $this->assertTrue($questions->every(fn (Question $q): bool => $q->status === 'published'
             && $q->eligible_for_diagnostic
             && $q->authoring === 'ai_assisted'));
+        $this->assertGreaterThan(
+            1,
+            $questions->map(fn (Question $q) => $q->options->firstWhere('is_correct', true)?->position)
+                ->unique()->count(),
+            'La bonne réponse ne doit pas occuper toujours la même position.',
+        );
     }
 
     public function test_finance_est_informee_sans_que_le_coupon_soit_bloque(): void
@@ -68,6 +74,6 @@ class BanqueTestCrmefTest extends TestCase
             $this->app['env'] = $ancien;
         }
 
-        $this->assertSame(0, Question::where('import_ref', 'like', 'TEST-CRMEF-V1-%')->count());
+        $this->assertSame(0, Question::where('import_ref', 'like', 'TEST-CRMEF-V2-%')->count());
     }
 }

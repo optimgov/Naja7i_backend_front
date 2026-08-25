@@ -6,7 +6,9 @@
  * Ce lot n'est ni une annale ni un corrigé officiel. Son seul objet est de
  * rendre testables les parcours diagnostic, correction et remédiation sur les
  * trois épreuves CRMEF que le référentiel applicatif modélise déjà. Chaque
- * question reste identifiable par son import_ref TEST-CRMEF-V1.
+ * question reste identifiable par son import_ref TEST-CRMEF-V2. La position
+ * de la bonne réponse tourne de manière déterministe : le lot ne transforme
+ * pas « toujours A » en indice involontaire pendant la recette candidat.
  */
 
 $fr = [
@@ -63,12 +65,14 @@ return collect($fr)->map(function (array $q, int $i): array {
     $explication = is_array($q[4]) ? $q[5] : $q[4 + $nombreDistracteurs];
 
     return [
-        'ref' => 'TEST-CRMEF-V1-FR-'.str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT),
+        'ref' => 'TEST-CRMEF-V2-FR-'.str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT),
         'exam' => $q[0], 'node' => $q[1], 'locale' => 'fr', 'stem' => $q[2],
         'correct' => $q[3], 'distractors' => $distracteurs, 'explanation' => $explication,
+        'correct_position' => ($i % (1 + count($distracteurs))) + 1,
     ];
 })->concat(collect($ar)->map(fn (array $q, int $i): array => [
-    'ref' => 'TEST-CRMEF-V1-AR-'.str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT),
+    'ref' => 'TEST-CRMEF-V2-AR-'.str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT),
     'exam' => 'CRMEF-SE-2025', 'node' => $q[0], 'locale' => 'ar', 'stem' => $q[1],
     'correct' => $q[2], 'distractors' => $q[3], 'explanation' => $q[4],
+    'correct_position' => ($i % (1 + count($q[3]))) + 1,
 ]))->all();

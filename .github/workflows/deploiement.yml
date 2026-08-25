@@ -147,6 +147,12 @@ jobs:
       - name: Déployer
         run: /opt/naja7i/bin/naja7i-deploy staging backend '${{ needs.image.outputs.etiquette }}'
 
+      - name: Peupler la banque fonctionnelle CRMEF
+        run: |
+          set -euo pipefail
+          cd /opt/naja7i/staging
+          docker compose exec -T app php artisan naja7i:peupler-banque-test-crmef
+
       # Le script vérifie la santé des conteneurs ; ceci vérifie que le bord
       # sert réellement quelque chose. Les deux échouent pour des raisons
       # différentes, et `/sante` est exempté du mot de passe précisément pour

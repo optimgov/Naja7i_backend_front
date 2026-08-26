@@ -2200,6 +2200,19 @@ production verts. L'envoi synchrone d'invitation reste rattaché à DET-14 ; la
 consommation d'une invitation d'un compte suspendu ne donne aucun accès mais
 mérite une révocation explicite lors d'un futur passage sur ce workflow.
 
+#### Correctif 2.2 · livré · backend `05f5ed0`
+
+L'inscription ne recueille plus prématurément l'identité académique : elle crée
+le compte et accomplit les actes juridiques, puis le dossier prend le relais.
+`UserResource` rend `onboarding_complete`, dérivé de cinq coordonnées non vides
+— prénom, nom, niveau, adresse et mobile — et d'une épreuve préparée déclarée.
+Le téléphone accepte la saisie marocaine locale ou internationale, retire les
+séparateurs usuels et ne conserve que la forme E.164 `+2126…` ou `+2127…` ; la
+même règle vaut dans le propre compte et dans l'annuaire administratif.
+
+Vérification ciblée avant journal : **87 tests et 367 assertions** sur
+l'authentification, le profil, le propre compte et l'attribution du gratuit.
+
 ### LOT-0A.2 — Arbitrages Q-07/Q-08/Q-13 · livré · `3eeff4a`
 
 Le quota gratuit est cumulatif sans remise à zéro automatique, la consommation

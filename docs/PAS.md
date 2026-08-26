@@ -143,6 +143,7 @@ Un pas sans SHA n'est pas livré, quel que soit l'état du code.
 | CRMEF-TEST-V1 | Banque fonctionnelle de préproduction : 40 questions `ai_assisted` rejouables couvrent les 25 nœuds des trois épreuves modélisées, dont Sciences de l'éducation en FR/AR ; Finance mesure la couverture avant d'émettre un coupon sans être bloquée | `11090de` |
 | CRMEF-TEST-V2 | La bonne réponse alterne entre les positions ; la V1 est retirée logiquement au déploiement, sans effacer l'historique des tentatives | présent commit |
 | — | Le déploiement staging exécute le peuplement idempotent après remplacement du backend ; la commande refuse toujours la production | `6c61cf4` |
+| 2.2 | L'inscription crée le compte sans prétendre que son dossier est rempli ; `/me` dit si identité, mobile marocain et épreuve préparée sont complets, et tout mobile est normalisé en `+2126…` ou `+2127…` | `05f5ed0` |
 
 ## Lots frontend
 

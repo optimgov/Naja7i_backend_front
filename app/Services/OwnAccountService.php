@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\NumeroMobileMarocain;
 use App\Validation\PasswordPolicy;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
@@ -19,7 +20,7 @@ final class OwnAccountService
             $data['email'] = str($data['email'])->trim()->lower()->value();
         }
         if (isset($data['phone']) && is_string($data['phone'])) {
-            $data['phone'] = trim($data['phone']);
+            $data['phone'] = NumeroMobileMarocain::normaliser($data['phone']);
         }
 
         $validated = Validator::make($data, [
@@ -28,7 +29,7 @@ final class OwnAccountService
             'academic_level' => ['sometimes', 'required', 'string', 'max:150'],
             'address' => ['sometimes', 'required', 'string', 'max:500'],
             'email' => ['sometimes', 'nullable', 'email:rfc', 'required_without:phone', Rule::unique('users', 'email')->ignore($user)],
-            'phone' => ['sometimes', 'nullable', 'required_without:email', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')->ignore($user)],
+            'phone' => ['sometimes', 'nullable', 'required_without:email', 'regex:'.NumeroMobileMarocain::REGLE, Rule::unique('users', 'phone')->ignore($user)],
             'locale' => ['sometimes', 'required', Rule::in(['fr', 'ar'])],
             'current_password' => ['sometimes', 'nullable', 'string'],
         ])->validate();

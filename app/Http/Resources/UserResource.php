@@ -29,6 +29,7 @@ class UserResource extends JsonResource
             'status' => $this->status,
             'email_verified' => $this->email_verified_at !== null,
             'phone_verified' => $this->phone_verified_at !== null,
+            'onboarding_complete' => $this->dossierCandidatComplet(),
             'roles' => $this->whenLoaded(
                 'memberships',
                 fn () => $this->memberships->pluck('role.code')->unique()->values()

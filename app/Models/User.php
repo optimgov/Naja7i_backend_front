@@ -113,6 +113,19 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         return $this->hasOne(CandidateProfile::class);
     }
 
+    public function dossierCandidatComplet(): bool
+    {
+        foreach ([$this->first_name, $this->last_name, $this->academic_level, $this->address, $this->phone] as $champ) {
+            if (! is_string($champ) || trim($champ) === '') {
+                return false;
+            }
+        }
+
+        return $this->relationLoaded('candidateProfile')
+            ? $this->candidateProfile?->exam_id !== null
+            : $this->candidateProfile()->whereNotNull('exam_id')->exists();
+    }
+
     /** Méthodes de connexion du compte : mot de passe, Google, Facebook (PAS-2). */
     public function identities(): HasMany
     {

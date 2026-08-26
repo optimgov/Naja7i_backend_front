@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Membership;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\NumeroMobileMarocain;
 use App\Tenancy\TenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Arr;
@@ -34,11 +35,15 @@ final class AccountAdministrationService
         $this->authorize($actor, 'members.invite');
         $this->authorize($actor, 'roles.assign');
 
+        if (isset($data['phone'])) {
+            $data['phone'] = NumeroMobileMarocain::normaliser($data['phone']);
+        }
+
         $data = Validator::make($data, [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', Rule::unique('users', 'email')],
-            'phone' => ['nullable', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')],
+            'phone' => ['nullable', 'regex:'.NumeroMobileMarocain::REGLE, Rule::unique('users', 'phone')],
             'locale' => ['required', Rule::in(['fr', 'ar'])],
             'status' => ['required', Rule::in(['active', 'suspended'])],
             'role_uuids' => ['required', 'array', 'min:1'],
@@ -95,11 +100,15 @@ final class AccountAdministrationService
         $this->authorize($actor, 'members.invite');
         $this->ensureMember($user);
 
+        if (isset($data['phone'])) {
+            $data['phone'] = NumeroMobileMarocain::normaliser($data['phone']);
+        }
+
         $data = Validator::make($data, [
             'first_name' => ['sometimes', 'required', 'string', 'max:100'],
             'last_name' => ['sometimes', 'required', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'required_without:phone', Rule::unique('users', 'email')->ignore($user)],
-            'phone' => ['nullable', 'required_without:email', 'regex:/^\+[1-9][0-9]{7,14}$/', Rule::unique('users', 'phone')->ignore($user)],
+            'phone' => ['nullable', 'required_without:email', 'regex:'.NumeroMobileMarocain::REGLE, Rule::unique('users', 'phone')->ignore($user)],
             'locale' => ['required', Rule::in(['fr', 'ar'])],
             'status' => ['required', Rule::in(['active', 'suspended'])],
         ])->validate();

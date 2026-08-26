@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Exam;
 use App\Models\Identity;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -97,6 +98,46 @@ final class OwnAccountTest extends TestCase
         $user->refresh();
         $this->assertSame('email-nouveau@naja7i.ma', $user->email);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_le_mobile_marocain_local_est_normalise_et_un_numero_etranger_est_refuse(): void
+    {
+        $user = $this->user('mobile@naja7i.ma', 'candidat');
+
+        $this->actingAs($user)
+            ->patchJson('/api/v1/me/account', ['phone' => '06 12 34 56 78'])
+            ->assertOk()
+            ->assertJsonPath('data.phone', '+212612345678');
+
+        $this->patchJson('/api/v1/me/account', ['phone' => '+33612345678'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('phone');
+    }
+
+    public function test_me_annonce_la_completion_apres_identite_mobile_et_epreuve(): void
+    {
+        $user = $this->user('dossier@naja7i.ma', 'candidat');
+        $user->markEmailAsVerified();
+
+        $this->actingAs($user)->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.onboarding_complete', false);
+
+        $this->patchJson('/api/v1/me/account', [
+            'first_name' => 'Amal',
+            'last_name' => 'El Mansouri',
+            'academic_level' => 'Licence',
+            'address' => 'Rabat',
+            'phone' => '0712345678',
+        ])->assertOk()->assertJsonPath('data.onboarding_complete', false);
+
+        $this->putJson('/api/v1/me/profile', [
+            'exam_code' => Exam::published()->value('code'),
+        ])->assertOk();
+
+        $this->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.onboarding_complete', true);
     }
 
     public function test_changement_de_mot_de_passe_exige_le_courant_et_la_politique_centrale(): void

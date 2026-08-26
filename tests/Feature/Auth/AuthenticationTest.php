@@ -51,8 +51,9 @@ class AuthenticationTest extends TestCase
     {
         $this->register()->assertCreated()
             ->assertJsonPath('data.email', 'candidat@naja7i.ma')
-            ->assertJsonPath('data.first_name', 'Amal')
-            ->assertJsonPath('data.academic_level', 'Licence');
+            ->assertJsonPath('data.first_name', null)
+            ->assertJsonPath('data.academic_level', null)
+            ->assertJsonPath('data.onboarding_complete', false);
 
         $user = User::where('email', 'candidat@naja7i.ma')->firstOrFail();
 

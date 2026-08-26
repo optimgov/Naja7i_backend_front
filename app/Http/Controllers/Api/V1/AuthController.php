@@ -42,10 +42,6 @@ class AuthController extends Controller
         }
 
         $user = $this->registration->register(
-            firstName: $request->string('first_name')->trim()->value(),
-            lastName: $request->string('last_name')->trim()->value(),
-            academicLevel: $request->string('academic_level')->trim()->value(),
-            address: $request->string('address')->trim()->value(),
             email: $email,
             password: $request->string('password')->value(),
             locale: $request->string('locale')->value(),

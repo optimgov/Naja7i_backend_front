@@ -9,15 +9,11 @@ use App\Models\User;
 use App\Notifications\StaffInvitationNotification;
 use App\Services\AccountAdministrationService;
 use App\Tenancy\TenantContext;
-use Illuminate\Contracts\Notifications\Dispatcher;
-use Illuminate\Contracts\Notifications\Factory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Notifications\ChannelManager;
-use Illuminate\Notifications\Channels\MailChannel;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
-use RuntimeException;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 final class StaffInvitationTest extends TestCase
@@ -98,26 +94,70 @@ final class StaffInvitationTest extends TestCase
         $this->assertNotNull(StaffInvitation::where('token_hash', hash('sha256', $ancien))->value('revoked_at'));
     }
 
-    public function test_un_echec_d_envoi_ne_laisse_ni_compte_ni_roles_ni_invitation_partiels(): void
+    /**
+     * DET-83 — L'ENVOI SORT DE LA TRANSACTION, ET CE TEST CHANGE DE CONTRAT.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * CE QU'IL DÉFENDAIT, ET POURQUOI CE N'EST PLUS TENABLE
+     *
+     * Il exigeait qu'un échec d'envoi ne laisse « ni compte ni rôles ni
+     * invitation ». Cette atomicité était réelle — mais elle reposait sur le
+     * défaut même que DET-83 dénonce : `notify()` appelé DANS la transaction
+     * qui crée le compte, donc « un aller-retour SMTP qui tient des verrous
+     * sur users, identities et memberships ».
+     *
+     * Le 27 août, ce défaut a fermé la porte pour de vrai — côté inscription :
+     * la messagerie de la préproduction refusait la connexion, la requête
+     * rendait 500, et le compte était créé quand même. DET-14 l'annonçait.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * LE CONTRAT QUI REMPLACE, ET IL EST PLUS FORT
+     *
+     * L'envoi est différé et `afterCommit`. Il ne peut donc plus faire échouer
+     * l'invitation, ni tenir de verrous, ni — dans l'autre sens — « livrer un
+     * lien dont l'invitation n'existe plus », l'autre moitié de DET-83.
+     *
+     * L'atomicité disparaît parce que son objet disparaît : il n'y a plus
+     * d'état partiel possible. L'invitation est complète, et le courriel est un
+     * job qui réessaie. Ce qui reste à défendre est donc ceci — l'invitation
+     * aboutit MALGRÉ une messagerie morte, et le lien reste utilisable.
+     */
+    public function test_une_messagerie_morte_n_empeche_plus_d_inviter(): void
     {
-        $manager = new ChannelManager(app());
-        app()->instance(ChannelManager::class, $manager);
-        app()->instance(Dispatcher::class, $manager);
-        app()->instance(Factory::class, $manager);
-        Notification::swap($manager);
+        /* La panne reproduite, pas simulée : un port fermé donne exactement
+         * l'exception qu'a levée la 62. */
+        config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.host' => '127.0.0.1',
+            'mail.mailers.smtp.port' => 9,
+            'mail.mailers.smtp.timeout' => 1,
+        ]);
 
-        $mail = \Mockery::mock(MailChannel::class);
-        $mail->shouldReceive('send')->once()->andThrow(new RuntimeException('Transport indisponible'));
-        app()->instance(MailChannel::class, $mail);
+        Queue::fake();
 
-        try {
-            $this->invite();
-            $this->fail("L'échec d'envoi aurait dû remonter.");
-        } catch (RuntimeException $exception) {
-            $this->assertSame('Transport indisponible', $exception->getMessage());
-            $this->assertDatabaseMissing('users', ['email' => 'invite@naja7i.ma']);
-            $this->assertDatabaseCount('staff_invitations', 0);
-        }
+        $invite = $this->invite();
+
+        $this->assertDatabaseHas('users', ['email' => 'invite@naja7i.ma']);
+        $this->assertDatabaseCount('staff_invitations', 1);
+
+        /* ET LE LIEN EST UTILISABLE : une invitation qui aboutit sans jeton
+         * exploitable serait pire qu'un échec franc. */
+        $this->assertNotEmpty($this->plainTokenFor($invite));
+    }
+
+    /**
+     * L'ENVOI PART QUAND MÊME, par la file.
+     *
+     * Sans ce second test, le précédent resterait vert si l'on cessait
+     * purement et simplement d'envoyer l'invitation.
+     */
+    public function test_l_invitation_est_bien_mise_en_file(): void
+    {
+        Notification::fake();
+
+        $invite = $this->invite();
+
+        Notification::assertSentTo($invite, StaffInvitationNotification::class);
     }
 
     private function invite(string $locale = 'fr', ?User $actor = null): User

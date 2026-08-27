@@ -14,6 +14,21 @@ use Illuminate\Validation\ValidationException;
 
 final class StaffInvitationService
 {
+    /*
+     * ── Mise à jour du 27 août 2026 — DET-83, moitié close ──
+     *
+     * Ce qui suit décrivait un envoi SYNCHRONE placé dans la transaction, et le
+     * prescrivait. Ce n'est plus le cas et ne doit plus l'être :
+     * `StaffInvitationNotification` implémente `ShouldQueue` et active
+     * `afterCommit()`.
+     *
+     * L'envoi ne tient donc plus de verrous sur `users`, `identities` et
+     * `memberships` le temps d'un aller-retour SMTP, et ne peut plus livrer un
+     * lien dont l'invitation aurait été annulée par un rollback. En sens
+     * inverse, il ne peut plus faire échouer l'invitation : le 27 août, la
+     * messagerie de la préproduction refusait la connexion et l'inscription
+     * mourait avec elle (DET-14).
+     */
     /**
      * Émet et envoie une invitation. À appeler dans la transaction qui crée
      * le compte : une erreur d'envoi ne doit jamais laisser un compte partiel.

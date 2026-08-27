@@ -10,6 +10,7 @@ use App\Models\Specialty;
 use App\Models\Track;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 /**
@@ -41,7 +42,7 @@ class ReferentielCrmefTest extends TestCase
      * Le cadrage devient donc EXPLICITE. Il n'affaiblit rien : les mêmes
      * assertions portent sur les mêmes épreuves qu'avant.
      */
-    private function parcoursDuCrmef(): \Illuminate\Support\Collection
+    private function parcoursDuCrmef(): Collection
     {
         $filiere = \DB::table('filieres')->where('slug', 'sciences-education')->value('id');
         $familles = \DB::table('exam_families')->where('filiere_id', $filiere)->pluck('id');
@@ -49,7 +50,7 @@ class ReferentielCrmefTest extends TestCase
         return \DB::table('tracks')->whereIn('exam_family_id', $familles)->pluck('id');
     }
 
-    private function epreuvesDuCrmef(): \Illuminate\Support\Collection
+    private function epreuvesDuCrmef(): Collection
     {
         return Exam::whereIn('track_id', $this->parcoursDuCrmef())->get();
     }

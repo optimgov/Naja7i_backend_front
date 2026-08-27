@@ -96,7 +96,7 @@ class CategorieDePublicTest extends TestCase
     public function test_un_droit_d_audience_ne_couvre_rien_d_une_autre_categorie(): void
     {
         $lycee = Audience::create([
-            'code' => 'lycee', 'name_fr' => 'Lycée', 'name_ar' => 'الثانوي', 'position' => 20,
+            'code' => 'public-de-test', 'name_fr' => 'Public de test', 'name_ar' => 'جمهور اختباري', 'position' => 20,
         ]);
         $epreuveCrmef = Exam::whereHas('competencyNodes')->firstOrFail();
 
@@ -122,7 +122,7 @@ class CategorieDePublicTest extends TestCase
     public function test_rattacher_une_famille_suffit_a_la_couvrir(): void
     {
         $lycee = Audience::create([
-            'code' => 'lycee', 'name_fr' => 'Lycée', 'name_ar' => 'الثانوي', 'position' => 20,
+            'code' => 'public-de-test', 'name_fr' => 'Public de test', 'name_ar' => 'جمهور اختباري', 'position' => 20,
         ]);
         $famille = ExamFamily::where('slug', 'agregation')->firstOrFail();
 
@@ -144,7 +144,7 @@ class CategorieDePublicTest extends TestCase
     public function test_changer_la_categorie_de_public_versionne(): void
     {
         $lycee = Audience::create([
-            'code' => 'lycee', 'name_fr' => 'Lycée', 'name_ar' => 'الثانوي', 'position' => 20,
+            'code' => 'public-de-test', 'name_fr' => 'Public de test', 'name_ar' => 'جمهور اختباري', 'position' => 20,
         ]);
         $offre = Plan::create([
             'code' => 'public-versionne',

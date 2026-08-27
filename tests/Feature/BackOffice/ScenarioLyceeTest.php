@@ -77,13 +77,13 @@ class ScenarioLyceeTest extends TestCase
         Livewire::actingAs($this->commerciale)
             ->test(CreateAudience::class)
             ->fillForm([
-                'code' => 'lycee', 'name_fr' => 'Lycée', 'name_ar' => 'الثانوي',
+                'code' => 'public-de-test', 'name_fr' => 'Public de test', 'name_ar' => 'جمهور اختباري',
                 'active' => true, 'position' => 20,
             ])
             ->call('create')
             ->assertHasNoFormErrors();
 
-        $lycee = Audience::where('code', 'lycee')->sole();
+        $lycee = Audience::where('code', 'public-de-test')->sole();
 
         Livewire::actingAs($this->commerciale)
             ->test(CreatePlan::class)

@@ -153,13 +153,13 @@ class ConditionDePublicTest extends TestCase
          * public se voit au catalogue au même instant qu'il devient opposable.
          */
         $lycee = Audience::create([
-            'code' => 'lycee', 'name_fr' => 'Lycée', 'name_ar' => 'الثانوي', 'position' => 20,
+            'code' => 'public-de-test', 'name_fr' => 'Public de test', 'name_ar' => 'جمهور اختباري', 'position' => 20,
         ]);
 
         $offre = Plan::where('code', 'preparation-30j')->sole();
         $offre->update(['audience_id' => $lycee->id]);
 
-        $this->assertSame('lycee', $this->offreAuCatalogue('preparation-30j')['audience']['code']);
+        $this->assertSame('public-de-test', $this->offreAuCatalogue('preparation-30j')['audience']['code']);
         $this->assertSame(
             $lycee->id,
             $offre->fresh()->currentVersion()->firstOrFail()->audience_id,

@@ -433,7 +433,7 @@ class ConsommationDesQuestionsTest extends TestCase
     public function test_deux_enveloppes_sur_des_portees_disjointes_ne_s_additionnent_jamais(): void
     {
         $ailleurs = Audience::create([
-            'code' => 'lycee', 'name_fr' => 'Lycée', 'name_ar' => 'الثانوي', 'position' => 20,
+            'code' => 'public-de-test', 'name_fr' => 'Public de test', 'name_ar' => 'جمهور اختباري', 'position' => 20,
         ]);
 
         /* Une enveloppe qui ne couvre PAS cette épreuve : elle ne se débite

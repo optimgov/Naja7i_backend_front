@@ -29,11 +29,36 @@ class ReferentielCrmefTest extends TestCase
         parent::setUp();
     }
 
+    /**
+     * LES ÉPREUVES DU CRMEF, ET ELLES SEULES.
+     *
+     * Ce fichier parcourait `Exam::all()`, ce qui revenait à dire « toute
+     * épreuve du catalogue est une épreuve du CRMEF ». C'était vrai tant qu'il
+     * n'y avait qu'un univers ; ADR-0038 en a ouvert un second, et les onze
+     * matières du lycée n'ont ni poids officiels ni coefficient — par
+     * construction, pas par oubli.
+     *
+     * Le cadrage devient donc EXPLICITE. Il n'affaiblit rien : les mêmes
+     * assertions portent sur les mêmes épreuves qu'avant.
+     */
+    private function parcoursDuCrmef(): \Illuminate\Support\Collection
+    {
+        $filiere = \DB::table('filieres')->where('slug', 'sciences-education')->value('id');
+        $familles = \DB::table('exam_families')->where('filiere_id', $filiere)->pluck('id');
+
+        return \DB::table('tracks')->whereIn('exam_family_id', $familles)->pluck('id');
+    }
+
+    private function epreuvesDuCrmef(): \Illuminate\Support\Collection
+    {
+        return Exam::whereIn('track_id', $this->parcoursDuCrmef())->get();
+    }
+
     // --- Les poids officiels ----------------------------------------------
 
     public function test_les_racines_de_chaque_matrice_totalisent_cent_pour_cent(): void
     {
-        foreach (Exam::all() as $exam) {
+        foreach ($this->epreuvesDuCrmef() as $exam) {
             $total = CompetencyNode::where('exam_id', $exam->id)
                 ->whereNull('parent_id')
                 ->sum('weight_percent');
@@ -139,7 +164,17 @@ class ReferentielCrmefTest extends TestCase
 
     public function test_les_specialites_non_documentees_n_ont_ni_epreuve_ni_coefficient(): void
     {
-        $fermees = Specialty::where('availability', '!=', 'open')->get();
+        /* Cadré au CRMEF pour la même raison que le poids des matrices : au
+         * lycée, TOUTES les matières sont en liste d'attente ET portent une
+         * épreuve, puisque l'épreuve y est le contenant d'un arbre et non un
+         * examen. La règle défendue ici — « pas de descriptif, pas d'épreuve »
+         * — est une règle du référentiel CRMEF. */
+        $specialitesCrmef = \DB::table('specialties')
+            ->whereIn('track_id', $this->parcoursDuCrmef())
+            ->pluck('id');
+
+        $fermees = Specialty::whereIn('id', $specialitesCrmef)
+            ->where('availability', '!=', 'open')->get();
 
         $this->assertGreaterThan(10, $fermees->count());
 

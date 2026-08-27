@@ -57,7 +57,7 @@ class PanneauCategoriesDePublicTest extends TestCase
         Livewire::actingAs($this->commerciale)
             ->test(CreateAudience::class)
             ->fillForm([
-                'code' => 'lycee',
+                'code' => 'public-de-test',
                 'name_fr' => 'Lycée',
                 'name_ar' => 'الثانوي',
                 'active' => true,
@@ -66,7 +66,7 @@ class PanneauCategoriesDePublicTest extends TestCase
             ->call('create')
             ->assertHasNoFormErrors();
 
-        $lycee = Audience::where('code', 'lycee')->sole();
+        $lycee = Audience::where('code', 'public-de-test')->sole();
 
         $this->assertSame('Lycée', $lycee->name_fr);
         $this->assertSame('الثانوي', $lycee->name_ar);

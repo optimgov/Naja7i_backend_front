@@ -318,10 +318,22 @@ class DroitTransitoireTest extends TestCase
     public function test_un_geste_cible_ne_touche_que_le_public_vise(): void
     {
         $lycee = Audience::create([
-            'code' => 'lycee', 'name_fr' => 'Lycée', 'name_ar' => 'الثانوي', 'position' => 20,
+            'code' => 'public-de-test', 'name_fr' => 'Public de test', 'name_ar' => 'جمهور اختباري', 'position' => 20,
         ]);
+        /*
+         * L'ÉPREUVE SE DÉSIGNE PAR SON PUBLIC, PAS PAR « ELLE EN A UN ».
+         *
+         * Ce test prenait la première épreuve dont la famille portait une
+         * audience QUELCONQUE, ce qui revenait à dire « la seule audience est
+         * crmef ». Vrai jusqu'à ADR-0038, faux depuis : les onze matières du
+         * lycée en portent une aussi, et le tirage pouvait ramener l'une
+         * d'elles — l'aperçu visait alors zéro compte, pour une raison
+         * étrangère à ce que ce test défend.
+         */
+        $audienceCrmef = \DB::table('audiences')->where('code', 'crmef')->value('id');
+
         $epreuveCrmef = Exam::query()->whereHas('track.family', fn ($q) => $q
-            ->whereNotNull('audience_id'))->firstOrFail();
+            ->where('audience_id', $audienceCrmef))->firstOrFail();
 
         $crmef = $this->candidat('crmef-cible@naja7i.ma', $epreuveCrmef);
         $sansProfil = $this->candidat('sans-profil@naja7i.ma');

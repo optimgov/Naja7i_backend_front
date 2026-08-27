@@ -67,7 +67,7 @@ class EligibiliteParPublicTest extends TestCase
     private function offreLycee(): Plan
     {
         $lycee = Audience::create([
-            'code' => 'lycee', 'name_fr' => 'Lycée', 'name_ar' => 'الثانوي', 'position' => 20,
+            'code' => 'public-de-test', 'name_fr' => 'Public de test', 'name_ar' => 'جمهور اختباري', 'position' => 20,
         ]);
 
         return Plan::create([
@@ -113,7 +113,7 @@ class EligibiliteParPublicTest extends TestCase
 
         /* Ni identifiant, ni adresse, ni comptage : « une autre catégorie » se
          * suffit, et chaque offre porte déjà sa catégorie au catalogue. */
-        foreach ([$this->candidat->email, 'lycee', 'crmef'] as $interdit) {
+        foreach ([$this->candidat->email, 'public-de-test', 'crmef'] as $interdit) {
             $this->assertStringNotContainsString($interdit, $message);
         }
     }

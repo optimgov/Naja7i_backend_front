@@ -4,6 +4,9 @@ namespace App\Filament\Pages;
 
 use App\Enums\EditorialFlagKind;
 use App\Enums\PreparedQuestionState;
+use App\Filament\Resources\Questions\QuestionResource;
+use App\Filament\Support\ExpliqueSonEcran;
+use App\Filament\Support\GuideDEcran;
 use App\Models\CompetencyNode;
 use App\Models\DifficultyLevel;
 use App\Models\PreparedQuestion;
@@ -55,7 +58,7 @@ use Filament\Support\Icons\Heroicon;
  * réponses est du bruit mis en forme, et le montrer ferait corriger une
  * déclaration juste pour suivre un hasard.
  */
-class FileDeQualification extends Page
+class FileDeQualification extends Page implements ExpliqueSonEcran
 {
     /** LA PERMISSION QUI OUVRE CETTE SURFACE — D-13, voir `RefusNommeTest`. */
     public const PERMISSION_REQUISE = 'questions.review';
@@ -306,5 +309,18 @@ class FileDeQualification extends Page
                     ->success()
                     ->send();
             });
+    }
+
+    public static function guideDeLEcran(): GuideDEcran
+    {
+        return new GuideDEcran(
+            role: __('guides.file_de_qualification.role'),
+            gestes: __('guides.file_de_qualification.gestes'),
+            quandCEstVide: __('guides.file_de_qualification.vide'),
+            ensuite: [
+                ['libelle' => __('guides.file_de_qualification.ensuite_couverture'), 'url' => Couverture::getUrl()],
+                ['libelle' => __('guides.file_de_qualification.ensuite_questions'), 'url' => QuestionResource::getUrl('index')],
+            ],
+        );
     }
 }

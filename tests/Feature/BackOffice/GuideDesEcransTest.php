@@ -98,6 +98,80 @@ class GuideDesEcransTest extends TestCase
     }
 
     /**
+     * LE TEST QUI DISCRIMINE LE BILINGUISME — le guide s'affiche EN ARABE.
+     *
+     * La parité des clés ne prouve rien sur le rendu : des clés peuvent être
+     * traduites des deux côtés et l'écran servir le français à tout le monde.
+     * Ce test-là monte un expert dont la préférence est `ar` et exige de lire
+     * l'arabe à l'écran — et de NE PAS y lire le français.
+     */
+    public function test_un_expert_arabophone_lit_son_guide_en_arabe(): void
+    {
+        $arabophone = User::create([
+            'email' => 'guide-ar@naja7i.ma',
+            'password' => 'une-phrase-de-passe-solide',
+            'locale' => 'ar',
+            'status' => 'active',
+        ]);
+        $arabophone->markEmailAsVerified();
+        $arabophone->memberships()->create([
+            'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
+        ]);
+
+        $reponse = $this->actingAs($arabophone->fresh())->get(Couverture::getUrl());
+
+        $reponse->assertOk();
+        $reponse->assertSee('ما يجب تحريره أولا', escape: false);
+        $reponse->assertDontSee('Ce qu’il faut écrire en priorité', escape: false);
+    }
+
+    /**
+     * LES DEUX LANGUES DISENT LA MÊME CHOSE — parité fr/ar des guides.
+     *
+     * Le back-office se lit en arabe comme en français : `SetLocale` suit la
+     * préférence du compte. Un guide écrit dans une seule langue laisserait un
+     * expert arabophone lire son poste de travail en français.
+     *
+     * C'est une part de DET-98, qui constate que personne ne contrôle la parité
+     * des locales SERVEUR alors que le serveur en sert. Ce test la tient au
+     * moins sur les guides — le fichier qui va le plus grossir.
+     */
+    public function test_chaque_guide_existe_dans_les_deux_langues(): void
+    {
+        $aplatir = function (array $tableau, string $prefixe = '') use (&$aplatir): array {
+            $cles = [];
+            foreach ($tableau as $cle => $valeur) {
+                $chemin = $prefixe === '' ? (string) $cle : "{$prefixe}.{$cle}";
+                $cles = is_array($valeur)
+                    ? [...$cles, ...$aplatir($valeur, $chemin)]
+                    : [...$cles, $chemin];
+            }
+
+            return $cles;
+        };
+
+        $fr = $aplatir(require lang_path('fr/guides.php'));
+        $ar = $aplatir(require lang_path('ar/guides.php'));
+
+        sort($fr);
+        sort($ar);
+
+        $this->assertSame($fr, $ar, 'Clés absentes d’un côté : '.implode(', ', array_merge(
+            array_diff($fr, $ar),
+            array_diff($ar, $fr),
+        )));
+
+        /* UNE CLÉ PRÉSENTE MAIS VIDE EST PIRE QU'UNE CLÉ ABSENTE : la première
+         * passe la parité et rend une chaîne vide à l'écran. */
+        foreach (['fr', 'ar'] as $langue) {
+            foreach ($aplatir(require lang_path("{$langue}/guides.php")) as $cle) {
+                $valeur = data_get(require lang_path("{$langue}/guides.php"), $cle);
+                $this->assertNotSame('', trim((string) $valeur), "guides.{$cle} est vide en {$langue}.");
+            }
+        }
+    }
+
+    /**
      * L'INVENTAIRE — il rougit quand un écran est ajouté sans guide utile.
      *
      * Il ne réclame PAS que tout écran en ait un : certains n'ont rien à

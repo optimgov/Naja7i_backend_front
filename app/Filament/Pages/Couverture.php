@@ -90,22 +90,12 @@ class Couverture extends Page implements ExpliqueSonEcran, HasTable
     public static function guideDeLEcran(): GuideDEcran
     {
         return new GuideDEcran(
-            role: 'Ce qu’il faut écrire en priorité. La liste montre les points du programme '
-                .'sur lesquels des candidats se sont trompés et où la banque manque de questions '
-                .'pour les faire progresser.',
-            gestes: [
-                'Lire la première ligne : c’est le point que le plus de candidats attendent.',
-                'Écrire les questions manquantes sur ce point — il en faut au moins deux par langue.',
-                'Revenir ici : la liste se réordonne toute seule, elle suit les erreurs réelles.',
-            ],
-            quandCEstVide: 'Deux causes opposées, et il faut les distinguer. Si l’épreuve a des '
-                .'questions publiées et que des candidats ont passé des diagnostics, une liste vide '
-                .'est une bonne nouvelle : tout ce qui est demandé est servi. Si personne n’a '
-                .'encore rien passé, elle ne dit rien du tout — l’instrument n’a rien à mesurer. '
-                .'Le titre affiché sous la liste distingue les deux cas.',
+            role: __('guides.couverture.role'),
+            gestes: __('guides.couverture.gestes'),
+            quandCEstVide: __('guides.couverture.vide'),
             ensuite: [
-                ['libelle' => 'Écrire une question', 'url' => QuestionResource::getUrl('create')],
-                ['libelle' => 'La file de qualification', 'url' => FileDeQualification::getUrl()],
+                ['libelle' => __('guides.couverture.ensuite_ecrire'), 'url' => QuestionResource::getUrl('create')],
+                ['libelle' => __('guides.couverture.ensuite_file'), 'url' => FileDeQualification::getUrl()],
             ],
         );
     }

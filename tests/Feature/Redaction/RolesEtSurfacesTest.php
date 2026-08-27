@@ -261,7 +261,14 @@ class RolesEtSurfacesTest extends TestCase
         );
 
         $this->assertSame(
-            ['soumettre', 'relire', 'valider', 'publier', 'retirer'],
+            /* `nouvelle_version` rejoint la chaîne le 27 août : le produit
+             * annonçait « le corriger ensuite demande une nouvelle version »
+             * dans la modale de publication ET dans le refus d'`amender()`,
+             * les colonnes `version` et `supersedes_id` existaient depuis
+             * `000250`, et le chemin n'existait pas. Il est offert SUR LA
+             * LISTE, comme les cinq autres — c'est là que le rédacteur bute
+             * sur une question gelée. */
+            ['soumettre', 'relire', 'valider', 'publier', 'retirer', 'nouvelle_version'],
             $noms,
             'La composition de la chaîne a changé. Vérifiez que chaque acte nouveau est '
             .'atteignable depuis la liste, et pas seulement depuis la page d’édition.'

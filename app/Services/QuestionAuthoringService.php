@@ -66,6 +66,126 @@ final class QuestionAuthoringService
     }
 
     /**
+     * CORRIGER UNE QUESTION GELÉE — en ouvrir une nouvelle version.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * LE CHEMIN QUE LE PRODUIT ANNONÇAIT SANS L'OFFRIR
+     *
+     * La modale de publication dit « la publication GÈLE le contenu ; le
+     * corriger ensuite demande une nouvelle version ». `amender()` refuse avec
+     * la même phrase. La migration `000250` a posé `version` et
+     * `supersedes_id` pour cela, en écrivant : « une correction crée une
+     * nouvelle version, l'ancienne est retirée ; les tentatives passées
+     * continuent de pointer vers la version réellement présentée au candidat ».
+     *
+     * Ce chemin n'existait pas. Mesuré avant de l'écrire : sur la
+     * préproduction, 83 questions, TOUTES en version 1, AUCUNE avec un
+     * `supersedes_id`. Corriger une coquille imposait donc de retirer la
+     * question et de tout retaper — énoncé, options, une justification par
+     * option, une cause par distracteur, le nœud, la source, la difficulté.
+     *
+     * ═══════════════════════════════════════════════════════════════════════
+     * CE QUE LA COPIE EMPORTE, ET CE QU'ELLE LAISSE
+     *
+     * Elle emporte tout ce qui est du CONTENU : l'énoncé, l'explication, les
+     * options avec leurs justifications et leurs causes, le nœud, la
+     * difficulté, la remédiation, le miroir désigné, les citations de source.
+     *
+     * Elle laisse ce qui appartient à l'HISTOIRE de l'ancienne : son
+     * relecteur, son valideur, ses dates de publication et de retrait. La
+     * nouvelle version repart en brouillon et refait la chaîne — c'est le
+     * propos même du gel, et une copie qui arriverait « déjà validée »
+     * contournerait la relecture au lieu de la rejouer.
+     *
+     * `sibling_group` EST CONSERVÉ : les deux versions restent sœurs, donc
+     * interchangeables pour la révision espacée.
+     *
+     * L'ANCIENNE N'EST PAS RETIRÉE ICI. Retirer est un acte distinct, tracé,
+     * soumis à `questions.retire` — et tant que la nouvelle version n'est pas
+     * publiée, retirer l'ancienne priverait les candidats des deux.
+     */
+    public function nouvelleVersion(User $auteur, Question $ancienne): Question
+    {
+        if (! in_array($ancienne->status, ['published', 'retired'], true)) {
+            throw new RuntimeException(
+                "Une question {$ancienne->status} s’amende directement : une nouvelle version "
+                .'ne s’ouvre que sur un contenu gelé.'
+            );
+        }
+
+        return DB::transaction(function () use ($auteur, $ancienne) {
+            $copie = Question::create([
+                'exam_id' => $ancienne->exam_id,
+                'competency_node_id' => $ancienne->competency_node_id,
+                'locale' => $ancienne->locale,
+                'sibling_group' => $ancienne->sibling_group,
+                'stem' => $ancienne->stem,
+                'explanation' => $ancienne->explanation,
+                'difficulty' => $ancienne->difficulty,
+                'cognitive_level' => $ancienne->cognitive_level,
+                'kind' => $ancienne->kind,
+                'authoring' => $ancienne->authoring,
+                'remediation_id' => $ancienne->remediation_id,
+                'mirror_question_id' => $ancienne->mirror_question_id,
+                'delayed_review_days' => $ancienne->delayed_review_days,
+                'author_id' => $auteur->id,
+            ]);
+
+            /*
+             * LES CHAMPS DE TRANSITION S'ÉCRIVENT EN FORCE, ET LE MODÈLE A EU
+             * RAISON DE ME LE RAPPELER.
+             *
+             * `version`, `supersedes_id`, `status` et les deux drapeaux
+             * d'éligibilité sont hors de `$fillable` depuis le PAS-5 BLOC-1 :
+             * ils y étaient assignables en masse, ce qui permettait de créer
+             * une question directement en `published` sans qu'aucun contrôle
+             * éditorial ne s'exécute. Les passer à `create()` les fait donc
+             * ignorer EN SILENCE — mon premier jet posait une copie en version
+             * 1 sans lien vers l'originale, et seul le test l'a dit.
+             *
+             * `forceFill()` est le chemin que `QuestionTransitionService`
+             * emprunte déjà pour les mêmes colonnes. Le statut reste `draft` :
+             * on force le LIEN de version, jamais un visa.
+             */
+            $copie->forceFill([
+                'version' => $ancienne->version + 1,
+                'supersedes_id' => $ancienne->id,
+                'eligible_for_diagnostic' => $ancienne->eligible_for_diagnostic,
+                'eligible_for_simulation' => $ancienne->eligible_for_simulation,
+            ])->save();
+
+            foreach ($ancienne->options()->orderBy('position')->get() as $option) {
+                $copie->options()->create([
+                    'position' => $option->position,
+                    'content' => $option->content,
+                    'is_correct' => $option->is_correct,
+                    'rationale' => $option->rationale,
+                    'cause' => $option->is_correct ? null : $option->cause,
+                    'cause_note' => $option->is_correct ? null : $option->cause_note,
+                ]);
+            }
+
+            /*
+             * LES CITATIONS SUIVENT, ET LEUR ÉTAT DE CONTRÔLE EST RELU.
+             *
+             * On ne recopie pas le `verification` de l'ancienne : une source
+             * vérifiée depuis, ou invalidée depuis, doit valoir pour la copie.
+             * C'est l'état ACTUEL de la source qui décide, comme à la
+             * rédaction (DET-46).
+             */
+            foreach ($ancienne->contentSources()->get() as $source) {
+                $copie->contentSources()->attach($source->id, [
+                    'locator' => $source->pivot->locator,
+                    'note' => $source->pivot->note,
+                    'verification' => $source->estVerifiee() ? 'verified' : 'unverified',
+                ]);
+            }
+
+            return $copie->fresh(['options', 'node', 'exam']);
+        });
+    }
+
+    /**
      * Amende un brouillon. Le contenu publié est gelé (ADR-0015 §5).
      *
      * Le contrôle de statut ici est un CONFORT, pas la garantie : le trigger

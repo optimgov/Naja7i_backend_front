@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Questions\Actions;
 
+use App\Filament\Resources\Questions\QuestionResource;
 use App\Models\Question;
+use App\Services\QuestionAuthoringService;
 use App\Services\QuestionTransitionService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use RuntimeException;
+use Throwable;
 
 /**
  * Les cinq actes de la chaîne éditoriale, servis là où on peut les atteindre.
@@ -67,6 +70,7 @@ final class ActesEditoriaux
             self::valider(),
             self::publier(),
             self::retirer(),
+            self::nouvelleVersion(),
         ];
     }
 
@@ -136,6 +140,57 @@ final class ActesEditoriaux
                 ),
                 'Publiée.'
             ));
+    }
+
+    /**
+     * CORRIGER UNE QUESTION GELÉE — le chemin que le produit annonçait.
+     *
+     * La modale de publication dit « le corriger ensuite demande une nouvelle
+     * version », `amender()` refuse avec la même phrase, et la migration
+     * `000250` a posé `version` et `supersedes_id` pour cela. Le chemin
+     * n’existait pas : sur la préproduction, 83 questions toutes en version 1,
+     * aucune avec un `supersedes_id`.
+     *
+     * L’action est offerte SUR LA QUESTION GELÉE elle-même, là où le rédacteur
+     * bute — pas dans un menu séparé où il faudrait savoir qu’elle existe.
+     * Elle conduit droit au formulaire de la copie : corriger, c’est éditer,
+     * et l’écran doit s’ouvrir sur ce qu’on vient corriger.
+     */
+    public static function nouvelleVersion(): Action
+    {
+        return Action::make('nouvelle_version')
+            ->label('Corriger — nouvelle version')
+            ->icon('heroicon-o-document-duplicate')
+            ->requiresConfirmation()
+            ->modalHeading('Ouvrir une nouvelle version de cette question')
+            ->modalDescription(
+                'Le contenu publié est gelé : un candidat a pu y répondre, et sa correction '
+                .'doit rester vraie. On ouvre donc une COPIE en brouillon — énoncé, options, '
+                .'justifications, causes, nœud, source et remédiation compris — que vous '
+                .'corrigez puis republiez. L’ancienne reste servie tant que vous ne la retirez '
+                .'pas vous-même.'
+            )
+            ->modalSubmitActionLabel('Ouvrir la copie')
+            ->visible(fn (Question $record) => in_array($record->status, ['published', 'retired'], true)
+                && (auth()->user()?->can('create', Question::class) ?? false))
+            ->action(function (Question $record) {
+                try {
+                    $copie = app(QuestionAuthoringService::class)
+                        ->nouvelleVersion(auth()->user(), $record);
+                } catch (Throwable $e) {
+                    Notification::make()->danger()->title($e->getMessage())->send();
+
+                    return null;
+                }
+
+                Notification::make()
+                    ->success()
+                    ->title("Version {$copie->version} ouverte en brouillon.")
+                    ->body('L’ancienne reste publiée tant que vous ne la retirez pas.')
+                    ->send();
+
+                return redirect(QuestionResource::getUrl('edit', ['record' => $copie]));
+            });
     }
 
     public static function retirer(): Action

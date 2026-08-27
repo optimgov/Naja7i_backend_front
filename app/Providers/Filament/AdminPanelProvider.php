@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Support\ExpliqueSonEcran;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\SetLocale;
 use Filament\Http\Middleware\Authenticate;
@@ -11,11 +12,13 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
@@ -53,6 +56,46 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
+            /*
+             * CHAQUE ÉCRAN DIT À QUOI IL SERT — un crochet, pas quinze vues.
+             *
+             * Le panneau explique ses ÉTATS et jamais ses MISSIONS. `Couverture`
+             * en est l'exemple : son état vide distingue soigneusement « Aucun
+             * trou » de « Rien à mesurer », mais son sous-titre annonce
+             * « Couples (compétence, cause) attendus par des candidats » — une
+             * définition, écrite pour qui connaît déjà le modèle. On lit donc
+             * parfaitement pourquoi la page est vide sans jamais apprendre à
+             * quoi elle sert.
+             *
+             * Le crochet est posé UNE fois sur `PAGE_START` plutôt que dans
+             * chaque vue : une page qui oublierait de l'inclure n'aurait pas de
+             * guide, et personne ne le remarquerait. Ici, il suffit à un écran
+             * d'implémenter `ExpliqueSonEcran` pour être expliqué.
+             */
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                /*
+                 * LA PAGE ARRIVE PAR LA PORTÉE, pas par la requête. Filament
+                 * rend ce crochet avec `scopes: $this->getRenderHookScopes()`,
+                 * et une page y met sa propre classe. `app()->call()` la passe
+                 * au nom — c'est le seul chemin qui donne la page COURANTE
+                 * sans supposer comment sa route est construite.
+                 */
+                function (array $scopes = []): string {
+                    foreach ($scopes as $scope) {
+                        if (! is_string($scope) || ! is_subclass_of($scope, ExpliqueSonEcran::class)) {
+                            continue;
+                        }
+
+                        return Blade::render(
+                            '<x-filament-guide-ecran :guide="$guide" />',
+                            ['guide' => $scope::guideDeLEcran()],
+                        );
+                    }
+
+                    return '';
+                },
+            )
             /*
              * LE TABLEAU DE BORD DE FILAMENT EST RETIRÉ, ET SA RACINE AVEC.
              *

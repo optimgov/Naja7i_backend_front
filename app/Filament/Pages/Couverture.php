@@ -4,6 +4,8 @@ namespace App\Filament\Pages;
 
 use App\Filament\Libelles;
 use App\Filament\Resources\Questions\QuestionResource;
+use App\Filament\Support\ExpliqueSonEcran;
+use App\Filament\Support\GuideDEcran;
 use App\Models\Exam;
 use App\Models\Question;
 use App\Services\CouvertureBanque;
@@ -39,7 +41,7 @@ use Illuminate\Support\Collection;
  * avec les huit causes produirait des milliers de lignes que personne ne lit.
  * D'où une page qui peut légitimement être vide, et qui le dit.
  */
-class Couverture extends Page implements HasTable
+class Couverture extends Page implements ExpliqueSonEcran, HasTable
 {
     /**
      * LA PERMISSION QUI OUVRE CETTE SURFACE — D-13.
@@ -70,6 +72,42 @@ class Couverture extends Page implements HasTable
     public static function getRoutePath(Panel $panel): string
     {
         return '/couverture';
+    }
+
+    /**
+     * LE PLAN DE RÉDACTION, EXPLIQUÉ SANS LE VOCABULAIRE DU MODÈLE.
+     *
+     * Le sous-titre de cette page dit « couples (compétence, cause) attendus
+     * par des candidats et servis par moins de deux questions ». C'est exact,
+     * et illisible pour qui arrive. Ce guide dit la même chose autrement.
+     *
+     * LE POINT QUI COMPTE EST CELUI DU VIDE. Une liste vide a deux causes
+     * OPPOSÉES ici : la banque couvre tout ce qu'on lui demande, ou personne
+     * n'a encore rien demandé. Le chiffre qui les sépare est le nombre de
+     * tentatives passées — et sans lui, un expert peut conclure « tout va
+     * bien » d'un écran qui ne mesure rien.
+     */
+    public static function guideDeLEcran(): GuideDEcran
+    {
+        return new GuideDEcran(
+            role: 'Ce qu’il faut écrire en priorité. La liste montre les points du programme '
+                .'sur lesquels des candidats se sont trompés et où la banque manque de questions '
+                .'pour les faire progresser.',
+            gestes: [
+                'Lire la première ligne : c’est le point que le plus de candidats attendent.',
+                'Écrire les questions manquantes sur ce point — il en faut au moins deux par langue.',
+                'Revenir ici : la liste se réordonne toute seule, elle suit les erreurs réelles.',
+            ],
+            quandCEstVide: 'Deux causes opposées, et il faut les distinguer. Si l’épreuve a des '
+                .'questions publiées et que des candidats ont passé des diagnostics, une liste vide '
+                .'est une bonne nouvelle : tout ce qui est demandé est servi. Si personne n’a '
+                .'encore rien passé, elle ne dit rien du tout — l’instrument n’a rien à mesurer. '
+                .'Le titre affiché sous la liste distingue les deux cas.',
+            ensuite: [
+                ['libelle' => 'Écrire une question', 'url' => QuestionResource::getUrl('create')],
+                ['libelle' => 'La file de qualification', 'url' => FileDeQualification::getUrl()],
+            ],
+        );
     }
 
     public static function canAccess(): bool

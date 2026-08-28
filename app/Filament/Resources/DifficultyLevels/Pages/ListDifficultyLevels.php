@@ -15,6 +15,7 @@ class ListDifficultyLevels extends ListeAvecCreation implements ExpliqueSonEcran
     public static function guideDeLEcran(): GuideDEcran
     {
         return new GuideDEcran(
+            titre: __('guides.difficulty_levels.titre'),
             role: __('guides.difficulty_levels.role'),
             gestes: __('guides.difficulty_levels.gestes'),
             quandCEstVide: __('guides.difficulty_levels.vide'),

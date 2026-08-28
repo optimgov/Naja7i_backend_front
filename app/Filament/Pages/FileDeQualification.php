@@ -314,6 +314,7 @@ class FileDeQualification extends Page implements ExpliqueSonEcran
     public static function guideDeLEcran(): GuideDEcran
     {
         return new GuideDEcran(
+            titre: __('guides.file_de_qualification.titre'),
             role: __('guides.file_de_qualification.role'),
             gestes: __('guides.file_de_qualification.gestes'),
             quandCEstVide: __('guides.file_de_qualification.vide'),

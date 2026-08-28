@@ -90,6 +90,7 @@ class Couverture extends Page implements ExpliqueSonEcran, HasTable
     public static function guideDeLEcran(): GuideDEcran
     {
         return new GuideDEcran(
+            titre: __('guides.couverture.titre'),
             role: __('guides.couverture.role'),
             gestes: __('guides.couverture.gestes'),
             quandCEstVide: __('guides.couverture.vide'),

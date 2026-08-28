@@ -8,125 +8,165 @@
  *
  * Le back-office se lit en français ET en arabe : `SetLocale` suit la
  * préférence du compte. Un guide écrit en dur dans une classe PHP ne suivrait
- * pas, et un expert arabophone lirait son poste de travail dans une langue
- * qu'il n'a pas choisie — précisément ce que DET-98 reproche déjà aux locales
- * serveur, que personne ne contrôle.
+ * pas — et c'est exactement ce qui est arrivé au CADRE du panneau, resté
+ * français jusqu'à l'audit du 28 août. Les libellés communs sont donc ici
+ * aussi, sous `commun`.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * LA RÈGLE D'ÉCRITURE, ET ELLE N'EST PAS COSMÉTIQUE
  *
- * Un guide ne définit pas, il EXPLIQUE. « Couples (compétence, cause) attendus
- * par des candidats et servis par moins de deux questions » est exact et
- * illisible : c'est le vocabulaire du modèle rendu à qui ne l'a pas écrit.
+ * Un guide ne définit pas, il EXPLIQUE.
  *
  *   – on nomme les choses comme la personne les nomme, pas comme la base ;
  *   – on dit ce qu'on FAIT, pas ce que l'écran CONTIENT ;
- *   – une liste vide a presque toujours deux causes opposées : on les sépare ;
- *   – on donne une porte de sortie, jamais un cul-de-sac.
+ *   – un terme métier qu'on ne peut pas éviter s'explique DANS LA PHRASE ;
+ *   – une liste vide a deux causes opposées : on les sépare, on ne les fond
+ *     pas dans un paragraphe que le lecteur devra démêler ;
+ *   – on donne une porte de sortie, jamais un cul-de-sac ;
+ *   – pas de majuscules d'alerte : « GELÉE » criait pour rien.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CE QUI A ÉTÉ VÉRIFIÉ DANS LE CODE AVANT D'ÊTRE ÉCRIT ICI
+ *
+ *   – « au moins deux par langue » : `CouvertureBanque::SOEURS_MINIMUM = 2`.
+ *   – « environ douze questions par nœud » n'est PAS une règle : c'est un
+ *     ordre de grandeur déduit de `AttemptService::MIROIRS_PAR_COUPLE = 3`
+ *     multiplié par le nombre de causes qu'un chapitre mobilise. Il est écrit
+ *     comme tel.
+ *   – la vérification d'une source est UNE condition parmi les douze que
+ *     `QuestionIntegrityChecker::publicationIssues()` peut lever, pas la porte.
+ *   – sans profil de taxonomie, le contrôle de profondeur est SAUTÉ : la
+ *     publication n'est pas bloquée, la structure n'est simplement plus
+ *     vérifiée.
  */
 
 return [
 
+    // ── Le cadre, commun à tous les écrans ──────────────────────────────
+
+    'commun' => [
+        'gestes' => 'Ce que vous pouvez faire ici',
+        'vide' => 'Si la liste est vide',
+        'ensuite' => 'Étape suivante',
+    ],
+
     // ── Le poste de rédaction ───────────────────────────────────────────
 
     'couverture' => [
-        'role' => 'Ce qu’il faut écrire en priorité. La liste montre les points du programme '
-            .'sur lesquels des candidats se sont trompés et où la banque manque de questions '
-            .'pour les faire progresser.',
+        'titre' => 'Comprendre la couverture',
+        'role' => 'Cet écran classe les sujets pour lesquels les candidats ont besoin de '
+            .'davantage de questions. Commencez par le premier : c’est le besoin le plus '
+            .'fréquent qui n’est pas encore assez couvert.',
         'gestes' => [
-            'Lire la première ligne : c’est le point que le plus de candidats attendent.',
-            'Écrire les questions manquantes sur ce point — il en faut au moins deux par langue.',
-            'Revenir ici : la liste se réordonne toute seule, elle suit les erreurs réelles.',
+            'Choisissez l’épreuve à analyser.',
+            'Ouvrez le premier besoin de la liste.',
+            'Rédigez les questions manquantes — il en faut au moins deux par langue — puis revenez vérifier le nouveau classement.',
         ],
-        'vide' => 'Deux causes opposées, et il faut les distinguer. Si l’épreuve a des questions '
-            .'publiées et que des candidats ont passé des diagnostics, une liste vide est une '
-            .'bonne nouvelle : tout ce qui est demandé est servi. Si personne n’a encore rien '
-            .'passé, elle ne dit rien du tout — l’instrument n’a rien à mesurer. Le titre '
-            .'affiché sous la liste distingue les deux cas.',
+        'vide' => [
+            'Tout est couvert : des diagnostics ont été passés, et chaque besoin observé dispose déjà d’assez de questions.',
+            'Pas encore de données : personne n’a passé de diagnostic sur cette épreuve, il n’y a donc aucun besoin à mesurer.',
+        ],
         'ensuite_ecrire' => 'Écrire une question',
         'ensuite_file' => 'La file de qualification',
     ],
 
     'file_de_qualification' => [
-        'role' => 'Votre poste de travail. Le corpus importé arrive ici brut : une question à '
-            .'la fois, la plus ancienne d’abord, vous décidez de quoi elle relève et si sa '
-            .'réponse est bien celle-là.',
+        'titre' => 'Traiter la file de qualification',
+        'role' => 'Les questions importées arrivent ici avant d’entrer dans la banque. Pour '
+            .'chacune, vous vérifiez son classement et la réponse indiquée par le document '
+            .'d’origine.',
         'gestes' => [
-            'Lire la question et, à côté, ce que la source imprime — jamais recopier l’un dans l’autre.',
-            'Lui donner son chapitre. Si aucun ne convient, l’écarter avec un motif plutôt que de forcer.',
-            'Confirmer la bonne réponse, puis la transférer à la banque où elle suivra la chaîne éditoriale.',
+            'Comparez la question avec le passage du document source affiché à côté — le texte de la source ne se recopie pas dans vos champs, un champ pré-rempli étant accepté sans être lu.',
+            'Choisissez le chapitre correspondant ; si aucun ne convient, écartez la question avec un motif.',
+            'Confirmez la bonne réponse, puis envoyez la question dans la banque, où elle passera par la relecture, la validation et la publication.',
         ],
-        'vide' => 'Deux causes opposées. Ou tout le corpus importé est traité — et il faut en '
-            .'importer davantage. Ou rien n’a jamais été importé sur cette épreuve, et la file '
-            .'n’a simplement rien reçu.',
+        'vide' => [
+            'Tout est traité : les questions importées sur cette épreuve ont toutes reçu une décision.',
+            'Rien n’a été importé : la file n’a simplement jamais reçu de questions pour cette épreuve.',
+        ],
         'ensuite_couverture' => 'Ce qu’il manque à la banque',
         'ensuite_questions' => 'La banque de questions',
     ],
 
     'questions' => [
-        'role' => 'La banque. Toutes les questions, à tous les stades — du brouillon à la '
-            .'question retirée. C’est ici qu’on écrit, qu’on relit, qu’on valide et qu’on publie.',
+        'titre' => 'Utiliser la banque de questions',
+        'role' => 'La banque rassemble toutes les questions et indique leur étape de '
+            .'préparation. Utilisez les filtres pour retrouver le travail qui correspond à '
+            .'votre rôle.',
         'gestes' => [
-            'Filtrer par état pour voir ce qui vous attend : « à vérifier » si vous relisez, « brouillon » si vous écrivez.',
-            'Les actes de la chaîne sont sur chaque ligne : soumettre, relire, valider, publier, retirer.',
-            'Une question publiée est GELÉE. Pour la corriger, l’action « Corriger — nouvelle version » ouvre une copie en brouillon.',
+            'Filtrez par état : « à vérifier » si vous relisez, « brouillon » si vous écrivez.',
+            'Chaque ligne porte ses actions : soumettre à la relecture, marquer relue, valider, publier, retirer.',
+            'Une question publiée ne se modifie plus directement. Pour la corriger, l’action « Corriger — nouvelle version » ouvre une copie en brouillon.',
         ],
-        'vide' => 'Aucune question ne correspond au filtre. Retirez le filtre avant d’en conclure '
-            .'que la banque est vide — elle ne l’est presque jamais entièrement.',
+        'vide' => [
+            'Un filtre est actif : retirez-le avant de conclure que la banque est vide.',
+            'Cette épreuve n’a pas encore de questions : c’est le cas d’une épreuve neuve.',
+        ],
         'ensuite_ecrire' => 'Écrire une question',
         'ensuite_couverture' => 'Voir ce qui manque',
     ],
 
     'sources' => [
-        'role' => 'Les documents sur lesquels les questions s’appuient. Une source vérifiée '
-            .'atteste que quelqu’un a eu la pièce sous les yeux — sans cela, aucune question qui '
-            .'la cite ne peut être servie au diagnostic.',
+        'titre' => 'Vérifier les sources',
+        'role' => 'Cet écran recense les documents utilisés pour rédiger les questions. '
+            .'Vérifier une source confirme que le document a été consulté et correctement '
+            .'identifié ; cela ne valide pas les questions qui le citent.',
         'gestes' => [
-            'Vérifier une source une seule fois : toutes les questions qui la citent en profitent.',
-            'Ne vérifier que ce que vous avez réellement lu — c’est ce que votre nom atteste ensuite.',
-            'Modifier le titre, l’autorité ou l’adresse d’une source ANNULE sa vérification, et rebloque la publication jusqu’à re-contrôle.',
+            'Contrôlez le titre, l’organisme, la date et le lien du document.',
+            'Marquez la source comme vérifiée uniquement après l’avoir consultée — c’est votre nom qui l’atteste.',
+            'Après toute modification de ses références, vérifiez-la de nouveau : la modification annule le contrôle précédent.',
         ],
-        'vide' => 'Aucune source enregistrée. Une banque sans source ne peut rien publier au '
-            .'diagnostic : c’est le premier objet à créer, avant même la première question.',
-        'ensuite_questions' => 'Les questions qui les citent',
+        'vide' => [
+            'Aucun document n’est encore enregistré : une question ne peut pas être servie au diagnostic sans une source vérifiée, parmi les autres conditions de publication.',
+        ],
+        'ensuite_questions' => 'Les questions qui s’y appuient',
     ],
 
     'competency_nodes' => [
-        'role' => 'L’arbre des compétences d’une épreuve — ses chapitres. C’est lui qui décide '
-            .'où s’inscrit chaque résultat sur la carte du candidat, et donc ce que la plateforme '
-            .'sait lui dire.',
+        'titre' => 'Organiser l’arbre des compétences',
+        'role' => 'L’arbre organise les domaines, sous-domaines et chapitres d’une épreuve. '
+            .'Chaque question s’y rattache, ce qui permet de classer les résultats d’un '
+            .'candidat et de lui proposer des révisions ciblées.',
         'gestes' => [
-            'Élaguer d’abord : un nœud gardé réclame une douzaine de questions pour que la révision fonctionne.',
-            'Confirmer les nœuds proposés, qui arrivent des programmes officiels sans avoir été relus.',
-            'Un nœud n’appartient qu’à UNE épreuve et ne se déplace pas vers une autre — la base le refuse.',
+            'Gardez uniquement les niveaux qui seront réellement utilisés.',
+            'Relisez et confirmez les éléments proposés à partir des programmes officiels : ils arrivent sans avoir été validés par personne.',
+            'Chaque élément conservé devra disposer d’assez de questions — environ douze dans le fonctionnement actuel — pour alimenter les révisions.',
+            'Un élément ne se déplace pas vers une autre épreuve : chaque épreuve a son propre arbre.',
         ],
-        'vide' => 'Cette épreuve n’a pas d’arbre. Aucune question ne peut y être rattachée tant '
-            .'qu’il n’existe pas : c’est le premier travail sur une épreuve neuve.',
+        'vide' => [
+            'Cette épreuve n’a pas encore d’arbre : aucune question ne peut y être rattachée tant qu’il n’existe pas.',
+        ],
         'ensuite_taxonomies' => 'Les profils de taxonomie',
     ],
 
     'taxonomy_profiles' => [
-        'role' => 'La forme que doit avoir un arbre pour qu’une épreuve soit publiable : combien '
-            .'de niveaux, et à quelle profondeur une question doit être rattachée.',
+        'titre' => 'Définir un profil de taxonomie',
+        'role' => 'Un profil définit la structure attendue pour les arbres d’une épreuve : le '
+            .'nom de chaque niveau, et le niveau auquel les questions doivent être rattachées.',
         'gestes' => [
-            'Vérifier qu’un profil existe avant de bâtir un arbre : c’est lui qui dira si l’arbre est recevable.',
-            'Un rattachement trop haut fait échouer la publication — le profil est ce qui l’annonce à l’avance.',
+            'Créez ou vérifiez le profil avant de construire l’arbre.',
+            'Nommez clairement chaque niveau — par exemple domaine, sous-domaine et chapitre.',
+            'Indiquez le niveau minimal auquel une question peut être rattachée pour être publiée.',
         ],
-        'vide' => 'Aucun profil défini. Les arbres existants restent utilisables, mais rien ne '
-            .'contrôle plus leur forme.',
+        'vide' => [
+            'Aucun profil n’est défini. Les arbres existants restent publiables, mais leur structure n’est plus vérifiée : une question peut alors être rattachée à n’importe quel niveau.',
+        ],
         'ensuite_noeuds' => 'Les arbres de compétences',
     ],
 
     'difficulty_levels' => [
-        'role' => 'Les cinq crans de difficulté et leurs libellés. Vous déclarez la difficulté '
-            .'d’une question ; la plateforme calcule séparément celle qu’elle OBSERVE sur les '
-            .'réponses réelles, et l’écart entre les deux est votre meilleur signal.',
+        'titre' => 'Comprendre les crans de difficulté',
+        'role' => 'Ces cinq crans servent à nommer la difficulté prévue d’une question. Après '
+            .'suffisamment de réponses, la plateforme calcule aussi sa difficulté observée. '
+            .'Comparer les deux aide à repérer les questions à revoir.',
         'gestes' => [
-            'Nommer chaque cran dans les deux langues — un nombre nu ne dit rien à personne.',
-            'Comparer ensuite déclarée et observée : une question « facile » que deux tiers ratent ne mesure pas ce que vous croyez.',
+            'Donnez à chaque cran un libellé clair en français et en arabe — un nombre nu ne dit rien à personne.',
+            'Comparez la difficulté prévue au taux de réussite réel lorsqu’il existe assez de réponses.',
+            'Examinez les écarts importants avant de modifier la question ou son classement.',
         ],
-        'vide' => 'Aucun cran nommé. L’interface affichera des nombres nus, ce qu’elle s’interdit : '
-            .'nommez-les avant d’ouvrir la difficulté aux experts.',
+        'vide' => [
+            'Aucun cran n’est nommé : l’interface afficherait des nombres nus, ce qu’elle s’interdit.',
+        ],
         'ensuite_questions' => 'La banque de questions',
     ],
 

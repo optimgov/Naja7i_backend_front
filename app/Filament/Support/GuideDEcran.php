@@ -25,6 +25,11 @@ namespace App\Filament\Support;
  * Un guide qui déborde ne se lit pas. Chaque écran répond à quatre questions,
  * dans cet ordre — c'est celui dans lequel elles se posent :
  *
+ *   0. COMMENT S'APPELLE CE QU'ON FAIT ICI — le déclencheur porte le nom de
+ *      l'écran, jamais un « Aide » générique : on ne clique pas sur « Aide »,
+ *      on clique sur une question qu'on se pose. Le premier jet promettait
+ *      cela en commentaire et rendait toujours la même phrase ; le commentaire
+ *      mentait, un audit du 28 août l'a relevé.
  *   1. À QUOI SERT CET ÉCRAN, en une phrase et sans vocabulaire de modèle.
  *   2. QUE FAIT-ON ICI, en gestes concrets.
  *   3. QUAND C'EST VIDE, ce que ça veut dire — souvent ambigu, et l'ambiguïté
@@ -35,19 +40,25 @@ namespace App\Filament\Support;
  * toujours DEUX causes opposées — « tout est couvert » et « personne n'a
  * encore rien fait » — et les confondre conduit à ne rien faire quand il
  * fallait agir, ou l'inverse.
+ *
+ * Ces cas sont une LISTE et non un paragraphe : les fondre en une phrase
+ * longue oblige le lecteur à démêler lui-même deux situations opposées, ce
+ * qui est précisément le travail que le guide devait lui épargner.
  */
 final readonly class GuideDEcran
 {
     /**
+     * @param  string  $titre  Le nom de l'écran, porté par le déclencheur replié.
      * @param  string  $role  À quoi sert l'écran, en une phrase.
      * @param  list<string>  $gestes  Ce qu'on y fait, un geste par ligne.
-     * @param  string|null  $quandCEstVide  Ce que l'absence de lignes signifie.
+     * @param  list<string>  $quandCEstVide  Les cas d'une liste vide, un par ligne.
      * @param  list<array{libelle: string, url: string}>  $ensuite  Les portes de sortie.
      */
     public function __construct(
+        public string $titre,
         public string $role,
         public array $gestes = [],
-        public ?string $quandCEstVide = null,
+        public array $quandCEstVide = [],
         public array $ensuite = [],
     ) {}
 }

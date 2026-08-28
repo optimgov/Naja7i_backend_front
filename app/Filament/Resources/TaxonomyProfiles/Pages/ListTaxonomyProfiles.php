@@ -15,6 +15,7 @@ class ListTaxonomyProfiles extends ListeAvecCreation implements ExpliqueSonEcran
     public static function guideDeLEcran(): GuideDEcran
     {
         return new GuideDEcran(
+            titre: __('guides.taxonomy_profiles.titre'),
             role: __('guides.taxonomy_profiles.role'),
             gestes: __('guides.taxonomy_profiles.gestes'),
             quandCEstVide: __('guides.taxonomy_profiles.vide'),

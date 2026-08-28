@@ -3,6 +3,12 @@
 namespace Tests\Feature\BackOffice;
 
 use App\Filament\Pages\Couverture;
+use App\Filament\Pages\FileDeQualification;
+use App\Filament\Resources\CompetencyNodes\Pages\ListCompetencyNodes;
+use App\Filament\Resources\DifficultyLevels\Pages\ListDifficultyLevels;
+use App\Filament\Resources\Questions\Pages\ListQuestions;
+use App\Filament\Resources\Sources\Pages\ListSources;
+use App\Filament\Resources\TaxonomyProfiles\Pages\ListTaxonomyProfiles;
 use App\Filament\Support\ExpliqueSonEcran;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -13,21 +19,47 @@ use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
 
 /**
- * CHAQUE ÉCRAN DIT À QUOI IL SERT — et le crochet le rend vraiment.
+ * CHAQUE ÉCRAN DIT À QUOI IL SERT — et le dit dans la langue du compte.
  *
- * Le panneau expliquait ses ÉTATS et jamais ses MISSIONS : `Couverture` sait
- * distinguer « Aucun trou » de « Rien à mesurer », mais son sous-titre annonce
- * « couples (compétence, cause) attendus par des candidats » — une définition
- * écrite pour qui connaît déjà le modèle.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CE QUE CES TESTS ONT LAISSÉ PASSER, ET QU'ILS DÉFENDENT MAINTENANT
  *
- * CE QUI SE DÉFEND ICI N'EST PAS LE TEXTE, c'est le CÂBLAGE. Un guide déclaré
- * sur une page mais jamais rendu ne casse rien d'observable : la page s'affiche,
- * personne ne voit qu'il manque quelque chose. C'est exactement le genre de
- * défaut qui survit des mois.
+ * La première version vérifiait que le CORPS du guide s'affichait en arabe et
+ * que le corps français n'y était pas. Elle ne regardait jamais le CADRE — le
+ * déclencheur et les trois titres de rubrique — resté écrit en dur en français
+ * dans le composant. Un expert arabophone lisait donc un guide arabe entouré de
+ * libellés français, et aucun test ne rougissait.
+ *
+ * Relevé par l'audit du 28 août 2026. La leçon n'est pas « il manquait un
+ * test » : c'est qu'une assertion sur un fragment ne prouve rien du reste de
+ * l'écran. Le test arabe refuse désormais TOUS les libellés français du cadre.
  */
 class GuideDesEcransTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * L'INVENTAIRE EXPLICITE des écrans qui doivent porter un guide.
+     *
+     * Sans lui, l'inventaire acceptait en silence tout écran dépourvu de
+     * guide : ajouter une page sans l'expliquer ne faisait rougir personne.
+     */
+    private const ECRANS_GUIDES = [
+        Couverture::class,
+        FileDeQualification::class,
+        ListQuestions::class,
+        ListSources::class,
+        ListCompetencyNodes::class,
+        ListTaxonomyProfiles::class,
+        ListDifficultyLevels::class,
+    ];
+
+    /** Les libellés du cadre en français. Aucun ne doit paraître en locale arabe. */
+    private const CADRE_FRANCAIS = [
+        'Ce que vous pouvez faire ici',
+        'Si la liste est vide',
+        'Étape suivante',
+    ];
 
     private User $expert;
 
@@ -36,157 +68,188 @@ class GuideDesEcransTest extends TestCase
         parent::setUp();
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
 
-        $this->expert = User::create([
-            'email' => 'guide@naja7i.ma',
+        $this->expert = $this->membre('guide@naja7i.ma', 'fr');
+    }
+
+    private function membre(string $email, string $locale): User
+    {
+        $user = User::create([
+            'email' => $email,
             'password' => 'une-phrase-de-passe-solide',
-            'locale' => 'fr',
+            'locale' => $locale,
             'status' => 'active',
         ]);
-        $this->expert->markEmailAsVerified();
-        $this->expert->memberships()->create([
+        $user->markEmailAsVerified();
+        $user->memberships()->create([
             'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
         ]);
-        $this->expert = $this->expert->fresh();
+
+        return $user->fresh();
     }
+
+    // ── Le câblage ──────────────────────────────────────────────────────
 
     /**
      * LE TEST QUI DISCRIMINE — le guide est-il RENDU, pas seulement déclaré.
      *
-     * Il porte sur une phrase du guide et non sur le mot « guide » : le second
-     * resterait vert si le crochet rendait un panneau vide.
+     * Un guide déclaré mais jamais rendu ne casse rien d'observable : la page
+     * s'affiche, personne ne voit qu'il manque quelque chose.
      */
-    public function test_l_ecran_de_couverture_explique_sa_mission_a_l_ecran(): void
+    public function test_chaque_ecran_declare_rend_bien_son_guide(): void
     {
-        $reponse = $this->actingAs($this->expert)->get(Couverture::getUrl());
+        foreach (self::ECRANS_GUIDES as $ecran) {
+            $guide = $ecran::guideDeLEcran();
 
-        $reponse->assertOk();
-        $reponse->assertSee('À quoi sert cet écran', escape: false);
-        $reponse->assertSee('Ce qu’il faut écrire en priorité', escape: false);
-    }
-
-    /**
-     * LE CAS DU VIDE EST EXPLIQUÉ, et c'est le plus utile.
-     *
-     * Une liste vide a ici DEUX causes opposées — la banque couvre tout, ou
-     * personne n'a rien demandé. Un expert qui les confond conclut « tout va
-     * bien » d'un instrument qui ne mesure rien.
-     */
-    public function test_le_guide_leve_l_ambiguite_d_une_liste_vide(): void
-    {
-        $guide = Couverture::guideDeLEcran();
-
-        $this->assertNotNull($guide->quandCEstVide);
-        $this->assertStringContainsString('opposées', $guide->quandCEstVide);
-
-        $this->actingAs($this->expert)
-            ->get(Couverture::getUrl())
-            ->assertSee('Quand la liste est vide', escape: false);
-    }
-
-    /** Un guide sans geste ni porte de sortie n'est qu'un paragraphe. */
-    public function test_le_guide_dit_quoi_faire_et_ou_aller(): void
-    {
-        $guide = Couverture::guideDeLEcran();
-
-        $this->assertNotEmpty($guide->gestes);
-        $this->assertNotEmpty($guide->ensuite);
-
-        foreach ($guide->ensuite as $porte) {
-            $this->assertArrayHasKey('libelle', $porte);
-            $this->assertNotEmpty($porte['url'], "La porte « {$porte['libelle']} » n'a pas d'adresse.");
+            $this->actingAs($this->expert)
+                ->get($ecran::getUrl())
+                ->assertOk()
+                ->assertSee($guide->titre, escape: false)
+                ->assertSee($guide->role, escape: false);
         }
     }
 
     /**
-     * LE TEST QUI DISCRIMINE LE BILINGUISME — le guide s'affiche EN ARABE.
+     * LE DÉCLENCHEUR PORTE LE NOM DE L'ÉCRAN, pas « Aide ».
      *
-     * La parité des clés ne prouve rien sur le rendu : des clés peuvent être
-     * traduites des deux côtés et l'écran servir le français à tout le monde.
-     * Ce test-là monte un expert dont la préférence est `ar` et exige de lire
-     * l'arabe à l'écran — et de NE PAS y lire le français.
+     * Le commentaire de la première version l'affirmait déjà, et le code
+     * rendait toujours « À quoi sert cet écran ? » : le commentaire mentait.
      */
+    public function test_le_declencheur_est_propre_a_chaque_ecran(): void
+    {
+        $titres = array_map(fn (string $e) => $e::guideDeLEcran()->titre, self::ECRANS_GUIDES);
+
+        $this->assertCount(count($titres), array_unique($titres), 'Titres partagés : '.implode(' · ', $titres));
+
+        foreach ($titres as $titre) {
+            $this->assertStringNotContainsStringIgnoringCase('cet écran', $titre, "« {$titre} » reste générique.");
+        }
+    }
+
+    // ── Le bilinguisme ──────────────────────────────────────────────────
+
+    /**
+     * LE TEST QUI A MANQUÉ — le CADRE aussi suit la langue.
+     *
+     * Sans cette moitié, le défaut relevé le 28 août serait resté invisible.
+     */
+    public function test_un_expert_arabophone_ne_lit_aucun_francais_dans_le_cadre(): void
+    {
+        $arabophone = $this->membre('guide-ar@naja7i.ma', 'ar');
+
+        foreach (self::ECRANS_GUIDES as $ecran) {
+            $reponse = $this->actingAs($arabophone)->get($ecran::getUrl())->assertOk();
+
+            foreach (self::CADRE_FRANCAIS as $libelle) {
+                $reponse->assertDontSee($libelle, escape: false);
+            }
+        }
+    }
+
+    /** Et l'arabe est bien SERVI, pas seulement le français absent. */
     public function test_un_expert_arabophone_lit_son_guide_en_arabe(): void
     {
-        $arabophone = User::create([
-            'email' => 'guide-ar@naja7i.ma',
-            'password' => 'une-phrase-de-passe-solide',
-            'locale' => 'ar',
-            'status' => 'active',
-        ]);
-        $arabophone->markEmailAsVerified();
-        $arabophone->memberships()->create([
-            'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
-        ]);
+        $arabophone = $this->membre('guide-ar2@naja7i.ma', 'ar');
 
-        $reponse = $this->actingAs($arabophone->fresh())->get(Couverture::getUrl());
+        $reponse = $this->actingAs($arabophone)->get(Couverture::getUrl())->assertOk();
 
-        $reponse->assertOk();
-        $reponse->assertSee('ما يجب تحريره أولا', escape: false);
-        $reponse->assertDontSee('Ce qu’il faut écrire en priorité', escape: false);
+        $fr = require lang_path('fr/guides.php');
+        $ar = require lang_path('ar/guides.php');
+
+        $reponse->assertSee($ar['couverture']['titre'], escape: false);
+        $reponse->assertSee($ar['commun']['gestes'], escape: false);
+        $reponse->assertDontSee($fr['couverture']['role'], escape: false);
     }
 
     /**
-     * LES DEUX LANGUES DISENT LA MÊME CHOSE — parité fr/ar des guides.
+     * PARITÉ fr/ar, ET REFUS D'UNE CLÉ PRÉSENTE MAIS VIDE.
      *
-     * Le back-office se lit en arabe comme en français : `SetLocale` suit la
-     * préférence du compte. Un guide écrit dans une seule langue laisserait un
-     * expert arabophone lire son poste de travail en français.
-     *
-     * C'est une part de DET-98, qui constate que personne ne contrôle la parité
-     * des locales SERVEUR alors que le serveur en sert. Ce test la tient au
-     * moins sur les guides — le fichier qui va le plus grossir.
+     * Une clé vide passe la parité et rend une chaîne blanche à l'écran : elle
+     * est pire qu'une clé absente. C'est une part de DET-98.
      */
-    public function test_chaque_guide_existe_dans_les_deux_langues(): void
+    public function test_chaque_guide_existe_et_est_rempli_dans_les_deux_langues(): void
     {
-        $aplatir = function (array $tableau, string $prefixe = '') use (&$aplatir): array {
+        $aplatir = function (array $t, string $prefixe = '') use (&$aplatir): array {
             $cles = [];
-            foreach ($tableau as $cle => $valeur) {
+            foreach ($t as $cle => $valeur) {
                 $chemin = $prefixe === '' ? (string) $cle : "{$prefixe}.{$cle}";
-                $cles = is_array($valeur)
-                    ? [...$cles, ...$aplatir($valeur, $chemin)]
-                    : [...$cles, $chemin];
+                $cles = is_array($valeur) ? [...$cles, ...$aplatir($valeur, $chemin)] : [...$cles, $chemin];
             }
 
             return $cles;
         };
 
-        $fr = $aplatir(require lang_path('fr/guides.php'));
-        $ar = $aplatir(require lang_path('ar/guides.php'));
+        $fr = require lang_path('fr/guides.php');
+        $ar = require lang_path('ar/guides.php');
 
-        sort($fr);
-        sort($ar);
+        $clesFr = $aplatir($fr);
+        $clesAr = $aplatir($ar);
+        sort($clesFr);
+        sort($clesAr);
 
-        $this->assertSame($fr, $ar, 'Clés absentes d’un côté : '.implode(', ', array_merge(
-            array_diff($fr, $ar),
-            array_diff($ar, $fr),
+        $this->assertSame($clesFr, $clesAr, 'Clés absentes d’un côté : '.implode(', ', array_merge(
+            array_diff($clesFr, $clesAr),
+            array_diff($clesAr, $clesFr),
         )));
 
-        /* UNE CLÉ PRÉSENTE MAIS VIDE EST PIRE QU'UNE CLÉ ABSENTE : la première
-         * passe la parité et rend une chaîne vide à l'écran. */
-        foreach (['fr', 'ar'] as $langue) {
-            foreach ($aplatir(require lang_path("{$langue}/guides.php")) as $cle) {
-                $valeur = data_get(require lang_path("{$langue}/guides.php"), $cle);
-                $this->assertNotSame('', trim((string) $valeur), "guides.{$cle} est vide en {$langue}.");
+        foreach (['fr' => $fr, 'ar' => $ar] as $langue => $tableau) {
+            foreach ($aplatir($tableau) as $cle) {
+                $this->assertNotSame('', trim((string) data_get($tableau, $cle)), "guides.{$cle} est vide en {$langue}.");
+            }
+        }
+    }
+
+    // ── Le contenu ──────────────────────────────────────────────────────
+
+    /**
+     * LES CAS D'UNE LISTE VIDE SONT SÉPARÉS, pas fondus en un paragraphe.
+     *
+     * Une liste vide a souvent deux causes opposées. Les fondre oblige le
+     * lecteur à les démêler, ce que le guide devait lui épargner.
+     */
+    public function test_les_cas_d_une_liste_vide_sont_separes(): void
+    {
+        foreach (self::ECRANS_GUIDES as $ecran) {
+            $guide = $ecran::guideDeLEcran();
+
+            $this->assertNotEmpty($guide->quandCEstVide, class_basename($ecran).' n’explique pas sa liste vide.');
+        }
+
+        $this->assertGreaterThanOrEqual(2, count(Couverture::guideDeLEcran()->quandCEstVide));
+    }
+
+    /**
+     * CHAQUE PORTE DE SORTIE MÈNE QUELQUE PART, et à une page que celui qui
+     * voit le guide peut ouvrir. Un lien vers un écran interdit au rôle serait
+     * un cul-de-sac poli.
+     */
+    public function test_chaque_porte_de_sortie_est_ouvrable_par_qui_voit_le_guide(): void
+    {
+        foreach (self::ECRANS_GUIDES as $ecran) {
+            foreach ($ecran::guideDeLEcran()->ensuite as $porte) {
+                $this->assertNotEmpty($porte['url'], 'Porte sans adresse sur '.class_basename($ecran));
+
+                $this->actingAs($this->expert)->get($porte['url'])->assertSuccessful();
             }
         }
     }
 
     /**
-     * L'INVENTAIRE — il rougit quand un écran est ajouté sans guide utile.
-     *
-     * Il ne réclame PAS que tout écran en ait un : certains n'ont rien à
-     * expliquer. Il réclame que celui qui déclare en avoir un le remplisse.
+     * L'INVENTAIRE ROUGIT DANS LES DEUX SENS : un écran inventorié qui perdrait
+     * son guide, et un écran qui en déclare un mais le laisse incomplet.
      */
-    public function test_tout_ecran_qui_declare_un_guide_le_remplit(): void
+    public function test_l_inventaire_des_ecrans_guides_est_tenu(): void
     {
-        $vides = [];
+        foreach (self::ECRANS_GUIDES as $ecran) {
+            $this->assertTrue(
+                is_subclass_of($ecran, ExpliqueSonEcran::class),
+                class_basename($ecran).' est inventorié comme guidé mais n’implémente plus le contrat.'
+            );
+        }
+
+        $incomplets = [];
 
         foreach (Finder::create()->files()->in(app_path('Filament'))->name('*.php') as $fichier) {
-            $classe = 'App\\Filament\\'.str_replace(
-                ['/', '.php'],
-                ['\\', ''],
-                $fichier->getRelativePathname(),
-            );
+            $classe = 'App\\Filament\\'.str_replace(['/', '.php'], ['\\', ''], $fichier->getRelativePathname());
 
             if (! class_exists($classe) || ! is_subclass_of($classe, ExpliqueSonEcran::class)) {
                 continue;
@@ -194,11 +257,11 @@ class GuideDesEcransTest extends TestCase
 
             $guide = $classe::guideDeLEcran();
 
-            if (trim($guide->role) === '' || $guide->gestes === []) {
-                $vides[] = $classe;
+            if (trim($guide->titre) === '' || trim($guide->role) === '' || $guide->gestes === []) {
+                $incomplets[] = class_basename($classe);
             }
         }
 
-        $this->assertEmpty($vides, 'Écran(s) déclarant un guide vide : '.implode(', ', $vides));
+        $this->assertEmpty($incomplets, 'Écran(s) déclarant un guide incomplet : '.implode(', ', $incomplets));
     }
 }

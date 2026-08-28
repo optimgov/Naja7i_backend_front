@@ -15,6 +15,7 @@ class ListSources extends ListeAvecCreation implements ExpliqueSonEcran
     public static function guideDeLEcran(): GuideDEcran
     {
         return new GuideDEcran(
+            titre: __('guides.sources.titre'),
             role: __('guides.sources.role'),
             gestes: __('guides.sources.gestes'),
             quandCEstVide: __('guides.sources.vide'),

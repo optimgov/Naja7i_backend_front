@@ -15,6 +15,7 @@ class ListCompetencyNodes extends ListeAvecCreation implements ExpliqueSonEcran
     public static function guideDeLEcran(): GuideDEcran
     {
         return new GuideDEcran(
+            titre: __('guides.competency_nodes.titre'),
             role: __('guides.competency_nodes.role'),
             gestes: __('guides.competency_nodes.gestes'),
             quandCEstVide: __('guides.competency_nodes.vide'),

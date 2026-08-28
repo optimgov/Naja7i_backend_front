@@ -15,6 +15,7 @@ class ListQuestions extends ListeAvecCreation implements ExpliqueSonEcran
     public static function guideDeLEcran(): GuideDEcran
     {
         return new GuideDEcran(
+            titre: __('guides.questions.titre'),
             role: __('guides.questions.role'),
             gestes: __('guides.questions.gestes'),
             quandCEstVide: __('guides.questions.vide'),

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\ExpliqueSonEcran;
+use App\Filament\Support\GuideDEcran;
 use App\Models\User;
 use App\Services\OwnAccountService;
 use BackedEnum;
@@ -14,8 +16,29 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Validation\ValidationException;
 
-final class MonDossier extends Page
+final class MonDossier extends Page implements ExpliqueSonEcran
 {
+    public static function guideDeLEcran(): GuideDEcran
+    {
+        return new GuideDEcran(
+            titre: __('guides.mon_dossier.titre'),
+            role: __('guides.mon_dossier.role'),
+            gestes: __('guides.mon_dossier.gestes'),
+            quandCEstVide: __('guides.mon_dossier.vide'),
+            /*
+             * AUCUNE PORTE DE SORTIE, ET C'EST VOULU.
+             *
+             * Cet écran est ouvert à TOUT membre du personnel — pédagogue,
+             * commercial, finance, support. Aucun autre écran ne l'est : la
+             * couverture demande `questions.view`, les commandes `orders.view`.
+             * Une porte unique aurait donc rendu 403 à une partie des lecteurs,
+             * ce qui est exactement le cul-de-sac que la règle des portes
+             * interdit. Chacun revient à son poste par la navigation.
+             */
+            ensuite: [],
+        );
+    }
+
     /** @var array<string, mixed> */
     public ?array $accountData = [];
 

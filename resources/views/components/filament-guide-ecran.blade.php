@@ -1,11 +1,25 @@
 {{--
-    LE GUIDE DE L'ÉCRAN — replié par défaut, et entièrement traduit.
+    LE GUIDE DE L'ÉCRAN — ouvert la PREMIÈRE fois, replié ensuite.
 
-    Un panneau ouvert d'office est un panneau qu'on ferme sans lire, puis qu'on
-    ne rouvre jamais. Replié, il ne coûte rien à qui connaît son poste et reste
-    à un clic de qui débute. `<details>` porte cela sans une ligne de script :
-    il s'ouvre au clavier, il s'annonce aux lecteurs d'écran, et il survit à un
-    JavaScript en panne.
+    Le premier jet le repliait toujours, en s'appuyant sur un raisonnement qui
+    n'en couvrait que la moitié : « un panneau ouvert d'office est un panneau
+    qu'on ferme sans lire ». C'est vrai du dixième passage. Ce l'est faux du
+    premier, où le guide reste alors invisible à celui-là même pour qui il est
+    écrit — relevé le 29 août : « le guide reste replié dès la première visite ».
+
+    LA RÈGLE TIENT DONC LES DEUX BOUTS. Il s'ouvre tant que la personne ne l'a
+    jamais refermé sur CET écran ; dès qu'elle le referme, il reste replié.
+    C'est elle qui décide, et une seule fois.
+
+    LE REPLI EST UNE PRÉFÉRENCE, PAS UNE DONNÉE. Il vit dans le navigateur, et
+    ne vaut pas un aller-retour au serveur ni une colonne en base : perdre ce
+    réglage en changeant de poste rouvre un guide, ce qui n'a jamais nui à
+    personne.
+
+    SANS JAVASCRIPT, LE GUIDE EST OUVERT. C'est le bon défaut : l'état qu'on
+    ne peut pas connaître est traité comme une première visite. `<details>`
+    garde par ailleurs tout ce qu'il apportait — ouverture au clavier, annonce
+    aux lecteurs d'écran, survie à un script en panne.
 
     LE CADRE SUIT LA LANGUE DU COMPTE, ET C'EST UNE CORRECTION.
     Le premier jet écrivait « À quoi sert cet écran ? », « Ce qu'on y fait »,
@@ -21,7 +35,17 @@
 --}}
 @props(['guide'])
 
-<details class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 mb-6 group">
+@php
+    /* La clé du repli est l'écran, pas le panneau : on referme le guide des
+       questions sans refermer celui de la couverture. */
+    $cleDeRepli = 'naja7i.guide.'.md5($guide->titre);
+@endphp
+
+<details
+    open
+    data-guide="{{ $cleDeRepli }}"
+    class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 mb-6 group"
+>
     <summary class="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 select-none">
         <x-filament::icon
             icon="heroicon-o-light-bulb"
@@ -86,3 +110,34 @@
         @endif
     </div>
 </details>
+
+<script>
+    /*
+     * On referme AVANT la peinture pour les écrans déjà connus : appliquer
+     * l'état après coup ferait clignoter le guide ouvert puis refermé à chaque
+     * chargement. Le script est inline et sans dépendance — il tourne au
+     * moment où l'élément vient d'être analysé, donc juste après lui.
+     */
+    (function () {
+        var panneaux = document.querySelectorAll('details[data-guide]')
+
+        for (var i = 0; i < panneaux.length; i++) {
+            (function (panneau) {
+                var cle = panneau.getAttribute('data-guide')
+
+                try {
+                    if (window.localStorage.getItem(cle) === 'replie') panneau.open = false
+                } catch (e) {
+                    /* Stockage refusé — navigation privée, réglage strict. Le
+                       guide reste ouvert : c'est le défaut sûr. */
+                }
+
+                panneau.addEventListener('toggle', function () {
+                    try {
+                        window.localStorage.setItem(cle, panneau.open ? 'ouvert' : 'replie')
+                    } catch (e) { /* sans stockage, le choix ne survit pas à la page */ }
+                })
+            })(panneaux[i])
+        }
+    })()
+</script>

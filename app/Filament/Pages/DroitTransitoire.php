@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\ExpliqueSonEcran;
+use App\Filament\Support\GuideDEcran;
 use App\Models\Audience;
 use App\Models\Plan;
 use App\Models\TransitionBatch;
@@ -35,8 +37,21 @@ use Filament\Tables\Table;
  * rare et lourd ; ouvrir sur le journal des poses passées évite le second
  * geste par inadvertance, qui est le vrai risque de cet écran.
  */
-class DroitTransitoire extends Page implements HasTable
+class DroitTransitoire extends Page implements ExpliqueSonEcran, HasTable
 {
+    public static function guideDeLEcran(): GuideDEcran
+    {
+        return new GuideDEcran(
+            titre: __('guides.droit_transitoire.titre'),
+            role: __('guides.droit_transitoire.role'),
+            gestes: __('guides.droit_transitoire.gestes'),
+            quandCEstVide: __('guides.droit_transitoire.vide'),
+            ensuite: [
+                ['libelle' => __('guides.droit_transitoire.ensuite_poses'), 'url' => DroitsTransitoiresPoses::getUrl()],
+            ],
+        );
+    }
+
     use InteractsWithTable;
 
     /** LA PERMISSION QUI OUVRE CETTE SURFACE — D-13, voir `RefusNommeTest`. */

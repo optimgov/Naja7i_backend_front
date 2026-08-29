@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\ExpliqueSonEcran;
+use App\Filament\Support\GuideDEcran;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\DroitTransitoireService;
@@ -33,8 +35,21 @@ use Illuminate\Database\Eloquent\Builder;
  * n'apparaissent pas ici, et le service refuse de les toucher même si un
  * identifiant y menait.
  */
-class DroitsTransitoiresPoses extends Page implements HasTable
+class DroitsTransitoiresPoses extends Page implements ExpliqueSonEcran, HasTable
 {
+    public static function guideDeLEcran(): GuideDEcran
+    {
+        return new GuideDEcran(
+            titre: __('guides.droits_transitoires_poses.titre'),
+            role: __('guides.droits_transitoires_poses.role'),
+            gestes: __('guides.droits_transitoires_poses.gestes'),
+            quandCEstVide: __('guides.droits_transitoires_poses.vide'),
+            ensuite: [
+                ['libelle' => __('guides.droits_transitoires_poses.ensuite_poser'), 'url' => DroitTransitoire::getUrl()],
+            ],
+        );
+    }
+
     use InteractsWithTable;
 
     /** LA PERMISSION QUI OUVRE CETTE SURFACE — D-13, voir `RefusNommeTest`. */

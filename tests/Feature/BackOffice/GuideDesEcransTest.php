@@ -3,12 +3,23 @@
 namespace Tests\Feature\BackOffice;
 
 use App\Filament\Pages\Couverture;
+use App\Filament\Pages\DroitsTransitoiresPoses;
+use App\Filament\Pages\DroitTransitoire;
 use App\Filament\Pages\FileDeQualification;
+use App\Filament\Pages\MonDossier;
+use App\Filament\Resources\Audiences\Pages\ListAudiences;
+use App\Filament\Resources\CapabilityDefinitions\Pages\ListCapabilityDefinitions;
 use App\Filament\Resources\CompetencyNodes\Pages\ListCompetencyNodes;
+use App\Filament\Resources\ComplaintThreads\Pages\ListComplaintThreads;
+use App\Filament\Resources\Coupons\Pages\ListCoupons;
 use App\Filament\Resources\DifficultyLevels\Pages\ListDifficultyLevels;
+use App\Filament\Resources\Orders\Pages\ListOrders;
+use App\Filament\Resources\Plans\Pages\ListPlans;
 use App\Filament\Resources\Questions\Pages\ListQuestions;
+use App\Filament\Resources\QuotaProfiles\Pages\ListQuotaProfiles;
 use App\Filament\Resources\Sources\Pages\ListSources;
 use App\Filament\Resources\TaxonomyProfiles\Pages\ListTaxonomyProfiles;
+use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Support\ExpliqueSonEcran;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -45,13 +56,31 @@ class GuideDesEcransTest extends TestCase
      * guide : ajouter une page sans l'expliquer ne faisait rougir personne.
      */
     private const ECRANS_GUIDES = [
-        Couverture::class,
-        FileDeQualification::class,
-        ListQuestions::class,
-        ListSources::class,
-        ListCompetencyNodes::class,
-        ListTaxonomyProfiles::class,
-        ListDifficultyLevels::class,
+        // Le poste pédagogique
+        Couverture::class => 'expert_pedagogue',
+        FileDeQualification::class => 'expert_pedagogue',
+        ListQuestions::class => 'expert_pedagogue',
+        ListSources::class => 'expert_pedagogue',
+        ListCompetencyNodes::class => 'expert_pedagogue',
+        ListTaxonomyProfiles::class => 'expert_pedagogue',
+        ListDifficultyLevels::class => 'expert_pedagogue',
+
+        // Le poste commercial et le poste d'administration
+        ListAudiences::class => 'super_admin',
+        ListCapabilityDefinitions::class => 'super_admin',
+        ListPlans::class => 'super_admin',
+        ListCoupons::class => 'super_admin',
+        ListOrders::class => 'super_admin',
+        ListUsers::class => 'super_admin',
+        ListQuotaProfiles::class => 'super_admin',
+        DroitTransitoire::class => 'super_admin',
+        DroitsTransitoiresPoses::class => 'super_admin',
+
+        // L'assistance
+        ListComplaintThreads::class => 'support',
+
+        // Et celui que tout membre du personnel ouvre
+        MonDossier::class => 'expert_pedagogue',
     ];
 
     /** Les libellés du cadre en français. Aucun ne doit paraître en locale arabe. */
@@ -61,27 +90,51 @@ class GuideDesEcransTest extends TestCase
         'Étape suivante',
     ];
 
-    private User $expert;
+    /** @var array<string, User> un membre par (rôle, langue), créé à la demande */
+    private array $membres = [];
 
     protected function setUp(): void
     {
         parent::setUp();
         app(TenantContext::class)->set(Tenant::where('kind', 'platform')->firstOrFail());
-
-        $this->expert = $this->membre('guide@naja7i.ma', 'fr');
     }
 
-    private function membre(string $email, string $locale): User
+    /**
+     * LE GUIDE SE LIT PAR CELUI QUI VOIT L'ÉCRAN, et pas par un expert
+     * pédagogue universel.
+     *
+     * La première version ouvrait les sept écrans pédagogiques sous un seul
+     * compte. En étendant l'inventaire aux commandes, aux offres et aux
+     * réclamations, ce compte se serait heurté à des refus d'accès — et le
+     * test aurait rougi pour une raison qui n'a rien à voir avec les guides.
+     * Chaque écran est donc visité par le rôle qui l'ouvre réellement.
+     */
+    private function membre(string $role, string $locale = 'fr'): User
+    {
+        /*
+         * LA SESSION EST VIDÉE À CHAQUE CHANGEMENT DE RÔLE.
+         *
+         * `actingAs` change l'utilisateur authentifié, pas la session : le
+         * panneau y garde son état, et la première page ouverte sous un autre
+         * compte répondait 302 au lieu de 200. Le même geste existe déjà dans
+         * `OwnAccountTest`, pour la même raison.
+         */
+        $this->app['session']->flush();
+
+        return $this->membres["{$role}-{$locale}"] ??= $this->creer($role, $locale);
+    }
+
+    private function creer(string $role, string $locale): User
     {
         $user = User::create([
-            'email' => $email,
+            'email' => "guide-{$role}-{$locale}@naja7i.ma",
             'password' => 'une-phrase-de-passe-solide',
             'locale' => $locale,
             'status' => 'active',
         ]);
         $user->markEmailAsVerified();
         $user->memberships()->create([
-            'role_id' => Role::where('code', 'expert_pedagogue')->whereNull('tenant_id')->value('id'),
+            'role_id' => Role::where('code', $role)->whereNull('tenant_id')->value('id'),
         ]);
 
         return $user->fresh();
@@ -97,12 +150,14 @@ class GuideDesEcransTest extends TestCase
      */
     public function test_chaque_ecran_declare_rend_bien_son_guide(): void
     {
-        foreach (self::ECRANS_GUIDES as $ecran) {
+        foreach (self::ECRANS_GUIDES as $ecran => $role) {
             $guide = $ecran::guideDeLEcran();
 
-            $this->actingAs($this->expert)
-                ->get($ecran::getUrl())
-                ->assertOk()
+            $reponse = $this->actingAs($this->membre($role))->get($ecran::getUrl());
+
+            $this->assertSame(200, $reponse->status(), class_basename($ecran)." refuse le rôle « {$role} » ({$reponse->status()}).");
+
+            $reponse
                 ->assertSee($guide->titre, escape: false)
                 ->assertSee($guide->role, escape: false);
         }
@@ -116,13 +171,45 @@ class GuideDesEcransTest extends TestCase
      */
     public function test_le_declencheur_est_propre_a_chaque_ecran(): void
     {
-        $titres = array_map(fn (string $e) => $e::guideDeLEcran()->titre, self::ECRANS_GUIDES);
+        $titres = array_map(fn (string $e) => $e::guideDeLEcran()->titre, array_keys(self::ECRANS_GUIDES));
 
         $this->assertCount(count($titres), array_unique($titres), 'Titres partagés : '.implode(' · ', $titres));
 
         foreach ($titres as $titre) {
             $this->assertStringNotContainsStringIgnoringCase('cet écran', $titre, "« {$titre} » reste générique.");
         }
+    }
+
+    /**
+     * LE GUIDE EST OUVERT À LA PREMIÈRE VISITE.
+     *
+     * Il était replié en toutes circonstances : invisible, donc, pour celui-là
+     * même à qui il s'adresse. Relevé le 29 août. Le repli devient un choix de
+     * la personne — le navigateur s'en souvient —, et le rendu de départ est
+     * ouvert. Chaque panneau porte sa clé de repli, propre à son écran.
+     */
+    public function test_le_guide_s_ouvre_a_la_premiere_visite(): void
+    {
+        $cles = [];
+
+        foreach (self::ECRANS_GUIDES as $ecran => $role) {
+            $html = $this->actingAs($this->membre($role))->get($ecran::getUrl())->assertOk()->getContent();
+
+            $this->assertMatchesRegularExpression(
+                '/<details\s+open\s+data-guide="([^"]+)"/',
+                $html,
+                class_basename($ecran).' rend son guide replié à la première visite.'
+            );
+
+            preg_match('/data-guide="([^"]+)"/', $html, $trouve);
+            $cles[class_basename($ecran)] = $trouve[1];
+        }
+
+        $this->assertSame(
+            count($cles),
+            count(array_unique($cles)),
+            'Deux écrans partagent leur clé de repli : refermer l’un refermerait l’autre.'
+        );
     }
 
     // ── Le bilinguisme ──────────────────────────────────────────────────
@@ -134,10 +221,8 @@ class GuideDesEcransTest extends TestCase
      */
     public function test_un_expert_arabophone_ne_lit_aucun_francais_dans_le_cadre(): void
     {
-        $arabophone = $this->membre('guide-ar@naja7i.ma', 'ar');
-
-        foreach (self::ECRANS_GUIDES as $ecran) {
-            $reponse = $this->actingAs($arabophone)->get($ecran::getUrl())->assertOk();
+        foreach (self::ECRANS_GUIDES as $ecran => $role) {
+            $reponse = $this->actingAs($this->membre($role, 'ar'))->get($ecran::getUrl())->assertOk();
 
             foreach (self::CADRE_FRANCAIS as $libelle) {
                 $reponse->assertDontSee($libelle, escape: false);
@@ -148,9 +233,8 @@ class GuideDesEcransTest extends TestCase
     /** Et l'arabe est bien SERVI, pas seulement le français absent. */
     public function test_un_expert_arabophone_lit_son_guide_en_arabe(): void
     {
-        $arabophone = $this->membre('guide-ar2@naja7i.ma', 'ar');
-
-        $reponse = $this->actingAs($arabophone)->get(Couverture::getUrl())->assertOk();
+        $reponse = $this->actingAs($this->membre('expert_pedagogue', 'ar'))
+            ->get(Couverture::getUrl())->assertOk();
 
         $fr = require lang_path('fr/guides.php');
         $ar = require lang_path('ar/guides.php');
@@ -208,7 +292,7 @@ class GuideDesEcransTest extends TestCase
      */
     public function test_les_cas_d_une_liste_vide_sont_separes(): void
     {
-        foreach (self::ECRANS_GUIDES as $ecran) {
+        foreach (array_keys(self::ECRANS_GUIDES) as $ecran) {
             $guide = $ecran::guideDeLEcran();
 
             $this->assertNotEmpty($guide->quandCEstVide, class_basename($ecran).' n’explique pas sa liste vide.');
@@ -224,11 +308,11 @@ class GuideDesEcransTest extends TestCase
      */
     public function test_chaque_porte_de_sortie_est_ouvrable_par_qui_voit_le_guide(): void
     {
-        foreach (self::ECRANS_GUIDES as $ecran) {
+        foreach (self::ECRANS_GUIDES as $ecran => $role) {
             foreach ($ecran::guideDeLEcran()->ensuite as $porte) {
                 $this->assertNotEmpty($porte['url'], 'Porte sans adresse sur '.class_basename($ecran));
 
-                $this->actingAs($this->expert)->get($porte['url'])->assertSuccessful();
+                $this->actingAs($this->membre($role))->get($porte['url'])->assertSuccessful();
             }
         }
     }
@@ -239,7 +323,7 @@ class GuideDesEcransTest extends TestCase
      */
     public function test_l_inventaire_des_ecrans_guides_est_tenu(): void
     {
-        foreach (self::ECRANS_GUIDES as $ecran) {
+        foreach (array_keys(self::ECRANS_GUIDES) as $ecran) {
             $this->assertTrue(
                 is_subclass_of($ecran, ExpliqueSonEcran::class),
                 class_basename($ecran).' est inventorié comme guidé mais n’implémente plus le contrat.'

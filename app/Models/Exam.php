@@ -81,6 +81,21 @@ class Exam extends Model
         return $this->hasOne(TaxonomyProfile::class);
     }
 
+    /**
+     * LES QUESTIONS DE L'ÉPREUVE — tous états confondus.
+     *
+     * Ce n'est pas ce qu'un candidat verrait : la sélection au diagnostic
+     * filtre bien davantage. Cette relation sert au catalogue du back-office,
+     * où le compte brut répond à une seule question — l'épreuve a-t-elle
+     * quelque chose, ou est-elle une coquille. Les onze matières du lycée en
+     * sont à zéro, et c'est précisément ce qu'il faut voir avant d'ouvrir leur
+     * famille aux candidats.
+     */
+    public function questions(): HasMany
+    {
+        return $this->hasMany(Question::class);
+    }
+
     public function competencyNodes(): HasMany
     {
         return $this->hasMany(CompetencyNode::class);

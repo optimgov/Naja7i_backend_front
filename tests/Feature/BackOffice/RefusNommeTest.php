@@ -126,6 +126,10 @@ class RefusNommeTest extends TestCase
              * un droit transitoire — engage l'argent au même titre que valider
              * un coupon (`PlanPolicy`). */
             'orders.validate' => 'finance',
+            /* Le catalogue — filières, familles, épreuves — est gouverné par
+             * l'autorité pédagogique : c'est elle qui décide ce qui s'ouvre
+             * aux candidats, et sur quel arbre les questions se rattacheront. */
+            'catalogue.view' => 'expert_pedagogue',
         ];
         $etrangers = [
             'questions.view' => 'finance',
@@ -142,6 +146,9 @@ class RefusNommeTest extends TestCase
             'questions.review' => 'finance',
             /* L'autorité éditoriale ne distribue pas de droits commerciaux. */
             'orders.validate' => 'expert_pedagogue',
+            /* Et qui vend n'ouvre pas un concours au catalogue : décider
+             * qu'une épreuve est prête relève du fond, pas du chiffre. */
+            'catalogue.view' => 'finance',
         ];
 
         $this->assertArrayHasKey(

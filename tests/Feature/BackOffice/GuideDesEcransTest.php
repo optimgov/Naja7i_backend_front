@@ -13,6 +13,9 @@ use App\Filament\Resources\CompetencyNodes\Pages\ListCompetencyNodes;
 use App\Filament\Resources\ComplaintThreads\Pages\ListComplaintThreads;
 use App\Filament\Resources\Coupons\Pages\ListCoupons;
 use App\Filament\Resources\DifficultyLevels\Pages\ListDifficultyLevels;
+use App\Filament\Resources\ExamFamilies\Pages\ListExamFamilies;
+use App\Filament\Resources\Exams\Pages\ListExams;
+use App\Filament\Resources\Filieres\Pages\ListFilieres;
 use App\Filament\Resources\Orders\Pages\ListOrders;
 use App\Filament\Resources\Plans\Pages\ListPlans;
 use App\Filament\Resources\Questions\Pages\ListQuestions;
@@ -64,6 +67,9 @@ class GuideDesEcransTest extends TestCase
         ListCompetencyNodes::class => 'expert_pedagogue',
         ListTaxonomyProfiles::class => 'expert_pedagogue',
         ListDifficultyLevels::class => 'expert_pedagogue',
+        ListFilieres::class => 'expert_pedagogue',
+        ListExams::class => 'expert_pedagogue',
+        ListExamFamilies::class => 'expert_pedagogue',
 
         // Le poste commercial et le poste d'administration
         ListAudiences::class => 'super_admin',

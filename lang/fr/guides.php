@@ -351,4 +351,62 @@ return [
         ],
     ],
 
+    // ── Le catalogue ────────────────────────────────────────────────────
+
+    'exam_families' => [
+        'titre' => 'Ouvrir ou fermer une famille de concours',
+        'role' => 'Une famille regroupe les épreuves d’un même concours, ou les matières d’un même '
+            .'niveau scolaire. C’est ici — et pas sur l’épreuve — que se décide ce qu’un candidat '
+            .'voit dans sa liste.',
+        'gestes' => [
+            'Créez la famille avec son nom en français et en arabe, et rattachez-la à sa filière.',
+            'Laissez-la en liste d’attente tant que ses arbres sont vides : ouverte, elle promettrait un diagnostic qui n’aurait aucune question à servir.',
+            'Passez-la en « ouverte » quand ses épreuves sont publiées et garnies. C’est le seul geste qui la rend visible aux candidats.',
+            'Publier exige AUSSI une date de visibilité : sans elle, la famille reste invisible sans qu’aucune erreur ne le dise. Et sa filière doit elle-même être publiée — c’est le verrou qu’on oublie.',
+            'Son adresse publique se fige à la création : la changer casse les liens déjà partagés, sans qu’aucune erreur ne le signale.',
+        ],
+        'vide' => [
+            'Aucune famille n’existe : aucun concours ne peut être proposé, puisqu’une épreuve appartient toujours à une famille.',
+            'Un filtre est actif — les familles en liste d’attente peuvent être masquées.',
+        ],
+        'ensuite_epreuves' => 'Les épreuves de ces familles',
+    ],
+
+    'exams' => [
+        'titre' => 'Tenir les épreuves et les matières',
+        'role' => 'Une épreuve est le contenant d’un arbre de compétences : c’est à elle que se '
+            .'rattachent les chapitres, les questions et les diagnostics. Pour un lycée, une '
+            .'« épreuve » est simplement une matière d’un niveau.',
+        'gestes' => [
+            'Renseignez le nom dans les deux langues : un code nu n’est montré à personne.',
+            'Laissez le coefficient vide si aucune pièce officielle ne le donne — un coefficient inventé pèse sur la composition du diagnostic.',
+            'La durée officielle est exigée pour ouvrir un examen blanc : sans elle, il ne se lance pas.',
+            'Le nombre d’options ne descend pas sous quatre, et la base le refuse : à trois propositions, on devine une fois sur trois.',
+            'Le code se fige à la création — les tentatives déjà passées le désignent.',
+            'Publier une épreuve ne la montre pas encore : il faut aussi sa date de visibilité, sa famille ouverte, et la filière au-dessus publiée. La colonne « Servie au candidat ? » dit le résultat des trois.',
+        ],
+        'vide' => [
+            'Aucune épreuve n’est enregistrée : commencez par créer sa famille, puis son parcours.',
+            'Un filtre est actif : retirez-le avant de conclure que le catalogue est vide.',
+        ],
+        'ensuite_arbres' => 'Les arbres de compétences',
+        'ensuite_familles' => 'Les familles et leur disponibilité',
+    ],
+
+    'filieres' => [
+        'titre' => 'Publier une filière, le premier des trois verrous',
+        'role' => 'Une filière regroupe des familles de concours — les sciences de l’éducation, le '
+            .'lycée, la fonction publique. Tant qu’elle est en brouillon, RIEN de ce qu’elle '
+            .'contient n’est visible, quels que soient les réglages des familles et des épreuves.',
+        'gestes' => [
+            'Publiez la filière avant de vous demander pourquoi une famille ouverte n’apparaît pas : c’est la cause la plus fréquente, et la moins visible.',
+            'Nommez-la dans les deux langues ; son accroche est ce qu’un visiteur lit en premier.',
+            'Son adresse publique se fige à la création.',
+        ],
+        'vide' => [
+            'Aucune filière n’existe : rien ne peut être publié, puisque toute famille appartient à une filière.',
+        ],
+        'ensuite_familles' => 'Les familles de cette filière',
+    ],
+
 ];

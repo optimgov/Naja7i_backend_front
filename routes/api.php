@@ -51,6 +51,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/', [CatalogueController::class, 'index']);
         Route::get('calendrier', [CatalogueController::class, 'calendar']);
 
+        /* La liste fermée des niveaux académiques. Publique : le dossier
+           la lit, et l'inscription la lira avant tout jeton. */
+        Route::get('niveaux-academiques', [CatalogueController::class, 'academicLevels']);
+
         Route::get('filieres/{slug}', [CatalogueController::class, 'filiere']);
 
         Route::get('familles/{slug}', [CatalogueController::class, 'family']);

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\NiveauxAcademiques;
 use App\Support\NumeroMobileMarocain;
 use App\Validation\PasswordPolicy;
 use Illuminate\Support\Arr;
@@ -26,7 +27,11 @@ final class OwnAccountService
         $validated = Validator::make($data, [
             'first_name' => ['sometimes', 'required', 'string', 'max:100'],
             'last_name' => ['sometimes', 'required', 'string', 'max:100'],
-            'academic_level' => ['sometimes', 'required', 'string', 'max:150'],
+            /* LISTE FERMÉE : le niveau ne sert pas à décorer un profil, il
+             * décide de ce que la personne prépare et de ce qu'on lui montre.
+             * Une chaîne libre ne permettait aucune déduction — voir
+             * `NiveauxAcademiques`. */
+            'academic_level' => ['sometimes', 'required', 'string', Rule::in(NiveauxAcademiques::tous())],
             'address' => ['sometimes', 'required', 'string', 'max:500'],
             'email' => ['sometimes', 'nullable', 'email:rfc', 'required_without:phone', Rule::unique('users', 'email')->ignore($user)],
             'phone' => ['sometimes', 'nullable', 'required_without:email', 'regex:'.NumeroMobileMarocain::REGLE, Rule::unique('users', 'phone')->ignore($user)],

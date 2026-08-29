@@ -38,4 +38,17 @@ return [
         'account_saved' => 'Vos coordonnées ont été enregistrées.',
         'password_saved' => 'Votre mot de passe a été modifié.',
     ],
+    // ── Les niveaux académiques, liste fermée (NiveauxAcademiques) ──
+    'niveau_tronc-commun' => 'Lycée — tronc commun',
+    'niveau_premiere-bac' => 'Lycée — 1re année du baccalauréat',
+    'niveau_deuxieme-bac' => 'Lycée — 2e année du baccalauréat',
+    'niveau_bac-obtenu' => 'Baccalauréat obtenu',
+    'niveau_licence' => 'Licence',
+    'niveau_master' => 'Master',
+    'niveau_doctorat' => 'Doctorat',
+    'niveau_enseignant-en-poste' => 'Enseignant en poste',
+    'niveau_autre' => 'Autre',
+    'niveau_choisir' => 'Choisir votre niveau',
+    'niveau_aide' => 'Votre niveau décide de ce que la plateforme vous propose : un élève du lycée prépare son année scolaire, les autres préparent un concours.',
+
 ];

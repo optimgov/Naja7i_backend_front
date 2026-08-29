@@ -224,6 +224,7 @@ return [
     */
 
     'attributes' => [
+        'academic_level' => 'niveau académique',
         'email' => 'adresse e-mail',
         'password' => 'mot de passe',
         'password_confirmation' => 'confirmation du mot de passe',

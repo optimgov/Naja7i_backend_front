@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\NiveauxAcademiques;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,6 +31,11 @@ class UserResource extends JsonResource
             'email_verified' => $this->email_verified_at !== null,
             'phone_verified' => $this->phone_verified_at !== null,
             'onboarding_complete' => $this->dossierCandidatComplet(),
+            /* LE FRONTEND NE DÉDUIT PAS LE STATUT SCOLAIRE, il le lit. La règle
+             * vit dans `NiveauxAcademiques` et nulle part ailleurs : deux
+             * implémentations d'une même déduction divergent au premier niveau
+             * ajouté. */
+            'est_lyceen' => NiveauxAcademiques::estLyceen($this->academic_level),
             'roles' => $this->whenLoaded(
                 'memberships',
                 fn () => $this->memberships->pluck('role.code')->unique()->values()

@@ -15,6 +15,7 @@ use App\Models\ExamSession;
 use App\Models\Filiere;
 use App\Models\Specialty;
 use App\Support\ApiError;
+use App\Support\NiveauxAcademiques;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -32,6 +33,34 @@ use Illuminate\Support\Collection;
  */
 class CatalogueController extends Controller
 {
+    /**
+     * LES NIVEAUX ACADÉMIQUES — liste fermée, servie localisée.
+     *
+     * Le champ était une saisie libre. Un lycéen écrivait « tronc commun »,
+     * « TC », « 1ère année » ou rien du tout, et la plateforme ne pouvait donc
+     * pas savoir qu'elle avait affaire à un lycéen : elle lui imposait un
+     * concours du CRMEF pour débloquer son dossier. C'est ce que cette route
+     * ferme.
+     *
+     * Elle est SERVIE et non recopiée côté client : deux listes finissent
+     * toujours par diverger, et c'est le serveur qui valide.
+     *
+     * Publique, parce que l'inscription devra la lire avant qu'un jeton
+     * existe.
+     */
+    public function academicLevels(): JsonResponse
+    {
+        return response()->json([
+            'data' => collect(NiveauxAcademiques::tous())
+                ->map(fn (string $code) => [
+                    'code' => $code,
+                    'name' => __("dossier.niveau_{$code}"),
+                    'lycee' => NiveauxAcademiques::estLyceen($code),
+                ])
+                ->values(),
+        ]);
+    }
+
     /** Arborescence complète : filières et leurs familles. */
     public function index(Request $request): JsonResponse
     {

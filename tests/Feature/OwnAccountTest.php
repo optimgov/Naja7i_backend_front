@@ -126,7 +126,7 @@ final class OwnAccountTest extends TestCase
         $this->patchJson('/api/v1/me/account', [
             'first_name' => 'Amal',
             'last_name' => 'El Mansouri',
-            'academic_level' => 'Licence',
+            'academic_level' => 'licence',
             'address' => 'Rabat',
             'phone' => '0712345678',
         ])->assertOk()->assertJsonPath('data.onboarding_complete', false);

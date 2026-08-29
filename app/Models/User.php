@@ -7,6 +7,7 @@ use App\Notifications\ResetPasswordNotification;
 use App\Services\EmailVerificationService;
 use App\Services\OffreGratuiteService;
 use App\Services\PermissionResolver;
+use App\Support\NiveauxAcademiques;
 use App\Tenancy\TenantContext;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
@@ -16,8 +17,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use RuntimeException;
-
 /**
  * Compte GLOBAL : pas de tenant_id. Le rattachement passe par memberships.
  *
@@ -26,6 +25,8 @@ use RuntimeException;
  * middleware EnsureEmailIsVerified et le réglage naja7i.email_verification_gate
  * — l'interface ne fait que rendre le compte « vérifiable ».
  */
+use RuntimeException;
+
 class User extends Authenticatable implements FilamentUser, HasName, MustVerifyEmail
 {
     use HasPublicUuid, Notifiable;
@@ -119,6 +120,24 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
             if (! is_string($champ) || trim($champ) === '') {
                 return false;
             }
+        }
+
+        /*
+         * UN LYCÉEN N'A PAS DE CONCOURS À DÉCLARER, et le lui demander était
+         * absurde. Mesuré sur la préproduction le 29 août : un élève de tronc
+         * commun avait dû déclarer préparer « CRMEF — Spécialité Langue
+         * française » pour que son dossier soit accepté, parce que c'était la
+         * seule liste qu'on lui proposait.
+         *
+         * Son cursus est décidé par son NIVEAU, qu'il vient de déclarer. Rien
+         * ne reste donc à choisir, et rien ne doit le retenir à la porte.
+         *
+         * Les autres — post-bac, enseignants, « autre » — préparent bien un
+         * concours, et l'exigence tient pour eux : sans épreuve déclarée, la
+         * plateforme ne sait ni quoi mesurer ni quoi leur proposer.
+         */
+        if (NiveauxAcademiques::estLyceen($this->academic_level)) {
+            return true;
         }
 
         return $this->relationLoaded('candidateProfile')
